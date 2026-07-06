@@ -1171,6 +1171,9 @@ class RoutedExperts(PluggableLayer):
         """
         assert not self.quant_method.is_monolithic
 
+        if _EXPERT_STATS_DIR is not None:
+            _record_expert_stats(self, topk_ids)
+
         # Modular kernels use pre-computed routing
         return self.quant_method.apply(
             layer=self,
@@ -1223,3 +1226,44 @@ class RoutedExperts(PluggableLayer):
 
 # Mark the RoutedExperts weight_loader as supporting MoE-specific parameters
 RoutedExperts.weight_loader.supports_moe_loading = True  # type: ignore[attr-defined]
+
+# ---------------------------------------------------------------------------
+# Optional per-expert routing-stats collection for quantization calibration.
+# Enable with VLLM_EXPERT_STATS_DIR=<dir>; each layer periodically dumps a
+# bincount of its routed expert ids as layer_<idx>.npy. Only the modular
+# (non-monolithic) path records stats: force a modular MoE backend (e.g.
+# kernel_config={"moe_backend": "cutlass"}) when collecting.
+# ---------------------------------------------------------------------------
+import os as _os
+import re as _re
+
+_EXPERT_STATS_DIR = _os.environ.get("VLLM_EXPERT_STATS_DIR")
+_expert_stats: dict[int, torch.Tensor] = {}
+_expert_stats_calls: dict[int, int] = {}
+_LAYER_RE = _re.compile(r"layers\.(\d+)\.")
+
+
+def _record_expert_stats(layer: RoutedExperts, topk_ids: torch.Tensor) -> None:
+    m = _LAYER_RE.search(layer.layer_name)
+    if m is None:
+        return
+    li = int(m.group(1))
+    counts = _expert_stats.get(li)
+    if counts is None:
+        counts = torch.zeros(
+            layer.global_num_experts, dtype=torch.int64, device=topk_ids.device
+        )
+        _expert_stats[li] = counts
+    counts += torch.bincount(
+        topk_ids.reshape(-1).long().clamp(min=0),
+        minlength=layer.global_num_experts,
+    )
+    _expert_stats_calls[li] = _expert_stats_calls.get(li, 0) + 1
+    if _expert_stats_calls[li] % 50 == 0:
+        import numpy as np
+
+        _os.makedirs(_EXPERT_STATS_DIR, exist_ok=True)
+        np.save(
+            _os.path.join(_EXPERT_STATS_DIR, f"layer_{li}.npy"),
+            counts.cpu().numpy(),
+        )

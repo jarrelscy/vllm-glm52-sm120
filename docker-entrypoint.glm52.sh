@@ -58,6 +58,7 @@ ARGS=(vllm serve "$MODEL_DIR" $PAR
   --max-num-batched-tokens 2048
   --no-enable-flashinfer-autotune
   --enforce-eager
+  --served-model-name "${SERVED_NAME:-glm-5.2}"
   --port "${PORT:-8001}")
 if [ "$SPEC" = 1 ]; then
   SC="{\"model\": \"RedHatAI/GLM-5.2-speculator.dspark\", \"method\": \"dspark\", \"num_speculative_tokens\": $NUM_SPEC"
@@ -66,5 +67,5 @@ if [ "$SPEC" = 1 ]; then
   ARGS+=(--speculative-config "$SC")
 fi
 
-echo ">> GLM-5.2 SM120  PARALLEL=$PARALLEL  MAXLEN=$MAXLEN  spec=$SPEC  model=$MODEL_DIR"
-exec "${ARGS[@]}"
+echo ">> GLM-5.2 SM120  PARALLEL=$PARALLEL  MAXLEN=$MAXLEN  spec=$SPEC  served=${SERVED_NAME:-glm-5.2}  model=$MODEL_DIR"
+exec "${ARGS[@]}" "$@"

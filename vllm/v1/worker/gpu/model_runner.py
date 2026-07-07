@@ -17,6 +17,7 @@ hidden. Prefer utility functions defined elsewhere and call them from here,
 instead of embedding feature-specific logic directly.
 """
 
+import contextlib
 import functools
 import gc
 import time
@@ -189,9 +190,21 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         self.speculator = None
         self.use_aux_hidden_state_outputs = False
         self.num_speculative_steps = vllm_config.num_speculative_tokens
+        # EXPERIMENTAL: draft-TP-over-PP. When set, the draft is Tensor-Parallel
+        # sharded across the *entire* PP rank set (draft TP == target PP), so
+        # every rank hosts a shard of the speculator (not only the last rank),
+        # and every draft-touching phase (model build, KV alloc, forward) runs
+        # under the draft-TP group installed as the global `_TP` via
+        # `patch_tp_group`. See TP_DRAFT_PP_FINDINGS.md.
+        self.draft_tp_over_pp = (
+            self.speculative_config is not None
+            and getattr(self.speculative_config, "draft_tp_over_pp", False)
+        )
         if self.speculative_config is not None:
-            if self.is_last_pp_rank:
-                self.speculator = init_speculator(self.vllm_config, self.device)
+            if self.is_last_pp_rank or self.draft_tp_over_pp:
+                self.speculator = self._maybe_patched_draft_tp(
+                    lambda: init_speculator(self.vllm_config, self.device)
+                )
 
             if self.speculative_config.method in ("eagle3", "dflash", "dspark"):
                 # Drafting may require auxiliary hidden states from target model outputs
@@ -296,7 +309,12 @@ class GPUModelRunner(LoRAModelRunnerMixin):
                 assert self.speculative_config is not None
                 set_eagle3_aux_hidden_state_layers(self.model, self.speculative_config)
             if isinstance(self.speculator, DraftModelSpeculator):
-                self.speculator.load_model(self.model)
+                # In draft-TP-over-PP the draft is built + its weights sharded
+                # under the draft-TP group (installed as global `_TP`), so its
+                # ColumnParallel/RowParallel/VocabParallel layers shard across
+                # the PP rank set and the weight loader picks this rank's shard.
+                with self._draft_tp_ctx():
+                    self.speculator.load_model(self.model)
                 eplb_models_added = self.eplb.maybe_register_speculator(
                     self.speculator, self.speculative_config, load_dummy_weights
                 )
@@ -397,6 +415,21 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         # Cache the default CUDA stream to avoid lookup overhead.
         return torch.cuda.current_stream(self.device)
 
+    def _draft_tp_ctx(self):
+        """Context that installs the draft-TP group as the global `_TP` when in
+        draft-TP-over-PP mode; a no-op otherwise. All draft construction /
+        KV-alloc / forward must run inside this so the draft's parallel layers
+        shard across the PP rank set. See TP_DRAFT_PP_FINDINGS.md."""
+        if not self.draft_tp_over_pp:
+            return contextlib.nullcontext()
+        from vllm.distributed.parallel_state import get_draft_tp_group, patch_tp_group
+
+        return patch_tp_group(get_draft_tp_group())
+
+    def _maybe_patched_draft_tp(self, fn):
+        with self._draft_tp_ctx():
+            return fn()
+
     def get_kv_cache_spec(self):
         return get_kv_cache_spec(self.vllm_config)
 
@@ -476,9 +509,13 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         check_attention_cp_compatibility(self.vllm_config)
         if isinstance(self.speculator, DraftModelSpeculator):
             # HACK(woosuk)
-            self.speculator.set_attn(
-                self.model_state, self.kv_cache_config, self.block_tables
-            )
+            # draft-TP-over-PP: build the draft attention backend/metadata under
+            # the draft-TP group so per-rank head partitioning and slot mappings
+            # match the sharded draft KV cache.
+            with self._draft_tp_ctx():
+                self.speculator.set_attn(
+                    self.model_state, self.kv_cache_config, self.block_tables
+                )
 
         self.kv_caches: list[torch.Tensor] = []
         kv_caches_dict = init_kv_cache(
@@ -582,7 +619,13 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         self.execute_model_state = None
 
         # dummy run the eagle speculator's propose to ensure DP/EP sync.
-        if self.speculator is not None:
+        # draft-TP-over-PP: SKIP the dummy draft propose. It is a TP collective
+        # across all PP ranks, but non-last ranks return above (line ~610) and
+        # never reach here, so calling it would deadlock warmup. Profiling still
+        # completes with the target; the draft's sharded KV is still allocated in
+        # initialize_kv_cache (set_attn runs under the draft-TP ctx). The real
+        # decode-time draft phase is not yet wired (see TP_DRAFT_PP_FINDINGS.md).
+        if self.speculator is not None and not self.draft_tp_over_pp:
             assert self.sampler is not None
             mm_inputs: tuple[list[torch.Tensor], torch.Tensor] | None = None
             if self.speculator.supports_mm_inputs:
@@ -715,7 +758,11 @@ class GPUModelRunner(LoRAModelRunnerMixin):
                 use_aux_hidden_state_outputs=self.use_aux_hidden_state_outputs,
                 lora_capture_hook=create_lora_capture_hook(self.lora_config, self),
             )
-            if self.speculator is not None:
+            if self.speculator is not None and not self.draft_tp_over_pp:
+                # draft-TP-over-PP: skip draft CUDA-graph capture. Capture runs
+                # the draft forward (a TP collective) and must be symmetric
+                # across all PP ranks; the decode-time draft phase that would
+                # drive it is not yet wired. See TP_DRAFT_PP_FINDINGS.md.
                 self.speculator.capture(attn_states)
 
         end_time = time.perf_counter()
@@ -1497,6 +1544,22 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             num_rejected,
             input_batch.query_start_loc,
         )
+
+        if self.speculator is not None and self.draft_tp_over_pp:
+            # SPIKE STOP: the draft weights + KV are TP-sharded across the PP
+            # ranks (validated at load/KV-alloc), but the decode-time TP-draft
+            # phase is not yet wired. Running propose here would fire a TP
+            # collective that only the last rank reaches (non-last ranks return
+            # in sample_tokens before this) -> deadlock. The remaining work
+            # (broadcast target hidden/aux-hidden + sampler-derived inputs from
+            # the last rank to the draft-TP group, then run propose symmetrically
+            # on all ranks under patch_tp_group) is specified in
+            # TP_DRAFT_PP_FINDINGS.md ("Runtime restructure").
+            raise NotImplementedError(
+                "draft-TP-over-PP: model + KV shard successfully, but the "
+                "decode-time TP-draft phase is not yet implemented. See "
+                "TP_DRAFT_PP_FINDINGS.md."
+            )
 
         if self.speculator is not None:
             assert self.sampler is not None

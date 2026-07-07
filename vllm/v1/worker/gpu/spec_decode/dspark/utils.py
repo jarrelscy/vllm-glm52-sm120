@@ -44,6 +44,35 @@ def load_dspark_model(target_model: nn.Module, vllm_config: VllmConfig) -> nn.Mo
             vllm_config=draft_vllm_config, model_config=draft_model_config
         )
 
+    # DIAGNOSTIC (draft-TP-over-PP spike): report the draft attention head
+    # sharding so we can confirm the draft KV shards N-way across the PP ranks.
+    # Only in the experimental mode, to keep normal runs quiet.
+    if getattr(speculative_config, "draft_tp_over_pp", False):
+        try:
+            from vllm.distributed.parallel_state import (
+                get_tensor_model_parallel_rank,
+                get_tensor_model_parallel_world_size,
+            )
+            import logging as _logging
+
+            _log = _logging.getLogger("vllm")
+            _tpw = get_tensor_model_parallel_world_size()
+            _tpr = get_tensor_model_parallel_rank()
+            for _n, _m in draft_model.named_modules():
+                if hasattr(_m, "num_kv_heads") and hasattr(_m, "num_heads"):
+                    _log.info(
+                        "[TPPP-DIAG] draft attn %s: tp_world=%d tp_rank=%d "
+                        "num_kv_heads(per-rank)=%s num_heads(per-rank)=%s "
+                        "total_kv=%s kv_size=%s",
+                        _n, _tpw, _tpr, getattr(_m, "num_kv_heads", "?"),
+                        getattr(_m, "num_heads", "?"),
+                        getattr(_m, "total_num_kv_heads", "?"),
+                        getattr(_m, "kv_size", "?"),
+                    )
+                    break
+        except Exception:  # pragma: no cover
+            pass
+
     # DSpark is built only on the last PP rank (init_speculator gates on
     # is_last_pp_rank) and its draft layers are a plain ModuleList (not PP
     # partitioned), so the drafter is fully local. The target propagates the
@@ -65,9 +94,16 @@ def load_dspark_model(target_model: nn.Module, vllm_config: VllmConfig) -> nn.Mo
     def _shareable(module) -> bool:
         return module is not None and hasattr(module, "weight")
 
+    # draft-TP-over-PP: the draft is TP-sharded across the PP ranks while the
+    # target is TP=1 (unsharded). Sharing embed_tokens / lm_head would splice a
+    # full (tp=1) tensor into the draft's sharded (tp=N) layers -> shape/rank
+    # mismatch. Force the draft to use its own (sharded) weights. See
+    # TP_DRAFT_PP_FINDINGS.md.
+    draft_tp_over_pp = getattr(speculative_config, "draft_tp_over_pp", False)
+
     target_embed = getattr(target_inner, "embed_tokens", None)
     draft_embed = getattr(draft_inner, "embed_tokens", None)
-    if _shareable(target_embed) and _should_share(
+    if not draft_tp_over_pp and _shareable(target_embed) and _should_share(
         draft_model, "has_own_embed_tokens", draft_embed, target_embed
     ):
         if draft_embed is not None:
@@ -76,7 +112,7 @@ def load_dspark_model(target_model: nn.Module, vllm_config: VllmConfig) -> nn.Mo
 
     target_lm_head = getattr(target_model, "lm_head", None)
     draft_lm_head = getattr(draft_model, "lm_head", None)
-    if _shareable(target_lm_head) and _should_share(
+    if not draft_tp_over_pp and _shareable(target_lm_head) and _should_share(
         draft_model, "has_own_lm_head", draft_lm_head, target_lm_head
     ):
         if draft_lm_head is not None:

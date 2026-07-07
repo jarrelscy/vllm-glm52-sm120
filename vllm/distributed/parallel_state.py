@@ -1351,6 +1351,94 @@ def get_tp_group() -> GroupCoordinator:
     return _TP
 
 
+# ---------------------------------------------------------------------------
+# EXPERIMENTAL: draft-TP-over-PP.
+#
+# For "orthogonal draft-TP over PP ranks" (a pure-PP target with TP=1 hosting a
+# Tensor-Parallel draft), we build a *second* tensor-parallel GroupCoordinator
+# whose rank set is exactly one PP group (all ranks that share a pipeline). All
+# vLLM parallel layers read the GLOBAL `_TP` at both construction and forward
+# (get_tensor_model_parallel_world_size -> get_tp_group().world_size), so to
+# build/run the draft sharded across those ranks we temporarily install the
+# draft group as `_TP` via `patch_tp_group`. See TP_DRAFT_PP_FINDINGS.md.
+# ---------------------------------------------------------------------------
+_DRAFT_TP: GroupCoordinator | None = None
+
+
+def get_draft_tp_group() -> GroupCoordinator:
+    assert _DRAFT_TP is not None, "draft tensor parallel group is not initialized"
+    return _DRAFT_TP
+
+
+def draft_tp_group_initialized() -> bool:
+    return _DRAFT_TP is not None
+
+
+def init_draft_tp_group(backend: str | None = None) -> GroupCoordinator:
+    """Build the draft's tensor-parallel group over the current PP rank set.
+
+    Must be called collectively by every rank AFTER `initialize_model_parallel`
+    (it reuses the existing `_PP` group's rank layout). Idempotent.
+
+    The draft group's rank set for each pipeline is identical to that pipeline's
+    `_PP` group members, but it is a *tensor*-parallel coordinator (all-reduce /
+    all-gather / message-queue broadcaster semantics) so the draft's
+    ColumnParallel/RowParallel/VocabParallel layers shard correctly.
+    """
+    global _DRAFT_TP
+    if _DRAFT_TP is not None:
+        return _DRAFT_TP
+    assert _PP is not None, "PP group must be initialized before the draft-TP group"
+    assert torch.distributed.is_initialized()
+
+    world = get_world_group()
+    if backend is None:
+        backend = torch.distributed.get_backend(world.device_group)
+
+    # Reconstruct the full list of PP rank-groups (all pipelines), not just the
+    # local one, so every rank builds the identical set of groups (required:
+    # process-group creation is collective across the whole world).
+    #
+    # `_PP.group_ranks` on this rank only contains this rank's pipeline. Rebuild
+    # the complete partition from world topology instead. Since draft-TP-over-PP
+    # requires target tp==1, dcp==1, pcp==1, the PP groups are simply contiguous
+    # blocks of size pp_world_size across (ExternalDP x DP) replicas.
+    pp_world_size = _PP.world_size
+    global_world_size = world.world_size
+    assert global_world_size % pp_world_size == 0
+    group_ranks = [
+        list(range(base, base + pp_world_size))
+        for base in range(0, global_world_size, pp_world_size)
+    ]
+
+    _DRAFT_TP = init_model_parallel_group(
+        group_ranks,
+        world.local_rank,
+        backend,
+        use_message_queue_broadcaster=True,
+        group_name="draft_tp",
+    )
+    return _DRAFT_TP
+
+
+@contextmanager
+def patch_tp_group(group: GroupCoordinator):
+    """Temporarily install ``group`` as the global tensor-parallel group.
+
+    Used to build and run the TP draft over the PP rank set: vLLM parallel
+    layers read the global `_TP` for both shard sizing (construction) and
+    collectives (forward), so the draft must be constructed AND executed inside
+    this context to shard across the draft group.
+    """
+    global _TP
+    prev = _TP
+    _TP = group
+    try:
+        yield
+    finally:
+        _TP = prev
+
+
 _DCP: GroupCoordinator | None = None
 
 
@@ -2032,6 +2120,11 @@ def destroy_model_parallel():
     if _TP:
         _TP.destroy()
     _TP = None
+
+    global _DRAFT_TP
+    if _DRAFT_TP:
+        _DRAFT_TP.destroy()
+    _DRAFT_TP = None
 
     global _DCP
     if _DCP:

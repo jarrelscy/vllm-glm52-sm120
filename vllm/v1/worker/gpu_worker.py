@@ -1290,6 +1290,16 @@ def init_worker_distributed_environment(
         parallel_config.decode_context_parallel_size,
     )
 
+    # EXPERIMENTAL: "orthogonal draft-TP over PP ranks". Build a second
+    # tensor-parallel group spanning the target's PP rank set, over which the
+    # TP draft is constructed and run. Collective; guarded by the config flag.
+    # See TP_DRAFT_PP_FINDINGS.md.
+    spec_config = vllm_config.speculative_config
+    if spec_config is not None and getattr(spec_config, "draft_tp_over_pp", False):
+        from vllm.distributed.parallel_state import init_draft_tp_group
+
+        init_draft_tp_group(backend=backend)
+
     # Init ec connector here before KV caches init
     # NOTE: We do not init KV caches for Encoder-only instance in EPD disagg mode
     ensure_ec_transfer_initialized(vllm_config)

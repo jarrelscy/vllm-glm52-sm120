@@ -26,7 +26,7 @@ export FLASHINFER_DISABLE_VERSION_CHECK=1
 export NCCL_MAX_NCHANNELS=4 NCCL_BUFFSIZE=1048576
 export VLLM_SPARSE_INDEXER_MAX_LOGITS_MB=256
 export VLLM_MEMORY_PROFILER_ESTIMATE_CUDAGRAPHS=0
-export VLLM_DISABLE_FP8_W8A16=1   # v2-only NVFP4 MoE kernels (bit-exact)
+export VLLM_DISABLE_FP8_W8A16="${VLLM_DISABLE_FP8_W8A16:-1}"   # v2-only (bit-exact) default; set =0 to opt into v4 fp8 W8A16 (+6-8% base decode)
 
 MODEL_DIR="${MODEL_DIR:-/models/1m}"
 PARALLEL="${PARALLEL:-pp4-1m}"
@@ -47,26 +47,30 @@ case "$PARALLEL" in
   pp4-dspark)  # PP4 + DSpark, ~130K (drafter co-locates on last rank; dominated by tp2pp2)
     export VLLM_PP_LAYER_PARTITION="${VLLM_PP_LAYER_PARTITION:-21,19,19,19}"
     PAR="--pipeline-parallel-size 4"; SPEC=1; DEFLEN=131072 ;;
-  pp4-mtp)     # PP4 + native MTP self-speculation (checkpoint layer 78, method=mtp).
-    # Coherent + lossless. Routed through the V2 model runner (see vllm/config/vllm.py:
-    # force-V2 for method in {dspark,mtp}). FITS ~1M context (est ceiling 999,168 tok @ util
-    # 0.97) — the MTP draft KV is MLA-shaped & tiny, unlike DSpark. NOTE the PP split is
-    # 20,20,20,18 (NOT 21,19,19,19): the MTP layer is a full 256-expert MoE (~7.5 GiB) that
-    # lands on the LAST rank, so that rank must carry fewer target layers or it caps context.
-    # PERF: ns=2 ~1.17x over base ONLY at short ctx (<=~50-80K). At >=100K MTP is NET-NEGATIVE
-    # (775K: base 18.2, ns1 12.6=0.69x, ns2 9.9=0.54x) — PROVEN irreducible: GLM's DSA sparse
-    # attention makes base decode flat ~18 tok/s at any length (weight-light), so per group MTP
-    # does ns+2 O(ctx) indexer scans for <=ns+1 tokens => strictly more sparse-attn work than
-    # base. For long ctx use pp4-1m (no spec); use pp4-mtp only for short-ctx latency.
+  pp4-mtp)     # PP4 + native MTP self-speculation (checkpoint layer 78, method=mtp), ~1M ctx.
+    # Coherent + lossless. Routed through the V2 model runner (vllm/config/vllm.py force-V2 for
+    # method in {dspark,mtp}). FITS ~1M (est ceiling 999,168 tok @ util 0.97; default 950K for
+    # margin) — MTP's draft KV is MLA-shaped & tiny, unlike DSpark. PP split MUST be 20,20,20,18
+    # (NOT 21,19,19,19): the MTP layer is a full 256-expert MoE (~7.5 GiB) that lands on the LAST
+    # rank, so that rank carries fewer target layers or context caps. PERF (non-streamed, CORRECT
+    # counting): MTP BEATS base on every workload at ns=2 — 1m @32K [easy 29.3/code 24.4/complex
+    # 24.0] vs base 18.7 (1.26-1.57x); still wins @200K (easy 24.6 vs 18.4). ns=2 best all-round.
+    # (Earlier "MTP loses at long ctx" was a STREAMED-measurement artifact — SSE bundles accepted
+    # tokens; see BENCHMARKING.md.) Short-ctx latency: set MAXLEN=32768.
     export VLLM_PP_LAYER_PARTITION="${VLLM_PP_LAYER_PARTITION:-20,20,20,18}"
-    PAR="--pipeline-parallel-size 4"; SPEC=2; DEFLEN=32768; NUM_SPEC="${NUM_SPEC:-2}"; UTIL_DEFAULT=0.97 ;;
+    PAR="--pipeline-parallel-size 4"; SPEC=2; DEFLEN=950000; NUM_SPEC="${NUM_SPEC:-2}"; UTIL_DEFAULT=0.97 ;;
+  tp2pp2-mtp)  # TP2xPP2 + native MTP self-speculation, ~580K ctx — the SPEED/CONTEXT BALANCE pick.
+    # Non-streamed: 1m [easy 40.4/code 36.1/complex 30.1] tok/s @ ceiling ~580K — ~2x pp4-mtp's
+    # decode while still reaching >0.5M context. Best all-round serving config.
+    export VLLM_PP_LAYER_PARTITION="${VLLM_PP_LAYER_PARTITION:-39,39}"
+    PAR="--tensor-parallel-size 2 --pipeline-parallel-size 2"; SPEC=2; DEFLEN=560000; NUM_SPEC="${NUM_SPEC:-2}" ;;
   pp4-tpdraft) # PP4 target (MLA KV split by layer -> long ctx) + DSpark draft sharded
     # TP4 across the PP ranks (draft-TP-over-PP). Draft's 64 KV heads shard 16/rank,
     # freeing the KV that a co-located draft would eat -> ~2x the spec-decode ceiling.
     # Validated: KV 514,697 tokens @ 450K, mean accepted ~3.0, ~17-19 tok/s.
     export VLLM_PP_LAYER_PARTITION="${VLLM_PP_LAYER_PARTITION:-21,19,19,19}"
     PAR="--pipeline-parallel-size 4"; SPEC=1; DEFLEN=450000; UTIL_DEFAULT=0.97; DRAFT_TP=4 ;;
-  *) echo "unknown PARALLEL=$PARALLEL (use pp4-1m | tp2pp2 | tp4-dspark | pp4-dspark | pp4-mtp | pp4-tpdraft)"; exit 1 ;;
+  *) echo "unknown PARALLEL=$PARALLEL (use pp4-1m | pp4-mtp | tp2pp2 | tp2pp2-mtp | tp4-dspark | pp4-dspark | pp4-tpdraft)"; exit 1 ;;
 esac
 UTIL="${UTIL:-$UTIL_DEFAULT}"
 # NOTE: 1M context and the DSpark drafter cannot co-fit on 4x96GB. The drafter

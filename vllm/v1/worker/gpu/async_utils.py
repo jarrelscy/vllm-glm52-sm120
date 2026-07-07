@@ -54,6 +54,13 @@ class AsyncOutput(AsyncModelRunnerOutput):
         # rather than Python lists.
         sampled_token_ids: list[list[int]] = self.sampled_token_ids.tolist()
         num_sampled_tokens: list[int] = self.num_sampled_tokens_np.tolist()
+        import os as _os
+        if _os.environ.get("VLLM_DSPARK_DBG") == "1":
+            from vllm.logger import init_logger as _il
+            _il(__name__).error(
+                "ASYNCDBG raw_sampled=%s num_sampled=%s",
+                [t[:8] for t in sampled_token_ids], num_sampled_tokens,
+            )
         for token_ids, num_tokens in zip(sampled_token_ids, num_sampled_tokens):
             del token_ids[num_tokens:]
         self.model_runner_output.sampled_token_ids = sampled_token_ids

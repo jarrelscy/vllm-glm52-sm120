@@ -45,6 +45,13 @@ class DSparkSpeculator(DFlashSpeculator):
         self.sample_from_anchor = not getattr(
             self.draft_model_config.hf_config, "dspark_bonus_anchor", False
         )
+        # EXPERIMENT (approach A): force the standard 1+N bonus layout so the
+        # async spec-decode accounting (which assumes a bonus token everywhere)
+        # is consistent under PP. Tests whether the checkpoint tolerates the
+        # DFlash 1+N fill-in layout instead of anchor-as-prediction.
+        import os as _os
+        if _os.environ.get("VLLM_DSPARK_FORCE_BONUS_ANCHOR") == "1":
+            self.sample_from_anchor = False
         if self.sample_from_anchor:
             self.num_query_per_req = self.num_speculative_steps
         else:

@@ -765,6 +765,17 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         if self.pp_handler is not None:
             outputs = self.pp_handler.get_prev_sampled_outputs()
             if outputs is not None:
+                # Spec decode: apply the drafts broadcast from the last rank
+                # pp_size steps ago into req_states.draft_tokens so this step's
+                # combine embeds real draft tokens (the drafter is last-rank-only).
+                draft_tokens = outputs.pop("draft_tokens", None)
+                draft_idx = outputs.pop("draft_idx_mapping", None)
+                if draft_tokens is not None and draft_idx is not None:
+                    valid = draft_idx >= 0
+                    if bool(valid.any()):
+                        self.req_states.draft_tokens[draft_idx[valid]] = draft_tokens[
+                            valid
+                        ]
                 self.postprocess_sampled(**outputs)
 
     def add_requests(self, scheduler_output: SchedulerOutput) -> None:
@@ -969,6 +980,23 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             self.model_state.num_new_sampled_tokens_per_step,
         )
 
+        import os as _os
+        if _os.environ.get("VLLM_DSPARK_DBG") == "1" and total_num_draft_tokens > 0:
+            _step = getattr(self, "_dbg_step", 0)
+            if _step < 40:
+                self._dbg_step = _step + 1
+                from vllm.logger import init_logger as _il
+                _nc = self.req_states.num_computed_tokens.gpu[idx_mapping].tolist()
+                _qsl = query_start_loc.tolist()
+                _cul = cu_num_logits.tolist()
+                _li = logits_indices.tolist()
+                _toks = self.input_buffers.input_ids[logits_indices].tolist()
+                _il(__name__).error(
+                    "COMBINEDBG rank_last=%s num_computed=%s qsl=%s cu_logits=%s "
+                    "logits_idx=%s toks_at_idx=%s",
+                    self.is_last_pp_rank, _nc, _qsl, _cul, _li, _toks,
+                )
+
         # CPU upper bound on seq_lens; padded entries left at zero.
         num_computed_tokens_np = self.req_states.num_computed_tokens_np[idx_mapping_np]
         seq_lens_cpu_upper_bound_np = np.zeros(num_reqs_padded, dtype=np.int32)
@@ -1097,6 +1125,19 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             output_bin_counts = self.sampler.penalties_state.output_bin_counts
         else:
             output_bin_counts = None
+        import os as _os
+        if _os.environ.get("VLLM_DSPARK_DBG") == "1":
+            _s = getattr(self, "_dbg_pp_step", 0)
+            if _s < 40:
+                self._dbg_pp_step = _s + 1
+                from vllm.logger import init_logger as _il
+                _il(__name__).error(
+                    "POSTDBG rank_last=%s from_fifo=%s num_sampled=%s num_rej=%s "
+                    "nc_before=%s",
+                    self.is_last_pp_rank, query_start_loc is None,
+                    num_sampled.tolist(), num_rejected.tolist(),
+                    self.req_states.num_computed_tokens.gpu[idx_mapping].tolist(),
+                )
         post_update(
             idx_mapping,
             self.req_states.num_computed_tokens.gpu,
@@ -1482,6 +1523,13 @@ class GPUModelRunner(LoRAModelRunnerMixin):
                 mm_inputs=mm_inputs,
             )
             self.req_states.draft_tokens[input_batch.idx_mapping] = draft_tokens
+            if self.pp_handler is not None:
+                # PP: broadcast these drafts to non-last ranks (drafter is
+                # last-rank-only) so they embed real draft tokens pp_size steps
+                # later. Issued after broadcast() to keep collective order.
+                self.pp_handler.broadcast_draft(
+                    self.req_states.draft_tokens, input_batch
+                )
 
         if self.num_speculative_steps > 0:
             # Spec-decode and diffusion LLMs both use draft tokens but the latter does

@@ -22,6 +22,10 @@ class PendingRecv:
     sampled_tokens: torch.Tensor  # [num_reqs, max_sample_len]
     num_sampled: torch.Tensor  # [num_reqs]
     num_rejected: torch.Tensor  # [num_reqs]
+    # Drafts produced at this step's propose (last rank), broadcast to non-last
+    # ranks so they can embed real draft tokens pp_size steps later. None if the
+    # model has no speculator/drafts. [num_reqs, num_speculative_steps]
+    draft_tokens: torch.Tensor | None
     idx_mapping: torch.Tensor  # [num_reqs]
     idx_mapping_np: np.ndarray  # [num_reqs]
     # Records which rows need a deferred postprocess (bool).
@@ -64,6 +68,7 @@ class PPHandler:
         self.is_last_rank = get_pp_group().is_last_rank
         self.last_rank = get_pp_group().last_rank
         self.max_sample_len = num_speculative_steps + 1
+        self.num_speculative_steps = num_speculative_steps
         self.device = device
         self.main_stream = torch.cuda.current_stream(device)
         self.broadcast_stream = torch.cuda.Stream(device)
@@ -120,6 +125,8 @@ class PPHandler:
             num_sampled=slot.num_sampled,
             num_rejected=slot.num_rejected,
             idx_mapping=idx_mapping,
+            draft_tokens=slot.draft_tokens,
+            draft_idx_mapping=idx_mapping if slot.draft_tokens is not None else None,
         )
 
     def receive(self, input_batch: InputBatch) -> bool:
@@ -148,6 +155,24 @@ class PPHandler:
             torch.distributed.broadcast(
                 combined, src=self.last_rank, group=self.broadcast_group
             )
+            # Spec decode: also receive the drafter's tokens produced at this
+            # step's propose on the last rank (drafter is last-rank-only). This
+            # collective is issued AFTER the two sampled collectives to match the
+            # last rank's order (broadcast() then broadcast_draft()). Consumed
+            # pp_size steps later (get_prev_sampled_outputs) and written into
+            # req_states.draft_tokens so non-last ranks embed real draft tokens.
+            draft_tokens: torch.Tensor | None = None
+            if self.num_speculative_steps > 0:
+                draft_tokens = torch.empty(
+                    num_reqs,
+                    self.num_speculative_steps,
+                    dtype=torch.int64,
+                    device=self.device,
+                )
+                torch.distributed.broadcast(
+                    draft_tokens, src=self.last_rank, group=self.broadcast_group
+                )
+                draft_tokens.record_stream(self.main_stream)
             event = self.broadcast_stream.record_event()
             num_sampled, num_rejected = combined.unbind(dim=0)
             # Must record_stream since these were allocated on broadcast stream but
@@ -159,12 +184,36 @@ class PPHandler:
             sampled_tokens,
             num_sampled,
             num_rejected,
+            draft_tokens,
             input_batch.idx_mapping,
             input_batch.idx_mapping_np,
             need_sampled_mask,
             gen_at_receive_np,
         )
         return bool(need_sampled_mask.all())
+
+    def broadcast_draft(
+        self, draft_tokens: torch.Tensor, input_batch: InputBatch
+    ) -> None:
+        """Last rank: broadcast the drafts produced at THIS step's propose to the
+        non-last ranks. Must be called every step right AFTER propose, gated by
+        the SAME need_sampled condition as broadcast() and issued AFTER it, so the
+        broadcast_group collective order matches the receiver
+        ([sampled, combined, draft]). ``draft_tokens`` is
+        ``req_states.draft_tokens`` [max_num_reqs, num_speculative_steps]; only
+        the active requests' rows (idx_mapping) are sent."""
+        assert self.is_last_rank
+        if self.num_speculative_steps == 0:
+            return
+        if compute_need_sampled_mask(input_batch) is None:
+            return
+        rows = draft_tokens[input_batch.idx_mapping].to(torch.int64)
+        with torch.cuda.stream(self.broadcast_stream):
+            self.broadcast_stream.wait_stream(self.main_stream)
+            torch.distributed.broadcast(
+                rows.contiguous(), src=self.last_rank, group=self.broadcast_group
+            )
+            rows.record_stream(self.broadcast_stream)
 
     def broadcast(
         self,

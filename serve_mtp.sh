@@ -21,9 +21,13 @@ ASYNC_FLAG=""
 
 SPEC_FLAG=(--speculative-config '{"method": "deepseek_mtp", "num_speculative_tokens": '"${NUM_SPEC:-1}"'}')
 [ "${NO_SPEC:-0}" = "1" ] && SPEC_FLAG=()
+[ "${DSPARK:-0}" = "1" ] && SPEC_FLAG=(--speculative-config '{"model": "RedHatAI/GLM-5.2-speculator.dspark", "method": "dspark", "num_speculative_tokens": '"${NUM_SPEC:-5}"'}')
+
+# PARALLEL_ARGS overrides the topology (default PP4). e.g. "--tensor-parallel-size 2 --pipeline-parallel-size 2"
+read -r -a PAR_ARR <<< "${PARALLEL_ARGS:---pipeline-parallel-size 4}"
 
 exec vllm serve "$MODEL_DIR" \
-  --pipeline-parallel-size 4 \
+  "${PAR_ARR[@]}" \
   --gpu-memory-utilization "${GPU_UTIL:-0.90}" \
   --kv-cache-dtype fp8_ds_mla \
   --max-model-len "${MAXLEN:-32768}" \

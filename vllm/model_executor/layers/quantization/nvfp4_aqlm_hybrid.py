@@ -91,11 +91,11 @@ def _get_ext():
             / "csrc"
             / "quantization"
             / "aqlm_moe"
-            / "aqlm_moe.cu"
+            / "aqlm_moe_v2.cu"
         )
         logger.info_once("Building aqlm_moe extension from %s", src)
         _ext = load(
-            name="aqlm_moe_ext",
+            name="aqlm_moe_ext_v2",
             sources=[str(src)],
             extra_cuda_cflags=["-O3"],
             verbose=False,
@@ -187,6 +187,26 @@ class NvFp4AqlmHybridConfig(QuantizationConfig):
             idx = self._aqlm_layer_idx(prefix)
             if idx is not None:
                 b = self.aqlm_layer_books[idx]
+                from vllm.distributed import (
+                    get_tensor_model_parallel_rank,
+                    get_tensor_model_parallel_world_size,
+                )
+
+                tp = get_tensor_model_parallel_world_size()
+                if tp > 1:
+                    from vllm.model_executor.layers.quantization.tp_hybrid_moe import (  # noqa: E501
+                        TPHybridExpertsMoEMethod,
+                    )
+
+                    return TPHybridExpertsMoEMethod(
+                        moe_config=layer.moe_config,
+                        layer_idx=idx,
+                        n_nvfp4=b["n_nvfp4"],
+                        n_base=b["n_base"],
+                        n_cold=b["n_cold"],
+                        tp_size=tp,
+                        tp_rank=get_tensor_model_parallel_rank(),
+                    )
                 return HybridExpertsMoEMethod(
                     moe_config=layer.moe_config,
                     layer_idx=idx,
@@ -194,6 +214,17 @@ class NvFp4AqlmHybridConfig(QuantizationConfig):
                     n_base=b["n_base"],
                     n_cold=b["n_cold"],
                 )
+        # v4: e4m3 W8A16 for the bf16-side attention / shared-expert projections
+        # (o_proj, q_b_proj, qkv_a, shared experts) — in the NVFP4 ignore-list,
+        # so without this they stay bf16. Undo: empty TARGET_SUFFIXES.
+        from vllm.model_executor.layers.linear import LinearBase
+        from vllm.model_executor.layers.quantization.fp8_w8a16 import (
+            Fp8W8A16LinearMethod,
+            matches as _fp8_matches,
+        )
+
+        if isinstance(layer, LinearBase) and _fp8_matches(prefix):
+            return Fp8W8A16LinearMethod()
         return self.nvfp4_config.get_quant_method(layer, prefix)
 
     def apply_vllm_mapper(self, hf_to_vllm_mapper) -> None:
@@ -392,6 +423,31 @@ class HybridExpertsMoEMethod(FusedMoEMethodBase):
         nv_ids = layer._nv_lookup[flat] if self.n_nvfp4 > 0 else None
         # Each token row repeated top_k times: rows of xr line up with slots.
         xr = xf.repeat_interleave(top_k, dim=0)
+
+        if self.n_base == 0:
+            # Fused path: one launch per projection dispatches each slot to
+            # its storage format (AQLM cold / NVFP4 hot) — replaces two
+            # masked gemv launches + an eltwise add per projection.
+            if nv_ids is None:
+                nv_ids = torch.full_like(b_ids, -1)
+                e8 = xr.new_empty(0, dtype=torch.uint8)
+                nv13 = nv2 = (e8, e8, xr.new_empty(0, dtype=torch.float32))
+            else:
+                nv13 = (layer.nvfp4_w13_packed, layer.nvfp4_w13_bscale,
+                        layer.nvfp4_w13_scale2)
+                nv2 = (layer.nvfp4_w2_packed, layer.nvfp4_w2_bscale,
+                       layer.nvfp4_w2_scale2)
+            h13 = ext.hybrid_moe_gemv(
+                xr, layer.w13_codes, layer.w13_codebooks, layer.w13_scales,
+                b_ids, *nv13, nv_ids,
+            )
+            hact = _silu_and_mul(h13).contiguous()
+            out = ext.hybrid_moe_gemv(
+                hact, layer.w2c_codes, layer.w2c_codebooks, layer.w2c_scales,
+                w2c_ids, *nv2, nv_ids,
+            )
+            out = out.view(num_tokens, top_k, hidden).float()
+            return (out * topk_weights.unsqueeze(-1).float()).sum(dim=1)
 
         h13 = ext.aqlm_moe_gemv(
             xr, layer.w13_codes, layer.w13_codebooks, layer.w13_scales, b_ids

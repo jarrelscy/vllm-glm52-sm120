@@ -196,7 +196,11 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             if self.speculative_config.method in ("eagle3", "dflash", "dspark"):
                 # Drafting may require auxiliary hidden states from target model outputs
                 self.use_aux_hidden_state_outputs = True
-                if self.use_pp:
+                # DSpark propagates aux hidden states down the pipeline via the
+                # target model's IntermediateTensors schema (see DeepseekV2Model),
+                # so it is supported under PP. eagle3/dflash have no such
+                # propagation and remain PP-unsupported.
+                if self.use_pp and self.speculative_config.method != "dspark":
                     raise ValueError(
                         f"{self.speculative_config.method} with pipeline parallel "
                         "is not supported."

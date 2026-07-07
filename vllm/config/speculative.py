@@ -1109,9 +1109,18 @@ class SpeculativeConfig:
             )
 
         if self.draft_model_config:
-            self.draft_model_config.verify_with_parallel_config(
-                self.draft_parallel_config
-            )
+            draft_parallel_config = self.draft_parallel_config
+            if (
+                self.method == "dspark"
+                and draft_parallel_config.pipeline_parallel_size > 1
+            ):
+                # DSpark's drafter is built as a local (non-partitioned) module on
+                # the last pipeline stage and does not participate in pipeline
+                # parallelism, so verify it as pp_size=1 (the target propagates the
+                # aux hidden states down the pipeline).
+                draft_parallel_config = copy.copy(draft_parallel_config)
+                draft_parallel_config.pipeline_parallel_size = 1
+            self.draft_model_config.verify_with_parallel_config(draft_parallel_config)
 
         if self.use_heterogeneous_vocab and not self.uses_draft_model():
             raise ValueError(

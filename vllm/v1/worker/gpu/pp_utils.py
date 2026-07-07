@@ -181,6 +181,22 @@ class PPHandler:
         assert sampled_token_ids.dtype == torch.int64
         with torch.cuda.stream(self.broadcast_stream):
             self.broadcast_stream.wait_stream(self.main_stream)
+            # The receive side always allocates [num_reqs, max_sample_len]. The
+            # regular sampler (prefill / non-spec) emits [num_reqs, 1] while the
+            # rejection sampler (spec decode) emits [num_reqs, max_sample_len].
+            # Normalize to max_sample_len so the broadcast element count always
+            # matches the receiver's buffer -- an NCCL size mismatch (e.g. the
+            # [num_reqs, 1] prefill step vs an [num_reqs, max_sample_len] recv)
+            # otherwise deadlocks the collective. num_sampled tells the receiver
+            # how many columns are valid, so trailing padding is ignored.
+            num_cols = sampled_token_ids.shape[1]
+            assert num_cols <= self.max_sample_len
+            if num_cols != self.max_sample_len:
+                padded = sampled_token_ids.new_zeros(
+                    sampled_token_ids.shape[0], self.max_sample_len
+                )
+                padded[:, :num_cols] = sampled_token_ids
+                sampled_token_ids = padded
             torch.distributed.broadcast(
                 sampled_token_ids.contiguous(),
                 src=self.last_rank,

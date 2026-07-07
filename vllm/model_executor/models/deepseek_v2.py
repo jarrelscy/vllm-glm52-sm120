@@ -1439,7 +1439,21 @@ class DeepseekV2Model(nn.Module):
         else:
             llama_4_scaling = None
 
-        aux_hidden_states = []
+        # Auxiliary hidden states (for spec-decode drafters such as EAGLE3 /
+        # DSpark). Under pipeline parallelism the aux layers are scattered across
+        # stages but the drafter runs only on the last stage, so each aux state
+        # gets a fixed slot (in global ascending layer order) that is propagated
+        # down the pipeline via the IntermediateTensors dict.
+        aux_layers = self.aux_hidden_state_layers
+        num_aux = len(aux_layers)
+        aux_slot_of = {layer_id: i for i, layer_id in enumerate(sorted(aux_layers))}
+        aux_slots: list[torch.Tensor | None] = [None] * num_aux
+        if num_aux > 0 and not get_pp_group().is_first_rank:
+            # Seed slots already produced by upstream stages.
+            assert intermediate_tensors is not None
+            for i in range(num_aux):
+                aux_slots[i] = intermediate_tensors[f"aux_{i}"]
+
         for idx, layer in enumerate(
             islice(self.layers, self.start_layer, self.end_layer),
             start=self.start_layer,
@@ -1457,22 +1471,31 @@ class DeepseekV2Model(nn.Module):
                 )
                 # fused_add_rms_norm requires a contiguous residual
                 residual = residual.contiguous()
-            if idx in self.aux_hidden_state_layers:
+            if idx in aux_slot_of:
                 aux_hidden_state = hidden_states + residual
                 if aux_hidden_state.shape[0] != positions.shape[0]:
                     aux_hidden_state = tensor_model_parallel_all_gather(
                         aux_hidden_state, 0
                     )
                     aux_hidden_state = aux_hidden_state[: positions.shape[0]]
-                aux_hidden_states.append(aux_hidden_state)
+                aux_slots[aux_slot_of[idx]] = aux_hidden_state
             hidden_states, residual = layer(
                 positions, hidden_states, residual, llama_4_scaling
             )
 
         if not get_pp_group().is_last_rank:
-            return IntermediateTensors(
-                {"hidden_states": hidden_states, "residual": residual}
-            )
+            out = {"hidden_states": hidden_states, "residual": residual}
+            if num_aux > 0:
+                # Slots not yet produced (aux layers owned by later stages) are
+                # sent as zeros; the owning stage overwrites them downstream.
+                zero: torch.Tensor | None = None
+                for i in range(num_aux):
+                    if aux_slots[i] is None:
+                        if zero is None:
+                            zero = torch.zeros_like(hidden_states)
+                        aux_slots[i] = zero
+                    out[f"aux_{i}"] = aux_slots[i]
+            return IntermediateTensors(out)
 
         if hidden_states.shape[0] != positions.shape[0]:
             combined_states = torch.cat([hidden_states, residual], dim=-1)
@@ -1484,12 +1507,15 @@ class DeepseekV2Model(nn.Module):
             # fused_add_rms_norm requires a contiguous residual
             residual = residual.contiguous()
 
-        if self.end_layer in self.aux_hidden_state_layers:
-            aux_hidden_states.append(hidden_states + residual)
+        if self.end_layer in aux_slot_of:
+            aux_slots[aux_slot_of[self.end_layer]] = hidden_states + residual
 
         hidden_states, _ = self.norm(hidden_states, residual)
-        if len(aux_hidden_states) > 0:
-            return hidden_states, aux_hidden_states
+        if num_aux > 0:
+            assert all(a is not None for a in aux_slots), (
+                "missing aux hidden state slot on last PP rank"
+            )
+            return hidden_states, aux_slots
         return hidden_states
 
     def load_weights(self, weights: Iterable[tuple[str, torch.Tensor]]) -> set[str]:
@@ -1865,6 +1891,15 @@ class DeepseekV2ForCausalLM(
 
     def set_aux_hidden_state_layers(self, layers: tuple[int, ...]) -> None:
         self.model.aux_hidden_state_layers = layers
+        # Under pipeline parallelism the aux hidden states are gathered on the
+        # stages that own the aux layers, but the drafter that consumes them runs
+        # only on the last stage. Extend the intermediate-tensor schema with one
+        # entry per aux layer so they propagate down the pipeline. All ranks call
+        # this (via set_eagle3_aux_hidden_state_layers), keeping schemas matched.
+        keys = ["hidden_states", "residual"] + [f"aux_{i}" for i in range(len(layers))]
+        factory = make_empty_intermediate_tensors_factory(keys, self.model.hidden_size)
+        self.model.make_empty_intermediate_tensors = factory
+        self.make_empty_intermediate_tensors = factory
 
     def get_eagle3_aux_hidden_state_layers(self) -> tuple[int, ...]:
         num_layers = len(self.model.layers)

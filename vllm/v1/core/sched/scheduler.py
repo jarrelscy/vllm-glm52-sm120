@@ -1177,6 +1177,14 @@ class Scheduler(SchedulerInterface):
         for req_id, num_scheduled_token in num_scheduled_tokens.items():
             request = self.requests[req_id]
             request.num_computed_tokens += num_scheduled_token
+            if self.num_spec_tokens > 0:
+                logger.error(
+                    "PPDBG ADV req=%s +%d computed=%d tokens=%d spec=%d ph=%d",
+                    req_id, num_scheduled_token, request.num_computed_tokens,
+                    request.num_tokens,
+                    len(scheduler_output.scheduled_spec_decode_tokens.get(req_id, ())),
+                    request.num_output_placeholders,
+                )
             if self.defer_block_free:
                 # Record the in-flight step, to fence deferred block freeing.
                 request.last_sched_seq = self.sched_step_seq
@@ -1603,6 +1611,13 @@ class Scheduler(SchedulerInterface):
                 # the scheduled spec tokens count and so is similarly adjusted.
                 if request.num_output_placeholders > 0:
                     request.num_output_placeholders -= num_rejected
+                logger.error(
+                    "PPDBG UFO req=%s len_gen=%d num_draft=%d num_acc=%d "
+                    "num_rej=%d computed_after=%d tokens=%d",
+                    req_id, len(generated_token_ids), num_draft_tokens,
+                    num_accepted, num_rejected, request.num_computed_tokens,
+                    request.num_tokens,
+                )
                 spec_decoding_stats = self.make_spec_decoding_stats(
                     spec_decoding_stats,
                     num_draft_tokens=num_draft_tokens,

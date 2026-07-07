@@ -16,6 +16,12 @@ def _should_share(eagle: nn.Module, flag: str, draft, target) -> bool:
         return True
     if target is None:
         return False
+    # Under pipeline parallelism the target's embed/lm_head may be a
+    # PPMissingLayer stub on this rank (the real weight lives on another
+    # stage). It has no `.weight`, so the draft cannot share it — it must
+    # load its own copy.
+    if not hasattr(target, "weight") or getattr(target, "weight", None) is None:
+        return False
     # torch.equal on GPU allocates a bool mask the size of the input.
     # Use the faster GPU path when there is plenty of headroom;
     # otherwise compare on CPU.

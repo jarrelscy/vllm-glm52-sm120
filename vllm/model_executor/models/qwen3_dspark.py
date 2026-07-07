@@ -99,9 +99,13 @@ class Qwen3DSparkForCausalLM(DFlashQwen3ForCausalLM):
         self.config = self.draft_model_config.hf_config
         if getattr(self.config, "draft_vocab_size", None) is None:
             self.config.draft_vocab_size = getattr(self.config, "vocab_size", None)
-        target_layer_num = vllm_config.model_config.get_num_layers(
-            vllm_config.parallel_config
-        )
+        # Offset the draft's layer ids past ALL target layers (the full model,
+        # not just this PP rank's slice). Under pipeline parallelism
+        # get_num_layers() returns only the current stage's layer count, which
+        # would make the draft's attention layer names (e.g. model.layers.19)
+        # collide with target layer names on other stages -- and KV-cache specs
+        # are keyed by layer name, which breaks the cross-worker spec merge.
+        target_layer_num = vllm_config.model_config.get_total_num_hidden_layers()
         self.model = Qwen3DSparkModel(
             vllm_config=vllm_config,
             prefix=maybe_prefix(prefix, "model"),

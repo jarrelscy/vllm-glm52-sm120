@@ -28,6 +28,7 @@ from vllm.model_executor.model_loader.weight_utils import (
 from vllm.platforms import current_platform
 from vllm.sequence import IntermediateTensors
 
+from .interfaces import SupportsPP
 from .deepseek_v2 import (
     DeepseekV2DecoderLayer,
     DeepseekV2MixtureOfExperts,
@@ -49,10 +50,12 @@ class SharedHead(nn.Module):
     ) -> None:
         super().__init__()
         self.norm = RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
+        # The checkpoint shares the target's lm_head (bf16; quant configs
+        # ignore lm_head), so the MTP head must be unquantized to match.
         self.head = ParallelLMHead(
             config.vocab_size,
             config.hidden_size,
-            quant_config=quant_config,
+            quant_config=None,
             prefix=maybe_prefix(prefix, "head"),
         )
 
@@ -220,7 +223,7 @@ class DeepSeekMultiTokenPredictor(nn.Module):
 
 
 @support_torch_compile
-class DeepSeekMTP(nn.Module, DeepseekV2MixtureOfExperts):
+class DeepSeekMTP(nn.Module, SupportsPP, DeepseekV2MixtureOfExperts):
     def __init__(self, *, vllm_config: VllmConfig, prefix: str = ""):
         super().__init__()
         self.config = vllm_config.model_config.hf_config
@@ -316,11 +319,41 @@ class DeepSeekMTP(nn.Module, DeepseekV2MixtureOfExperts):
                 continue
             spec_layer = get_spec_layer_idx_from_weight_name(self.config, name)
             if spec_layer is None:
+                # The drafter shares the target's embedding and lm_head; under
+                # PP they live on a different rank, so load our own copies from
+                # the global checkpoint tensors.
+                mtp_layer = self.config.num_hidden_layers
+                shared_map = {
+                    "model.embed_tokens.weight": "model.embed_tokens.weight",
+                    "lm_head.weight": (
+                        f"model.layers.{mtp_layer}.shared_head.head.weight"
+                    ),
+                }
+                target = shared_map.get(name)
+                if target is not None and target in params_dict:
+                    param = params_dict[target]
+                    weight_loader = getattr(
+                        param, "weight_loader", default_weight_loader
+                    )
+                    weight_loader(param, loaded_weight)
+                    loaded_params.add(target)
                 continue
             is_fusion_moe_shared_experts_layer = (
                 rocm_aiter_moe_shared_expert_enabled and ("mlp.shared_experts" in name)
             )
             name = self._rewrite_spec_layer_name(spec_layer, name)
+
+            # Hybrid per-expert tensors (nvfp4_aqlm_hybrid) are stored at the
+            # checkpoint-stable path mlp.experts.*; the runtime parameters
+            # live on the MoERunner's RoutedExperts submodule (mirrors the
+            # main-model remap in deepseek_v2.DeepseekV2Model.load_weights).
+            if any(
+                f".mlp.experts.{p}" in name
+                for p in ("w13_", "w2_", "w2m_", "w2c_", "nvfp4_", "hyb_")
+            ):
+                name = name.replace(
+                    ".mlp.experts.", ".mlp.experts.routed_experts."
+                )
 
             if _try_load_fp8_indexer_wk(
                 name,
@@ -499,6 +532,15 @@ class DeepSeekMTP(nn.Module, DeepseekV2MixtureOfExperts):
                     f"or disable speculative decoding."
                 )
 
+        unloaded = set(params_dict) - loaded_params
+        if unloaded:
+            logger.warning(
+                "MTP load_weights: %d params NOT loaded: %s",
+                len(unloaded),
+                sorted(unloaded)[:24],
+            )
+        else:
+            logger.info("MTP load_weights: all %d params loaded", len(params_dict))
         return loaded_params
 
     def _rewrite_spec_layer_name(self, spec_layer: int, name: str) -> str:

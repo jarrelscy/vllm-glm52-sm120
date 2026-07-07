@@ -1503,32 +1503,50 @@ def group_and_unify_kv_cache_specs(
     Group the KV cache specs and unify each group into one UniformTypeKVCacheSpecs.
     Currently, this is only used for DeepseekV4.
     """
-    if not any(
-        isinstance(spec, SlidingWindowMLASpec) for spec in kv_cache_spec.values()
-    ):
+    # Fire for the DeepseekV4 case (MLA + SlidingWindowMLASpec) AND for an MLA
+    # target running alongside a non-MLA (MHA) speculative draft that has been
+    # windowed via a plain SlidingWindowSpec (GLM-5.2 + DSpark @ long context):
+    # bundle the MLA target + DSA indexer as layer-tuples (so the indexer never
+    # needs page-unification), and put each distinct sliding window in its own
+    # group. Only when BOTH an MLA spec and a sliding-window spec are present.
+    has_swa = any(
+        isinstance(spec, SlidingWindowSpec) for spec in kv_cache_spec.values()
+    )
+    has_mla = any(
+        isinstance(spec, MLAAttentionSpec) for spec in kv_cache_spec.values()
+    )
+    if not (has_swa and has_mla):
         return None
 
     mla_specs: dict[str, KVCacheSpec] = {}
-    grouped_swa_mla_specs: dict[tuple[int, int], dict[str, KVCacheSpec]] = defaultdict(
-        dict
-    )
+    grouped_swa_specs: dict[tuple[int, int], dict[str, KVCacheSpec]] = defaultdict(dict)
     # NOTE: Here we group SWA layers by (block_size, sliding_window), which separates
-    # SWA layers, C4I+C4A layers, and C128A layers into three different groups. It can
+    # SWA layers, C4I+C4A layers, and C128A layers into different groups. It can
     # be fragile with only block_size and sliding_window as keys, but fine for now.
+    # SlidingWindowMLASpec is a subclass of SlidingWindowSpec, so this covers both
+    # the DeepseekV4 SW-MLA layers and a plain-MHA windowed draft.
     for name, spec in kv_cache_spec.items():
-        if isinstance(spec, SlidingWindowMLASpec):
-            grouped_swa_mla_specs[(spec.block_size, spec.sliding_window)][name] = spec
+        if isinstance(spec, SlidingWindowSpec):
+            grouped_swa_specs[(spec.block_size, spec.sliding_window)][name] = spec
         elif isinstance(spec, MLAAttentionSpec):
+            # Covers the MLA target layers, the DSA indexer k_cache, and
+            # HiddenStateCacheSpec (all MLAAttentionSpec subclasses).
             mla_specs[name] = spec
+        else:
+            # Unhandled spec type (plain non-MLA full attention, mamba, ...) —
+            # don't silently drop its layers; let the caller try other paths.
+            return None
 
     assert len(mla_specs) > 0
     mla_uniform_spec = UniformTypeKVCacheSpecs.from_specs(mla_specs)
-    assert mla_uniform_spec is not None
+    if mla_uniform_spec is None:
+        return None
 
     swa_uniform_specs: list[UniformTypeKVCacheSpecs] = []
-    for spec_dict in grouped_swa_mla_specs.values():
+    for spec_dict in grouped_swa_specs.values():
         uniform_spec = UniformTypeKVCacheSpecs.from_specs(spec_dict)
-        assert uniform_spec is not None
+        if uniform_spec is None:
+            return None
         swa_uniform_specs.append(uniform_spec)
 
     return [mla_uniform_spec, *swa_uniform_specs]
@@ -1610,8 +1628,10 @@ def _get_kv_cache_groups_uniform_groups(
     ]
 
     swa_mla_specs = grouped_specs[1:]
+    # Accept plain SlidingWindowSpec (a non-MLA / MHA windowed draft) as well as
+    # SlidingWindowMLASpec; both are padded up to the full-MLA group's page below.
     assert all(
-        isinstance(spec, SlidingWindowMLASpec)
+        isinstance(spec, SlidingWindowSpec)
         for group in swa_mla_specs
         for spec in group.kv_cache_specs.values()
     )

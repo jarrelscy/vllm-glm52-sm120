@@ -16,7 +16,8 @@ cd /opt/vllm && source .venv/bin/activate
 # Python.h (JIT) + CUDA home (nvidia pip cu13/cu12) discovery
 PYINC_DIR=$(find /root/.local/share/uv/python -maxdepth 4 -type d -path "*/include/python3.12" 2>/dev/null | head -1)
 [ -n "${PYINC_DIR:-}" ] && export CPATH="$PYINC_DIR" C_INCLUDE_PATH="$PYINC_DIR"
-NV=$(python -c "import os,nvidia;print(os.path.dirname(nvidia.__file__))" 2>/dev/null || true)
+# nvidia is a namespace package (nvidia.__file__ is None) -> use __path__.
+NV=$(python -c "import nvidia;print(nvidia.__path__[0])" 2>/dev/null || true)
 for c in cu13 cu12; do [ -n "${NV:-}" ] && [ -d "$NV/$c" ] && export CUDA_HOME="$NV/$c" && break; done
 
 export FLASHINFER_DISABLE_VERSION_CHECK=1
@@ -57,7 +58,7 @@ ARGS=(vllm serve "$MODEL_DIR" $PAR
   --max-num-batched-tokens 2048
   --no-enable-flashinfer-autotune
   --enforce-eager
-  --port 8000)
+  --port "${PORT:-8001}")
 if [ "$SPEC" = 1 ]; then
   SC="{\"model\": \"RedHatAI/GLM-5.2-speculator.dspark\", \"method\": \"dspark\", \"num_speculative_tokens\": $NUM_SPEC"
   [ -n "${DRAFT_MAXLEN:-}" ] && SC="$SC, \"max_model_len\": $DRAFT_MAXLEN"

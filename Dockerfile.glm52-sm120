@@ -56,15 +56,16 @@ RUN uv venv --python 3.12 .venv \
 RUN . .venv/bin/activate \
     && uv pip install "flashinfer-python @ git+https://github.com/flashinfer-ai/flashinfer.git"
 
-# SM120 JIT toolchain: pin nvcc/crt/nvvm/cccl to torch's CUDA minor + lib64 link
+# SM120 JIT toolchain: pin nvcc/crt/nvvm/cccl to torch's CUDA minor + lib64 link.
+# (nvidia is a namespace package -> nvidia.__file__ is None; use the venv path.)
 RUN . .venv/bin/activate \
     && TORCH_CU=$(python -c "import torch;v=torch.version.cuda.split('.');print(v[0]+'.'+v[1])") \
     && uv pip install "nvidia-cuda-nvcc==${TORCH_CU}.*" "nvidia-cuda-crt==${TORCH_CU}.*" \
                       "nvidia-nvvm==${TORCH_CU}.*" "nvidia-cuda-cccl==${TORCH_CU}.*" || true \
-    && CU=$(python -c "import os,nvidia;print(os.path.dirname(nvidia.__file__))") \
-    && CUX="$CU/cu13"; [ -d "$CUX" ] || CUX="$CU/cu12" \
+    && NV="/opt/vllm/.venv/lib/python3.12/site-packages/nvidia" \
+    && CUX="$NV/cu13"; [ -d "$CUX" ] || CUX="$NV/cu12" \
     && ln -sfn lib "$CUX/lib64" 2>/dev/null || true \
-    && for f in "$CUX"/lib/lib*.so.*; do b=$(basename "$f"); s=${b%%.so.*}; \
+    && for f in "$CUX"/lib/lib*.so.*; do [ -e "$f" ] || continue; b=$(basename "$f"); s=${b%%.so.*}; \
          [ -e "$CUX/lib/$s.so" ] || ln -s "$b" "$CUX/lib/$s.so"; done
 
 # Locate the CPython include dir (Python.h) and the nvidia CUDA home for JIT
@@ -91,5 +92,5 @@ ENV MODEL_DIR=/models/1m PARALLEL=pp4-1m NUM_SPEC=5
 
 COPY docker-entrypoint.glm52.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
-EXPOSE 8000
+EXPOSE 8001
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

@@ -4,6 +4,13 @@ dist
 vllm/*.so
 vllm/vllm-rs
 
+# GLM-5.2 SM120 image: keep build context small
+# NOTE: do NOT ignore /.git — setuptools-scm + VLLM_USE_PRECOMPILED base-commit
+# detection require it (origin must be vllm-project/vllm).
+*.log
+/models
+**/*.safetensors
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

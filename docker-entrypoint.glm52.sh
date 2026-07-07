@@ -30,7 +30,7 @@ export VLLM_DISABLE_FP8_W8A16="${VLLM_DISABLE_FP8_W8A16:-1}"   # v2-only (bit-ex
 
 MODEL_DIR="${MODEL_DIR:-/models/1m}"
 PARALLEL="${PARALLEL:-pp4-1m}"
-NUM_SPEC="${NUM_SPEC:-5}"
+NUM_SPEC_ENV="${NUM_SPEC:-}"   # user override only; per-mode default applied AFTER the case
 
 UTIL_DEFAULT=0.95   # per-mode default; env UTIL overrides
 DRAFT_TP=""         # non-empty -> draft_tensor_parallel_size in the spec config
@@ -58,12 +58,12 @@ case "$PARALLEL" in
     # (Earlier "MTP loses at long ctx" was a STREAMED-measurement artifact — SSE bundles accepted
     # tokens; see BENCHMARKING.md.) Short-ctx latency: set MAXLEN=32768.
     export VLLM_PP_LAYER_PARTITION="${VLLM_PP_LAYER_PARTITION:-20,20,20,18}"
-    PAR="--pipeline-parallel-size 4"; SPEC=2; DEFLEN=950000; NUM_SPEC="${NUM_SPEC:-2}"; UTIL_DEFAULT=0.97 ;;
+    PAR="--pipeline-parallel-size 4"; SPEC=2; DEFLEN=950000; UTIL_DEFAULT=0.97 ;;
   tp2pp2-mtp)  # TP2xPP2 + native MTP self-speculation, ~580K ctx — the SPEED/CONTEXT BALANCE pick.
     # Non-streamed: 1m [easy 40.4/code 36.1/complex 30.1] tok/s @ ceiling ~580K — ~2x pp4-mtp's
     # decode while still reaching >0.5M context. Best all-round serving config.
     export VLLM_PP_LAYER_PARTITION="${VLLM_PP_LAYER_PARTITION:-39,39}"
-    PAR="--tensor-parallel-size 2 --pipeline-parallel-size 2"; SPEC=2; DEFLEN=560000; NUM_SPEC="${NUM_SPEC:-2}" ;;
+    PAR="--tensor-parallel-size 2 --pipeline-parallel-size 2"; SPEC=2; DEFLEN=560000 ;;
   pp4-tpdraft) # PP4 target (MLA KV split by layer -> long ctx) + DSpark draft sharded
     # TP4 across the PP ranks (draft-TP-over-PP). Draft's 64 KV heads shard 16/rank,
     # freeing the KV that a co-located draft would eat -> ~2x the spec-decode ceiling.
@@ -73,6 +73,8 @@ case "$PARALLEL" in
   *) echo "unknown PARALLEL=$PARALLEL (use pp4-1m | pp4-mtp | tp2pp2 | tp2pp2-mtp | tp4-dspark | pp4-dspark | pp4-tpdraft)"; exit 1 ;;
 esac
 UTIL="${UTIL:-$UTIL_DEFAULT}"
+# per-mode spec-token default: MTP=2 (matrix optimum, best all-round), DSpark=5; env NUM_SPEC overrides
+if [ "$SPEC" = 2 ]; then NUM_SPEC="${NUM_SPEC_ENV:-2}"; else NUM_SPEC="${NUM_SPEC_ENV:-5}"; fi
 # NOTE: 1M context and the DSpark drafter cannot co-fit on 4x96GB. The drafter
 # needs ~92 GiB KV on its rank vs ~8 GiB available; capping the draft window
 # (DRAFT_MAXLEN, below) does NOT free it — vLLM sizes the draft KV at target len.

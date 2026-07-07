@@ -28,6 +28,34 @@ within the expected TP all-reduce fp reduction-order gap ("lossless-in-
 distribution"). Draft KV shards 64→16 heads/rank (the memory win). Two NCCL
 deadlocks were found and fixed to get here — see "Decode-time symmetric propose".
 
+## SHIP CONFIG (validated)
+
+`serve_longctx_dspark_tppp.sh`: PP4 target (GlmMoeDsaForCausalLM, TP1) +
+`RedHatAI/GLM-5.2-speculator.dspark` with `draft_tensor_parallel_size=4`,
+`kv-cache-dtype fp8_ds_mla`, `enforce-eager`, `gpu-memory-utilization 0.97`,
+**`max-model-len 450000`** on 4x RTX PRO 6000 (96 GiB), 1m weights.
+
+- KV capacity 514,697 tokens at 450K max-len (14% margin — robust vs the
+  observed run-to-run available-KV variance of 12–16.9 GiB).
+- BST-class prompt: coherent, mean accepted length 3.0 (73 drafts/146 accepted,
+  per-pos 54/41/26/17/8), 17.5 tok/s.
+- This is ~2x beyond the TP2×PP2 200–223K spec-decode ceiling — a genuine first:
+  speculative decode at long context via draft-TP orthogonal to target-PP.
+
+**1M is NOT feasible on this HW.** Even sharded 4×, the dense-MHA DSpark draft's
+FULL-attention KV is ~21 GiB/rank at 1M (5 layers × 16 kv-heads × 64 head_dim ×
+2 × 1M × 2B); plus target KV (~14) + weights (~78) > 96 GiB. The draft-TP
+sharding removed 3/4 of the draft-KV term (making ~450K reachable vs OOM), but a
+full-attention draft over 1M is inherently too big. Windowing the draft (SWA)
+would remove that term but that path is block-pool-dead (MHA draft per-token page
+incommensurate with the MLA page). So ~450–500K is the realistic ceiling.
+
+Correctness is lossless-in-distribution by construction: the rejection sampler is
+UNCHANGED (only WHERE the draft runs changed), so served output = the target's
+own distribution regardless of draft quality (draft quality → speed only).
+Corroborated by coherent output across 6+ prompts + argmax-identical drafts
+across all 4 ranks (DIAG).
+
 ---
 
 ## The architecture that makes this hard

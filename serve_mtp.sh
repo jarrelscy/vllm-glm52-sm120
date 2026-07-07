@@ -19,6 +19,9 @@ export VLLM_DISABLE_FP8_W8A16=1
 ASYNC_FLAG=""
 [ "${SYNC:-0}" = "1" ] && ASYNC_FLAG="--no-async-scheduling"
 
+SPEC_FLAG=(--speculative-config '{"method": "deepseek_mtp", "num_speculative_tokens": '"${NUM_SPEC:-1}"'}')
+[ "${NO_SPEC:-0}" = "1" ] && SPEC_FLAG=()
+
 exec vllm serve "$MODEL_DIR" \
   --pipeline-parallel-size 4 \
   --gpu-memory-utilization "${GPU_UTIL:-0.90}" \
@@ -27,7 +30,7 @@ exec vllm serve "$MODEL_DIR" \
   --max-num-seqs 1 \
   --max-num-batched-tokens 2048 \
   --no-enable-flashinfer-autotune \
-  --speculative-config '{"method": "deepseek_mtp", "num_speculative_tokens": '"${NUM_SPEC:-1}"'}' \
+  "${SPEC_FLAG[@]}" \
   --enforce-eager \
   $ASYNC_FLAG \
   --served-model-name glm-5.2 \

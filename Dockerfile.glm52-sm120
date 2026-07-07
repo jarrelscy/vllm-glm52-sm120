@@ -84,11 +84,13 @@ ENV VLLM_DISABLE_FP8_W8A16=1
 #                  tp4-dspark  TP4 + DSpark, ~200K            (~59.6 tok/s, fastest)
 #                  pp4-dspark  PP4 + DSpark, ~130K            (dominated by tp2pp2)
 #   MAXLEN       max model len                    (per-mode default)
-#   NUM_SPEC     dspark speculative tokens        (default 5)
+#   NUM_SPEC     speculative tokens               (unset -> per-mode default: MTP=2, DSpark=5)
 #   DRAFT_MAXLEN cap drafter KV window (optional; does NOT enable 1M+spec)
 # NOTE: 1M context and DSpark cannot co-fit on 4x96GB — use pp4-1m for 1M,
 #       tp4-dspark/tp2pp2 for speculative decode at <=~200K.
-ENV MODEL_DIR=/models/1m PARALLEL=pp4-1m NUM_SPEC=5
+# NUM_SPEC is intentionally NOT set here: baking it would defeat the entrypoint's
+# per-mode default (it can't tell an image default from a user override). Set -e NUM_SPEC=N to override.
+ENV MODEL_DIR=/models/1m PARALLEL=pp4-1m
 
 COPY docker-entrypoint.glm52.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh

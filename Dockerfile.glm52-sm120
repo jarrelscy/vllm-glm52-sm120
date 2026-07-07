@@ -1,0 +1,82 @@
+# GLM-5.2 hybrid (NVFP4+AQLM) on SM120 (RTX PRO 6000 Blackwell) with DSpark
+# speculative decode under pipeline parallelism.
+#
+# This image builds THIS fork (vllm-glm52-sm120) from source. The two things that
+# make it work are already committed here — no runtime patching:
+#   * f961f6d3e  per-expert two-tier NVFP4+AQLM fused MoE (GlmMoeDsa hybrid quant)
+#   * f1b9c86bc  DSpark spec-decode under PP: draft-token FIFO to non-last ranks
+#
+# Weights are NOT baked in (271 GiB). Mount them at /models (see run examples).
+#
+# Build:
+#   docker build -f Dockerfile.glm52-sm120 -t glm52-sm120 .
+#
+# Run (1M context, PP4 + DSpark — the full-window config):
+#   docker run --gpus all --ipc=host -p 8001:8000 \
+#     -v /path/to/GLM-5.2-NVFP4-AQLM-hybrid:/models/1m:ro \
+#     -v $HOME/.cache/huggingface:/root/.cache/huggingface \
+#     -e MODEL_DIR=/models/1m -e MAXLEN=1048576 \
+#     glm52-sm120
+#
+# Run (~200K context, TP2xPP2 + DSpark — faster single-stream decode):
+#   docker run --gpus all --ipc=host -p 8001:8000 \
+#     -v /path/to/GLM-5.2-NVFP4-AQLM-hybrid:/models/1m:ro \
+#     -e MODEL_DIR=/models/1m -e PARALLEL=tp2pp2 -e MAXLEN=200000 \
+#     glm52-sm120
+
+FROM nvidia/cuda:12.9.1-devel-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        git curl ca-certificates build-essential ninja-build \
+    && rm -rf /var/lib/apt/lists/*
+
+# uv + standalone CPython 3.12 (also supplies Python.h for JIT builds)
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:${PATH}"
+
+WORKDIR /opt/vllm
+COPY . /opt/vllm
+
+# venv + vLLM from THIS fork's source (patches already committed)
+RUN uv venv --python 3.12 .venv \
+    && . .venv/bin/activate \
+    && uv pip install vllm --torch-backend=auto \
+    && VLLM_USE_PRECOMPILED=1 uv pip install -e . --torch-backend=auto \
+    && uv pip install ninja "huggingface_hub[cli]"
+
+# flashinfer git main — GLM DSA needs kv_scale_format='arbitrary_fp32' for the
+# SM120 sparse-MLA path, which released flashinfer wheels lack.
+RUN . .venv/bin/activate \
+    && uv pip install "flashinfer-python @ git+https://github.com/flashinfer-ai/flashinfer.git"
+
+# SM120 JIT toolchain: pin nvcc/crt/nvvm/cccl to torch's CUDA minor + lib64 link
+RUN . .venv/bin/activate \
+    && TORCH_CU=$(python -c "import torch;v=torch.version.cuda.split('.');print(v[0]+'.'+v[1])") \
+    && uv pip install "nvidia-cuda-nvcc==${TORCH_CU}.*" "nvidia-cuda-crt==${TORCH_CU}.*" \
+                      "nvidia-nvvm==${TORCH_CU}.*" "nvidia-cuda-cccl==${TORCH_CU}.*" || true \
+    && CU=$(python -c "import os,nvidia;print(os.path.dirname(nvidia.__file__))") \
+    && CUX="$CU/cu13"; [ -d "$CUX" ] || CUX="$CU/cu12" \
+    && ln -sfn lib "$CUX/lib64" 2>/dev/null || true \
+    && for f in "$CUX"/lib/lib*.so.*; do b=$(basename "$f"); s=${b%%.so.*}; \
+         [ -e "$CUX/lib/$s.so" ] || ln -s "$b" "$CUX/lib/$s.so"; done
+
+# Locate the CPython include dir (Python.h) and the nvidia CUDA home for JIT
+ENV PYINC=/root/.local/share/uv/python
+ENV FLASHINFER_DISABLE_VERSION_CHECK=1
+ENV NCCL_MAX_NCHANNELS=4 NCCL_BUFFSIZE=1048576
+ENV VLLM_SPARSE_INDEXER_MAX_LOGITS_MB=256
+ENV VLLM_MEMORY_PROFILER_ESTIMATE_CUDAGRAPHS=0
+ENV VLLM_DISABLE_FP8_W8A16=1
+
+# Runtime knobs (override with -e):
+#   MODEL_DIR  path to mounted weights            (default /models/1m)
+#   PARALLEL   pp4 (1M) | tp2pp2 (~200K, faster)  (default pp4)
+#   MAXLEN     max model len                      (default 1048576)
+#   NUM_SPEC   dspark speculative tokens          (default 5)
+ENV MODEL_DIR=/models/1m PARALLEL=pp4 MAXLEN=1048576 NUM_SPEC=5
+
+COPY docker-entrypoint.glm52.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+EXPOSE 8000
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

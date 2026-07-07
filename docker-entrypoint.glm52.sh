@@ -2,9 +2,10 @@
 # Entrypoint for the GLM-5.2 hybrid SM120 image. Selects a serving topology via
 # $PARALLEL and launches vllm serve on :8000.
 #
-#   PARALLEL=pp4-1m     PP4, NO speculator, 1M window   (default; the full-context config)
-#   PARALLEL=pp4-dspark PP4 + DSpark, ~256K             (spec decode, reduced context)
-#   PARALLEL=tp2pp2     TP2xPP2 + DSpark, ~200K         (spec decode, fastest single-stream decode)
+#   PARALLEL=pp4-1m      PP4, NO speculator, 1M window   (default; the full-context config)
+#   PARALLEL=pp4-dspark  PP4 + DSpark, ~256K             (spec decode, reduced context)
+#   PARALLEL=tp2pp2      TP2xPP2 + DSpark, ~200K         (spec decode, fastest single-stream decode)
+#   PARALLEL=pp4-tpdraft PP4 target + DSpark draft sharded TP4, ~450K  (draft-TP-over-PP, longest spec-decode ctx)
 #
 # WHY 1M and DSpark are separate modes: on 4x96GB, the 754B hybrid weights (~272 GiB)
 # plus a 1M-sized KV cache already fill VRAM. The DSpark drafter (its own embed/
@@ -30,6 +31,9 @@ MODEL_DIR="${MODEL_DIR:-/models/1m}"
 PARALLEL="${PARALLEL:-pp4-1m}"
 NUM_SPEC="${NUM_SPEC:-5}"
 
+UTIL_DEFAULT=0.95   # per-mode default; env UTIL overrides
+DRAFT_TP=""         # non-empty -> draft_tensor_parallel_size in the spec config
+
 case "$PARALLEL" in
   pp4-1m)      # full 1M window, NO speculator (verified: KV 1.27M tokens, ~22 tok/s)
     export VLLM_PP_LAYER_PARTITION="${VLLM_PP_LAYER_PARTITION:-21,19,19,19}"
@@ -42,8 +46,15 @@ case "$PARALLEL" in
   pp4-dspark)  # PP4 + DSpark, ~130K (drafter co-locates on last rank; dominated by tp2pp2)
     export VLLM_PP_LAYER_PARTITION="${VLLM_PP_LAYER_PARTITION:-21,19,19,19}"
     PAR="--pipeline-parallel-size 4"; SPEC=1; DEFLEN=131072 ;;
-  *) echo "unknown PARALLEL=$PARALLEL (use pp4-1m | tp2pp2 | tp4-dspark | pp4-dspark)"; exit 1 ;;
+  pp4-tpdraft) # PP4 target (MLA KV split by layer -> long ctx) + DSpark draft sharded
+    # TP4 across the PP ranks (draft-TP-over-PP). Draft's 64 KV heads shard 16/rank,
+    # freeing the KV that a co-located draft would eat -> ~2x the spec-decode ceiling.
+    # Validated: KV 514,697 tokens @ 450K, mean accepted ~3.0, ~17-19 tok/s.
+    export VLLM_PP_LAYER_PARTITION="${VLLM_PP_LAYER_PARTITION:-21,19,19,19}"
+    PAR="--pipeline-parallel-size 4"; SPEC=1; DEFLEN=450000; UTIL_DEFAULT=0.97; DRAFT_TP=4 ;;
+  *) echo "unknown PARALLEL=$PARALLEL (use pp4-1m | tp2pp2 | tp4-dspark | pp4-dspark | pp4-tpdraft)"; exit 1 ;;
 esac
+UTIL="${UTIL:-$UTIL_DEFAULT}"
 # NOTE: 1M context and the DSpark drafter cannot co-fit on 4x96GB. The drafter
 # needs ~92 GiB KV on its rank vs ~8 GiB available; capping the draft window
 # (DRAFT_MAXLEN, below) does NOT free it — vLLM sizes the draft KV at target len.
@@ -51,7 +62,7 @@ esac
 MAXLEN="${MAXLEN:-$DEFLEN}"
 
 ARGS=(vllm serve "$MODEL_DIR" $PAR
-  --gpu-memory-utilization 0.95
+  --gpu-memory-utilization "$UTIL"
   --kv-cache-dtype fp8_ds_mla
   --max-model-len "$MAXLEN"
   --max-num-seqs 2
@@ -63,9 +74,10 @@ ARGS=(vllm serve "$MODEL_DIR" $PAR
 if [ "$SPEC" = 1 ]; then
   SC="{\"model\": \"RedHatAI/GLM-5.2-speculator.dspark\", \"method\": \"dspark\", \"num_speculative_tokens\": $NUM_SPEC"
   [ -n "${DRAFT_MAXLEN:-}" ] && SC="$SC, \"max_model_len\": $DRAFT_MAXLEN"
+  [ -n "$DRAFT_TP" ] && SC="$SC, \"draft_tensor_parallel_size\": $DRAFT_TP"
   SC="$SC}"
   ARGS+=(--speculative-config "$SC")
 fi
 
-echo ">> GLM-5.2 SM120  PARALLEL=$PARALLEL  MAXLEN=$MAXLEN  spec=$SPEC  served=${SERVED_NAME:-glm-5.2}  model=$MODEL_DIR"
+echo ">> GLM-5.2 SM120  PARALLEL=$PARALLEL  MAXLEN=$MAXLEN  util=$UTIL  spec=$SPEC  draft_tp=${DRAFT_TP:-1}  served=${SERVED_NAME:-glm-5.2}  model=$MODEL_DIR"
 exec "${ARGS[@]}" "$@"

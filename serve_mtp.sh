@@ -25,7 +25,7 @@ ASYNC_FLAG=""
 GRAPH_FLAGS=(--enforce-eager)
 if [ "${CUDAGRAPH:-0}" = "1" ]; then
   CGMODE="${CUDAGRAPH_MODE:-PIECEWISE}"
-  GRAPH_FLAGS=(--compilation-config '{"level": 3, "cudagraph_mode": "'"$CGMODE"'"}')
+  GRAPH_FLAGS=(--compilation-config '{"mode": 3, "cudagraph_mode": "'"$CGMODE"'"}')
 fi
 
 SPEC_FLAG=(--speculative-config '{"method": "deepseek_mtp", "num_speculative_tokens": '"${NUM_SPEC:-1}"'}')

@@ -19,6 +19,15 @@ export VLLM_DISABLE_FP8_W8A16=${VLLM_DISABLE_FP8_W8A16:-1}
 ASYNC_FLAG=""
 [ "${SYNC:-0}" = "1" ] && ASYNC_FLAG="--no-async-scheduling"
 
+# CUDA-graph toggle. Default = safe eager fallback (enforce-eager).
+# CUDAGRAPH=1 -> drop enforce-eager and enable piecewise compiled cudagraphs
+# for the V2 hybrid kernel path. CUDAGRAPH_MODE overrides the mode string.
+GRAPH_FLAGS=(--enforce-eager)
+if [ "${CUDAGRAPH:-0}" = "1" ]; then
+  CGMODE="${CUDAGRAPH_MODE:-PIECEWISE}"
+  GRAPH_FLAGS=(--compilation-config '{"level": 3, "cudagraph_mode": "'"$CGMODE"'"}')
+fi
+
 SPEC_FLAG=(--speculative-config '{"method": "deepseek_mtp", "num_speculative_tokens": '"${NUM_SPEC:-1}"'}')
 [ "${NO_SPEC:-0}" = "1" ] && SPEC_FLAG=()
 [ "${DSPARK:-0}" = "1" ] && SPEC_FLAG=(--speculative-config '{"model": "RedHatAI/GLM-5.2-speculator.dspark", "method": "dspark", "num_speculative_tokens": '"${NUM_SPEC:-5}"'}')
@@ -35,7 +44,7 @@ exec vllm serve "$MODEL_DIR" \
   --max-num-batched-tokens 2048 \
   --no-enable-flashinfer-autotune \
   "${SPEC_FLAG[@]}" \
-  --enforce-eager \
+  "${GRAPH_FLAGS[@]}" \
   $ASYNC_FLAG \
   --served-model-name glm-5.2 \
   --port "${PORT:-8001}"

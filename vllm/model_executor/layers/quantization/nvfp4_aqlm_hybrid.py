@@ -103,6 +103,115 @@ def _get_ext():
     return _ext
 
 
+_OPS_REGISTERED = False
+
+
+def _register_custom_ops() -> None:
+    """Register the V2 hybrid MoE gemv/dequant kernels as torch.library
+    custom ops so that torch.compile / inductor treat them as OPAQUE nodes.
+
+    Without this, tracing the packed-uint8 NVFP4 / int16 AQLM matmul mis-lowers
+    (inductor emits addmm on uint8) and piecewise CUDA-graph capture fails.
+    The real kernel is JIT-built lazily via ``_get_ext()`` on first execution;
+    the fake/meta impls only need shapes + dtype so they are ext-free and can
+    run at trace time before the extension is built.
+    """
+    global _OPS_REGISTERED
+    if _OPS_REGISTERED:
+        return
+    _OPS_REGISTERED = True
+
+    @torch.library.custom_op("aqlm_hybrid::aqlm_moe_gemv", mutates_args=())
+    def aqlm_moe_gemv(
+        x: torch.Tensor,
+        codes: torch.Tensor,
+        codebooks: torch.Tensor,
+        scales: torch.Tensor,
+        expert_ids: torch.Tensor,
+    ) -> torch.Tensor:
+        return _get_ext().aqlm_moe_gemv(x, codes, codebooks, scales, expert_ids)
+
+    @aqlm_moe_gemv.register_fake
+    def _(x, codes, codebooks, scales, expert_ids):
+        return x.new_empty((x.shape[0], codes.shape[2]))
+
+    @torch.library.custom_op("aqlm_hybrid::nvfp4_moe_gemv", mutates_args=())
+    def nvfp4_moe_gemv(
+        x: torch.Tensor,
+        packed: torch.Tensor,
+        bscale: torch.Tensor,
+        scale2: torch.Tensor,
+        expert_ids: torch.Tensor,
+    ) -> torch.Tensor:
+        return _get_ext().nvfp4_moe_gemv(x, packed, bscale, scale2, expert_ids)
+
+    @nvfp4_moe_gemv.register_fake
+    def _(x, packed, bscale, scale2, expert_ids):
+        return x.new_empty((x.shape[0], packed.shape[1]))
+
+    @torch.library.custom_op("aqlm_hybrid::hybrid_moe_gemv", mutates_args=())
+    def hybrid_moe_gemv(
+        x: torch.Tensor,
+        codes: torch.Tensor,
+        codebooks: torch.Tensor,
+        scales: torch.Tensor,
+        aqlm_ids: torch.Tensor,
+        packed: torch.Tensor,
+        bscale: torch.Tensor,
+        scale2: torch.Tensor,
+        nv_ids: torch.Tensor,
+    ) -> torch.Tensor:
+        return _get_ext().hybrid_moe_gemv(
+            x, codes, codebooks, scales, aqlm_ids, packed, bscale, scale2,
+            nv_ids,
+        )
+
+    @hybrid_moe_gemv.register_fake
+    def _(x, codes, codebooks, scales, aqlm_ids, packed, bscale, scale2,
+          nv_ids):
+        return x.new_empty((x.shape[0], codes.shape[2]))
+
+    @torch.library.custom_op("aqlm_hybrid::aqlm_moe_dequant", mutates_args=())
+    def aqlm_moe_dequant(
+        codes: torch.Tensor,
+        codebooks: torch.Tensor,
+        scales: torch.Tensor,
+        expert_list: torch.Tensor,
+    ) -> torch.Tensor:
+        return _get_ext().aqlm_moe_dequant(codes, codebooks, scales,
+                                           expert_list)
+
+    @aqlm_moe_dequant.register_fake
+    def _(codes, codebooks, scales, expert_list):
+        return codebooks.new_empty(
+            (expert_list.shape[0], codes.shape[2], codes.shape[3] * 8),
+            dtype=torch.float16,
+        )
+
+    @torch.library.custom_op("aqlm_hybrid::nvfp4_moe_dequant", mutates_args=())
+    def nvfp4_moe_dequant(
+        packed: torch.Tensor,
+        bscale: torch.Tensor,
+        scale2: torch.Tensor,
+        expert_list: torch.Tensor,
+    ) -> torch.Tensor:
+        return _get_ext().nvfp4_moe_dequant(packed, bscale, scale2,
+                                            expert_list)
+
+    @nvfp4_moe_dequant.register_fake
+    def _(packed, bscale, scale2, expert_list):
+        return packed.new_empty(
+            (expert_list.shape[0], packed.shape[1], packed.shape[2] * 2),
+            dtype=torch.float16,
+        )
+
+
+# Register at import so the ops exist in the dispatcher before any compile
+# tracing (vLLM compiles on the first forward, which is also when the ext is
+# first built — so registration must not depend on the ext being present).
+_register_custom_ops()
+
+
 def _dequant_reference(
     codes: torch.Tensor, codebooks: torch.Tensor, scales: torch.Tensor
 ) -> torch.Tensor:
@@ -411,7 +520,7 @@ class HybridExpertsMoEMethod(FusedMoEMethodBase):
         topk_weights: torch.Tensor,
         topk_ids: torch.Tensor,
     ) -> torch.Tensor:
-        ext = _get_ext()
+        ops = torch.ops.aqlm_hybrid
         num_tokens, hidden = x.shape
         top_k = topk_ids.shape[1]
 
@@ -437,23 +546,23 @@ class HybridExpertsMoEMethod(FusedMoEMethodBase):
                         layer.nvfp4_w13_scale2)
                 nv2 = (layer.nvfp4_w2_packed, layer.nvfp4_w2_bscale,
                        layer.nvfp4_w2_scale2)
-            h13 = ext.hybrid_moe_gemv(
+            h13 = ops.hybrid_moe_gemv(
                 xr, layer.w13_codes, layer.w13_codebooks, layer.w13_scales,
                 b_ids, *nv13, nv_ids,
             )
             hact = _silu_and_mul(h13).contiguous()
-            out = ext.hybrid_moe_gemv(
+            out = ops.hybrid_moe_gemv(
                 hact, layer.w2c_codes, layer.w2c_codebooks, layer.w2c_scales,
                 w2c_ids, *nv2, nv_ids,
             )
             out = out.view(num_tokens, top_k, hidden).float()
             return (out * topk_weights.unsqueeze(-1).float()).sum(dim=1)
 
-        h13 = ext.aqlm_moe_gemv(
+        h13 = ops.aqlm_moe_gemv(
             xr, layer.w13_codes, layer.w13_codebooks, layer.w13_scales, b_ids
         )
         if nv_ids is not None:
-            h13 += ext.nvfp4_moe_gemv(
+            h13 += ops.nvfp4_moe_gemv(
                 xr, layer.nvfp4_w13_packed, layer.nvfp4_w13_bscale,
                 layer.nvfp4_w13_scale2, nv_ids,
             )
@@ -467,10 +576,10 @@ class HybridExpertsMoEMethod(FusedMoEMethodBase):
         ):
             if n == 0:
                 continue
-            y = ext.aqlm_moe_gemv(hact, codes, cbs, scales, ids)
+            y = ops.aqlm_moe_gemv(hact, codes, cbs, scales, ids)
             out = y if out is None else out + y
         if nv_ids is not None:
-            y = ext.nvfp4_moe_gemv(
+            y = ops.nvfp4_moe_gemv(
                 hact, layer.nvfp4_w2_packed, layer.nvfp4_w2_bscale,
                 layer.nvfp4_w2_scale2, nv_ids,
             )

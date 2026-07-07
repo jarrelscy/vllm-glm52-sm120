@@ -627,7 +627,13 @@ class Attention(nn.Module, AttentionLayerBase):
         assert self.attn_type == AttentionType.DECODER
         quant_mode = get_kv_quant_mode(self.kv_cache_dtype)
         if self.sliding_window is not None:
-            assert not vllm_config.model_config.use_mla, (
+            # model_config.use_mla is a GLOBAL flag (True if ANY layer is MLA,
+            # e.g. an MLA target with a non-MLA speculative draft). This
+            # Attention class always builds a non-MLA backend (use_mla=False
+            # above), so gate on THIS layer's actual backend: a non-MLA layer
+            # (e.g. a windowed DSpark draft) may use a sliding window even when
+            # the target model uses MLA.
+            assert "MLA" not in self.attn_backend.get_name().upper(), (
                 "MLA is not supported for slidingwindow"
             )
             # SW chooses its own block_size, decoupled from the user's

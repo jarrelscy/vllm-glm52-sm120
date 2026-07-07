@@ -2,6 +2,7 @@
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
 
 import io
+import os
 from collections.abc import Iterable
 
 import torch
@@ -80,6 +81,16 @@ def _resolve_layer_attention(
     layer_types = getattr(config, "layer_types", None)
     use_swa = dflash_config.get("use_swa", False)
     config_causal = dflash_config.get("causal", None)
+
+    # Env override: force a uniform sliding window on every draft layer. This
+    # bounds the draft KV cache (per_layer_sliding_window -> SlidingWindowSpec)
+    # so DSpark speculative decode can run at very long target context (e.g.
+    # PP4 @ 1M) where a full-attention draft KV (~78 GiB on the drafter rank at
+    # 1M) would not fit. Draft-only: the target still verifies with full
+    # context, so this trades long-range draft acceptance for feasibility.
+    _force_swa = os.environ.get("VLLM_DSPARK_DRAFT_SWA")
+    if _force_swa:
+        return int(_force_swa), (config_causal if config_causal is not None else True)
 
     SLIDING_ATTENTION = "sliding_attention"
     any_sliding = False

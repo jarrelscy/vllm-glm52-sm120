@@ -521,13 +521,19 @@ class VllmConfig:
         if use_v2_model_runner is not None:
             return use_v2_model_runner
 
-        # DSpark is implemented only by the V2 GPU model runner, and DeepSeek-V4
-        # is not otherwise a default-V2 architecture, so force V2 for it. If V2
-        # is unsupported for the rest of the config, _validate_v2_model_runner
-        # raises rather than silently falling back to V1 (which can't run dspark).
+        # DSpark and MTP self-speculation only work correctly on the V2 GPU
+        # model runner: the V1 runner's _pp_broadcast_prev_sampled_token_ids
+        # asserts sampled_token_ids is [num_reqs, 1] and has no draft-token
+        # broadcast FIFO, so spec-decode under PP produces the
+        # "PP+async expects sampled_token_ids to have shape [num_reqs, 1]"
+        # crash (and zero-embedded drafts on non-last ranks). Our GLM-5.2
+        # (GlmMoeDsa) MoE target is not a default-V2 architecture, so force V2
+        # for these spec methods. If V2 is unsupported for the rest of the
+        # config, _validate_v2_model_runner raises rather than silently falling
+        # back to V1 (which can't run them).
         if (
             self.speculative_config is not None
-            and self.speculative_config.method == "dspark"
+            and self.speculative_config.method in ("dspark", "mtp")
         ):
             return True
 

@@ -13,9 +13,20 @@ lands **whole, unsharded, on the last PP rank** → its KV is ~40–80 GiB → O
 isolated from the main tree. Pure-Python; test with
 `PYTHONPATH=/home/jarrelscy/glm52/vllm-tppp:$PYTHONPATH`.
 
-**Status:** config + process-group + load/KV-shard plumbing implemented and
-import-tested (no GPU). The decode-time draft phase is specified but NOT wired
-(guarded to raise cleanly instead of deadlocking). See "How far this got".
+**Status: WORKING END-TO-END.** draft-TP4 + target-PP4 boots and generates
+coherently on the 1m weights @ 200K context with HEALTHY speculative acceptance.
+Measured (isolated per-request deltas, clean build):
+
+| prompt | mean accepted len | pos0 accept | tok/s |
+|---|---|---|---|
+| linked-list | 3.14 | 0.86 | 18.2 |
+| quicksort | 3.23 | — | 19.2 |
+| fibonacci | 2.86 | — | 16.4 |
+
+Baseline (unsharded/TP2 DSpark) is ~4.4 mean / ~0.9 pos0; the ~3.0 here is
+within the expected TP all-reduce fp reduction-order gap ("lossless-in-
+distribution"). Draft KV shards 64→16 heads/rank (the memory win). Two NCCL
+deadlocks were found and fixed to get here — see "Decode-time symmetric propose".
 
 ---
 
@@ -287,6 +298,52 @@ tree. Two gotchas:
    is self-contained. The launcher `serve_tppp_loadonly.sh` (in the session
    scratchpad) does this; it activates the main `.venv`, `cd`s to the worktree,
    and sets `PYTHONPATH=<worktree>`.
+
+## Decode-time symmetric propose (IMPLEMENTED)
+
+`sample_tokens` now hosts a collective draft phase — `_draft_propose_collective`
+in `vllm/v1/worker/gpu/model_runner.py`, called by BOTH branches:
+
+- **Last PP rank** (`is_src=True`): after `postprocess_sampled` (so the
+  sampler-derived vectors are current), it broadcasts the draft's inputs over
+  the draft-TP group, runs `speculator.propose` under `patch_tp_group`, writes
+  `req_states.draft_tokens`, and (unchanged) `broadcast_draft`s to non-last ranks.
+- **Non-last PP ranks** (`is_src=False`): after `pp_handler.receive` +
+  `postprocess_num_computed_tokens`, they join the same collective (receiving the
+  broadcast inputs, contributing their TP shard), then **discard** the local
+  draft output and return. The authoritative draft tokens still arrive via
+  `broadcast_draft` + the FIFO (`get_prev_sampled_outputs`), preserving async-PP
+  delivery timing.
+
+Broadcast payload over the draft-TP group (fixed order, matched on all ranks;
+src = last group member = last PP rank):
+```
+header[int64,1]=num_aux -> last_hidden[bf16,(T,H)] -> aux_stack[bf16,(num_aux,T,H)]?
+  -> counts[int32,(2,num_reqs)]=(num_sampled,num_rejected)
+  -> i64[int64,(3,max_reqs)]=(last_sampled, next_prefill_tokens, seeds)
+  -> temperature[float32,(max_reqs)]
+```
+`T=input_batch.num_tokens` (small: this step's scheduled tokens, NOT context),
+`H=target hidden`, all known on every rank. The draft's aux projection `fc` is
+`ReplicatedLinear` (qwen3_dflash.py:398), so feeding the full (replicated) aux to
+every rank is correct; the draft's genuine collectives (VocabParallel embed,
+RowParallel `o_proj`/`down_proj`, `lm_head` gather) all reduce over the draft
+group with identical inputs.
+
+Deliberate deviation from the original plan: `broadcast_draft`+FIFO is **kept**
+(not dropped). Non-last ranks must run the collective (to contribute their shard)
+but their local draft output is discarded; the FIFO path already delivers the
+authoritative drafts with the correct pipeline timing, and reusing it is far less
+invasive than rewiring the FIFO to consume the local collective result.
+
+Deadlock avoidance: non-last ranks reach the collective early (right after
+`pp_handler.receive`, which is async on a side stream and returns immediately);
+the last rank reaches it after sampling/logprobs/postprocess. NCCL matches by
+group+order regardless of CPU timing. The draft-TP collectives use a separate
+communicator from the PP broadcast group, so there is no cross-ordering
+constraint. Warmup drives all ranks through `sample_tokens`, so the collective is
+first exercised there. Dummy/profiling propose and CUDA-graph capture remain
+skipped under the flag (enforce-eager; no graphs to capture).
 
 ## How far this got
 

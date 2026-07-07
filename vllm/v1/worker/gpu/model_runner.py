@@ -430,6 +430,240 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         with self._draft_tp_ctx():
             return fn()
 
+    @torch.inference_mode()
+    def _draft_propose_collective(
+        self,
+        input_batch,
+        attn_metadata,
+        slot_mappings,
+        *,
+        is_src: bool,
+        spec_hidden_states=None,
+        aux_hidden_states=None,
+        num_sampled=None,
+        num_rejected=None,
+    ):
+        """Run the DSpark draft's ``propose`` as a Tensor-Parallel collective
+        across the whole PP rank set (draft-TP-over-PP).
+
+        The last PP rank (``is_src=True``) is the sole holder of the draft's
+        inputs (target hidden / aux-hidden + the sampler-derived per-request
+        vectors); it broadcasts them over the draft-TP group. Every rank then
+        runs the sharded draft forward under ``patch_tp_group`` so the draft's
+        Row/Column/Vocab-parallel layers reduce over the draft group. All ranks
+        end with identical ``draft_tokens``; non-src ranks discard theirs (the
+        authoritative copy is delivered via broadcast_draft + FIFO).
+
+        Broadcast order (fixed, matched on all ranks):
+          header[int64] -> last_hidden[bf16] -> aux_stack[bf16]?
+          -> counts[int32,2] -> i64_vecs[int64,3] -> temperature[float32]
+        """
+        from vllm.distributed.parallel_state import (
+            get_draft_tp_group,
+            patch_tp_group,
+        )
+
+        g = get_draft_tp_group()
+        # Source = the last PP rank's position within the draft group. The draft
+        # group's rank set equals the PP group's, in ascending order, so the
+        # last PP rank is the last group member.
+        src = g.world_size - 1
+        assert g.ranks[-1] == get_pp_group().last_rank, (
+            f"draft-TP group {g.ranks} last member != PP last rank "
+            f"{get_pp_group().last_rank}"
+        )
+
+        device = self.device
+        dtype = self.model_config.dtype
+        H = self.model_config.get_hidden_size()
+        num_tokens = input_batch.num_tokens
+        num_reqs = input_batch.num_reqs
+        max_nr = self.max_num_reqs
+
+        # 1) header: number of aux-hidden tensors.
+        if is_src:
+            aux_list_src = list(aux_hidden_states) if aux_hidden_states else []
+            num_aux = len(aux_list_src)
+        else:
+            aux_list_src = []
+            num_aux = 0
+        header = torch.tensor(
+            [num_aux], dtype=torch.int64, device=device
+        )
+        g.broadcast(header, src=src)
+        num_aux = int(header.item())
+
+        # 2) last_hidden_states [num_tokens, H]
+        if is_src:
+            last_hidden = spec_hidden_states[:num_tokens].to(dtype).contiguous()
+        else:
+            last_hidden = torch.empty(num_tokens, H, dtype=dtype, device=device)
+        g.broadcast(last_hidden, src=src)
+
+        # 3) aux hidden states, stacked [num_aux, num_tokens, H]
+        aux_bcast = None
+        if num_aux > 0:
+            if is_src:
+                aux_stack = torch.stack(
+                    [a[:num_tokens].to(dtype).contiguous() for a in aux_list_src],
+                    dim=0,
+                ).contiguous()
+            else:
+                aux_stack = torch.empty(
+                    num_aux, num_tokens, H, dtype=dtype, device=device
+                )
+            g.broadcast(aux_stack, src=src)
+            aux_bcast = [aux_stack[i] for i in range(num_aux)]
+
+        # 4) counts [2, num_reqs]: num_sampled, num_rejected (int32)
+        if is_src:
+            counts = torch.stack(
+                [
+                    num_sampled[:num_reqs].to(torch.int32),
+                    num_rejected[:num_reqs].to(torch.int32),
+                ],
+                dim=0,
+            ).contiguous()
+        else:
+            counts = torch.empty(2, num_reqs, dtype=torch.int32, device=device)
+        g.broadcast(counts, src=src)
+        b_num_sampled, b_num_rejected = counts[0], counts[1]
+
+        # 5) per-request vectors, broadcast individually (shapes differ:
+        #    last_sampled is 2D [max_reqs, K]; the rest are 1D [max_reqs]).
+        #    The req_states buffers exist with identical shapes on every rank
+        #    (only the last rank's values are current), so allocate recv buffers
+        #    via empty_like of the local buffers.
+        if is_src:
+            b_last_sampled = self.req_states.last_sampled_tokens.contiguous()
+            b_next_prefill = self.req_states.next_prefill_tokens.contiguous()
+        else:
+            b_last_sampled = torch.empty_like(self.req_states.last_sampled_tokens)
+            b_next_prefill = torch.empty_like(self.req_states.next_prefill_tokens)
+        g.broadcast(b_last_sampled, src=src)
+        g.broadcast(b_next_prefill, src=src)
+
+        # 6) seeds (int64) + temperature (float32), [max_nr]. Sourced from the
+        #    last rank's sampler; only the last rank has self.sampler.
+        if is_src:
+            assert self.sampler is not None
+            b_seeds = self.sampler.sampling_states.seeds.gpu[:max_nr].to(
+                torch.int64
+            ).contiguous()
+            b_temperature = self.sampler.sampling_states.temperature.gpu[:max_nr].to(
+                torch.float32
+            ).contiguous()
+        else:
+            b_seeds = torch.empty(max_nr, dtype=torch.int64, device=device)
+            b_temperature = torch.empty(max_nr, dtype=torch.float32, device=device)
+        g.broadcast(b_seeds, src=src)
+        g.broadcast(b_temperature, src=src)
+
+        # Run the sharded draft forward as a collective over the draft-TP group.
+        with patch_tp_group(g):
+            draft_tokens = self.speculator.propose(
+                input_batch,
+                attn_metadata,
+                slot_mappings,
+                last_hidden,
+                aux_bcast,
+                b_num_sampled,
+                b_num_rejected,
+                b_last_sampled,
+                b_next_prefill,
+                b_temperature,
+                b_seeds,
+            )
+        return draft_tokens
+
+    def _sample_tokens_last_draft_tp(
+        self,
+        input_batch,
+        attn_metadata,
+        slot_mappings_by_layer,
+        hidden_states,
+        aux_hidden_states,
+        sampler_output,
+        num_sampled,
+        num_rejected,
+        finished_req_ids,
+    ):
+        """Last-rank sample_tokens flow for draft-TP-over-PP (reordered so the
+        draft collective runs with the pp-broadcast comm idle). See the call
+        site and TP_DRAFT_PP_FINDINGS.md."""
+        assert self.sampler is not None
+        # 1) Postprocess first so req_states.last_sampled_tokens is current
+        #    (the drafter's anchor token).
+        self.postprocess_sampled(
+            input_batch.idx_mapping,
+            sampler_output.sampled_token_ids,
+            num_sampled,
+            num_rejected,
+            input_batch.query_start_loc,
+        )
+
+        # 2) Draft collective (this rank is the broadcast source).
+        spec_hidden_states = hidden_states
+        if hasattr(self.model, "get_mtp_target_hidden_states"):
+            pre_hc_hidden_states = self.model.get_mtp_target_hidden_states()
+            spec_hidden_states = pre_hc_hidden_states[: hidden_states.shape[0]]  # type: ignore[union-attr]
+        draft_tokens = self._draft_propose_collective(
+            input_batch,
+            attn_metadata,
+            slot_mappings_by_layer,
+            is_src=True,
+            spec_hidden_states=spec_hidden_states,
+            aux_hidden_states=aux_hidden_states,
+            num_sampled=num_sampled,
+            num_rejected=num_rejected,
+        )
+        self.req_states.draft_tokens[input_batch.idx_mapping] = draft_tokens
+
+        # 3) NOW the pp broadcasts (sampled + draft), with the draft forward done
+        #    so nothing is left pending across a collective.
+        if self.pp_handler is not None:
+            self.pp_handler.broadcast(
+                sampler_output.sampled_token_ids,
+                num_sampled,
+                num_rejected,
+                input_batch,
+            )
+            self.pp_handler.broadcast_draft(self.req_states.draft_tokens, input_batch)
+
+        if self.num_speculative_steps > 0:
+            self.draft_tokens_handler.set_draft_tokens(
+                input_batch,
+                self.req_states.draft_tokens[input_batch.idx_mapping],
+            )
+
+        # 4) Prompt logprobs + async output (after the draft, as in the base flow
+        #    the drafter overlaps the async copy; here it simply follows).
+        assert self.prompt_logprobs_worker is not None
+        prompt_logprobs_dict = self.prompt_logprobs_worker.compute_prompt_logprobs(
+            self.model.compute_logits,
+            hidden_states,
+            input_batch,
+            self.req_states.all_token_ids.gpu,
+            self.req_states.num_computed_tokens.gpu,
+            self.req_states.prompt_len.np,
+        )
+        model_runner_output = ModelRunnerOutput(
+            req_ids=input_batch.req_ids,
+            req_id_to_index={req_id: i for i, req_id in enumerate(input_batch.req_ids)},
+            sampled_token_ids=None,  # type: ignore
+            prompt_logprobs_dict=prompt_logprobs_dict,  # type: ignore[arg-type]
+        )
+        async_output = AsyncOutput(
+            model_runner_output=model_runner_output,
+            sampler_output=sampler_output,
+            num_sampled_tokens=num_sampled,
+            main_stream=self.main_stream,
+            copy_stream=self.output_copy_stream,
+        )
+        kv_connector_output = self.kv_connector.post_forward(finished_req_ids)
+        model_runner_output.kv_connector_output = kv_connector_output
+        return async_output
+
     def get_kv_cache_spec(self):
         return get_kv_cache_spec(self.vllm_config)
 
@@ -529,6 +763,22 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             self.vllm_config,
         )
         self.kv_connector = get_kv_connector(self.vllm_config, kv_caches_dict)
+
+        if self.draft_tp_over_pp:
+            # Eagerly create the draft-TP NCCL communicator (all ranks, in
+            # lockstep) so it is NOT lazily initialized mid-step — a lazy init
+            # concurrent with the PP-broadcast comm's lazy init deadlocks.
+            from vllm.distributed.parallel_state import get_draft_tp_group
+
+            g = get_draft_tp_group()
+            warm = torch.zeros(1, dtype=torch.float32, device=self.device)
+            g.all_reduce(warm)
+            g.broadcast(warm, src=g.world_size - 1)
+            torch.cuda.synchronize()
+            logger.info(
+                "[TPPP-COLL] draft-TP comm warmed (pp_rank=%d)",
+                get_pp_group().rank_in_group,
+            )
 
     def _init_kv_zero_meta(self) -> None:
         """Build KV-block zeroing metadata; invoked from gpu_worker."""
@@ -1467,6 +1717,22 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             # IntermediateTensors instead of final hidden states. Receive the
             # sampled tokens broadcast from the last rank and update local state.
             assert self.pp_handler is not None
+            # draft-TP-over-PP: this non-last rank hosts a TP shard of the draft
+            # and must join the collective draft forward. CRUCIAL ORDERING: run
+            # the collective BEFORE pp_handler.receive(). receive() posts async
+            # pp-broadcast recvs (incl. the draft-token recv) that only complete
+            # after the last rank's broadcast_draft; leaving them in flight spins
+            # on the GPU and deadlocks the draft forward's collectives (two-comm
+            # deadlock). Running the collective first keeps the pp-broadcast comm
+            # idle during the draft forward. The local draft output is discarded;
+            # authoritative draft tokens arrive via broadcast_draft + the FIFO.
+            if self.draft_tp_over_pp and self.speculator is not None:
+                self._draft_propose_collective(
+                    input_batch,
+                    attn_metadata,
+                    slot_mappings_by_layer,
+                    is_src=False,
+                )
             all_decode_next = self.pp_handler.receive(input_batch)
             # Optimistically update num_computed_tokens for entire batch here.
             # Will be adjusted for rejections if necessary in update_requests.
@@ -1484,6 +1750,26 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         sampler_output, num_sampled, num_rejected = self.sample(
             hidden_states, input_batch, grammar_output
         )
+
+        if self.draft_tp_over_pp and self.speculator is not None:
+            # Reordered last-rank flow for the collective draft. The draft
+            # forward is a TP collective across all PP ranks; it must run while
+            # the pp-broadcast comm is IDLE (no pending sampled/draft broadcast),
+            # otherwise the two communicators deadlock. So: postprocess (to make
+            # last_sampled current) -> draft collective -> ONLY THEN the pp
+            # broadcasts (sampled + draft together). prompt-logprobs / async
+            # output run afterwards.
+            return self._sample_tokens_last_draft_tp(
+                input_batch,
+                attn_metadata,
+                slot_mappings_by_layer,
+                hidden_states,
+                aux_hidden_states,
+                sampler_output,
+                num_sampled,
+                num_rejected,
+                finished_req_ids,
+            )
 
         if self.pp_handler is not None:
             # Broadcast to non-last PP ranks (handles spec decode multi-token).
@@ -1545,24 +1831,8 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             input_batch.query_start_loc,
         )
 
-        if self.speculator is not None and self.draft_tp_over_pp:
-            # SPIKE STOP: the draft weights + KV are TP-sharded across the PP
-            # ranks (validated at load/KV-alloc), but the decode-time TP-draft
-            # phase is not yet wired. Running propose here would fire a TP
-            # collective that only the last rank reaches (non-last ranks return
-            # in sample_tokens before this) -> deadlock. The remaining work
-            # (broadcast target hidden/aux-hidden + sampler-derived inputs from
-            # the last rank to the draft-TP group, then run propose symmetrically
-            # on all ranks under patch_tp_group) is specified in
-            # TP_DRAFT_PP_FINDINGS.md ("Runtime restructure").
-            raise NotImplementedError(
-                "draft-TP-over-PP: model + KV shard successfully, but the "
-                "decode-time TP-draft phase is not yet implemented. See "
-                "TP_DRAFT_PP_FINDINGS.md."
-            )
-
         if self.speculator is not None:
-            assert self.sampler is not None
+            assert self.sampler is not None or self.draft_tp_over_pp
             # Let the target override the hidden state fed to the drafter
             # (e.g. DeepSeek V4 MTP needs the pre-hc_head residual). The
             # target returns a persistent buffer sized at max_num_batched_tokens;
@@ -1571,20 +1841,36 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             if hasattr(self.model, "get_mtp_target_hidden_states"):
                 pre_hc_hidden_states = self.model.get_mtp_target_hidden_states()
                 spec_hidden_states = pre_hc_hidden_states[: hidden_states.shape[0]]  # type: ignore[union-attr]
-            draft_tokens = self.speculator.propose(
-                input_batch,
-                attn_metadata,
-                slot_mappings_by_layer,
-                spec_hidden_states,
-                aux_hidden_states,
-                num_sampled,
-                num_rejected,
-                self.req_states.last_sampled_tokens,
-                self.req_states.next_prefill_tokens,
-                self.sampler.sampling_states.temperature.gpu,
-                self.sampler.sampling_states.seeds.gpu,
-                mm_inputs=mm_inputs,
-            )
+            if self.draft_tp_over_pp:
+                # draft-TP-over-PP: run propose as a TP collective across all PP
+                # ranks. The last rank is the broadcast source of the draft's
+                # inputs (target hidden/aux-hidden + sampler-derived tensors);
+                # every rank runs the sharded draft under the draft-TP group.
+                draft_tokens = self._draft_propose_collective(
+                    input_batch,
+                    attn_metadata,
+                    slot_mappings_by_layer,
+                    is_src=True,
+                    spec_hidden_states=spec_hidden_states,
+                    aux_hidden_states=aux_hidden_states,
+                    num_sampled=num_sampled,
+                    num_rejected=num_rejected,
+                )
+            else:
+                draft_tokens = self.speculator.propose(
+                    input_batch,
+                    attn_metadata,
+                    slot_mappings_by_layer,
+                    spec_hidden_states,
+                    aux_hidden_states,
+                    num_sampled,
+                    num_rejected,
+                    self.req_states.last_sampled_tokens,
+                    self.req_states.next_prefill_tokens,
+                    self.sampler.sampling_states.temperature.gpu,
+                    self.sampler.sampling_states.seeds.gpu,
+                    mm_inputs=mm_inputs,
+                )
             self.req_states.draft_tokens[input_batch.idx_mapping] = draft_tokens
             if self.pp_handler is not None:
                 # PP: broadcast these drafts to non-last ranks (drafter is

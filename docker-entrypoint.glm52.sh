@@ -5,6 +5,7 @@
 #   PARALLEL=pp4-1m      PP4, NO speculator, 1M window   (default; the full-context config)
 #   PARALLEL=pp4-dspark  PP4 + DSpark, ~256K             (spec decode, reduced context)
 #   PARALLEL=tp2pp2      TP2xPP2 + DSpark, ~200K         (spec decode, fastest single-stream decode)
+#   PARALLEL=pp4-mtp     PP4 + native MTP self-spec, ~32K   (coherent+lossless; short-ctx ~1.17x @ns=2, net-neg >=100K)
 #   PARALLEL=pp4-tpdraft PP4 target + DSpark draft sharded TP4, ~450K  (draft-TP-over-PP, longest spec-decode ctx)
 #
 # WHY 1M and DSpark are separate modes: on 4x96GB, the 754B hybrid weights (~272 GiB)
@@ -46,13 +47,21 @@ case "$PARALLEL" in
   pp4-dspark)  # PP4 + DSpark, ~130K (drafter co-locates on last rank; dominated by tp2pp2)
     export VLLM_PP_LAYER_PARTITION="${VLLM_PP_LAYER_PARTITION:-21,19,19,19}"
     PAR="--pipeline-parallel-size 4"; SPEC=1; DEFLEN=131072 ;;
+  pp4-mtp)     # PP4 + native MTP self-speculation (checkpoint layer 78, method=mtp).
+    # Coherent + lossless. Routed through the V2 model runner (see vllm/config/vllm.py:
+    # force-V2 for method in {dspark,mtp}). SHORT-CONTEXT win only: ns=2 ~1.17x over base
+    # at 32K; net-NEGATIVE >=~100K because GLM's DSA sparse attention already makes base
+    # decode flat ~18-19 tok/s at any length (spec has nothing to amortize) while the MTP
+    # draft/verify indexer scans scale with ctx. For long ctx use pp4-1m (no spec).
+    export VLLM_PP_LAYER_PARTITION="${VLLM_PP_LAYER_PARTITION:-21,19,19,19}"
+    PAR="--pipeline-parallel-size 4"; SPEC=2; DEFLEN=32768; NUM_SPEC="${NUM_SPEC:-2}" ;;
   pp4-tpdraft) # PP4 target (MLA KV split by layer -> long ctx) + DSpark draft sharded
     # TP4 across the PP ranks (draft-TP-over-PP). Draft's 64 KV heads shard 16/rank,
     # freeing the KV that a co-located draft would eat -> ~2x the spec-decode ceiling.
     # Validated: KV 514,697 tokens @ 450K, mean accepted ~3.0, ~17-19 tok/s.
     export VLLM_PP_LAYER_PARTITION="${VLLM_PP_LAYER_PARTITION:-21,19,19,19}"
     PAR="--pipeline-parallel-size 4"; SPEC=1; DEFLEN=450000; UTIL_DEFAULT=0.97; DRAFT_TP=4 ;;
-  *) echo "unknown PARALLEL=$PARALLEL (use pp4-1m | tp2pp2 | tp4-dspark | pp4-dspark | pp4-tpdraft)"; exit 1 ;;
+  *) echo "unknown PARALLEL=$PARALLEL (use pp4-1m | tp2pp2 | tp4-dspark | pp4-dspark | pp4-mtp | pp4-tpdraft)"; exit 1 ;;
 esac
 UTIL="${UTIL:-$UTIL_DEFAULT}"
 # NOTE: 1M context and the DSpark drafter cannot co-fit on 4x96GB. The drafter
@@ -77,6 +86,10 @@ if [ "$SPEC" = 1 ]; then
   [ -n "$DRAFT_TP" ] && SC="$SC, \"draft_tensor_parallel_size\": $DRAFT_TP"
   SC="$SC}"
   ARGS+=(--speculative-config "$SC")
+elif [ "$SPEC" = 2 ]; then
+  # Native MTP self-speculation (checkpoint layer 78). method=deepseek_mtp -> mtp;
+  # routed to V2 runner automatically (config/vllm.py force-V2 for mtp).
+  ARGS+=(--speculative-config "{\"method\": \"deepseek_mtp\", \"num_speculative_tokens\": $NUM_SPEC}")
 fi
 
 echo ">> GLM-5.2 SM120  PARALLEL=$PARALLEL  MAXLEN=$MAXLEN  util=$UTIL  spec=$SPEC  draft_tp=${DRAFT_TP:-1}  served=${SERVED_NAME:-glm-5.2}  model=$MODEL_DIR"

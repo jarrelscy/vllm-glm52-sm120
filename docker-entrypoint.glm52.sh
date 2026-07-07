@@ -49,12 +49,17 @@ case "$PARALLEL" in
     PAR="--pipeline-parallel-size 4"; SPEC=1; DEFLEN=131072 ;;
   pp4-mtp)     # PP4 + native MTP self-speculation (checkpoint layer 78, method=mtp).
     # Coherent + lossless. Routed through the V2 model runner (see vllm/config/vllm.py:
-    # force-V2 for method in {dspark,mtp}). SHORT-CONTEXT win only: ns=2 ~1.17x over base
-    # at 32K; net-NEGATIVE >=~100K because GLM's DSA sparse attention already makes base
-    # decode flat ~18-19 tok/s at any length (spec has nothing to amortize) while the MTP
-    # draft/verify indexer scans scale with ctx. For long ctx use pp4-1m (no spec).
-    export VLLM_PP_LAYER_PARTITION="${VLLM_PP_LAYER_PARTITION:-21,19,19,19}"
-    PAR="--pipeline-parallel-size 4"; SPEC=2; DEFLEN=32768; NUM_SPEC="${NUM_SPEC:-2}" ;;
+    # force-V2 for method in {dspark,mtp}). FITS ~1M context (est ceiling 999,168 tok @ util
+    # 0.97) — the MTP draft KV is MLA-shaped & tiny, unlike DSpark. NOTE the PP split is
+    # 20,20,20,18 (NOT 21,19,19,19): the MTP layer is a full 256-expert MoE (~7.5 GiB) that
+    # lands on the LAST rank, so that rank must carry fewer target layers or it caps context.
+    # PERF: ns=2 ~1.17x over base ONLY at short ctx (<=~50-80K). At >=100K MTP is NET-NEGATIVE
+    # (775K: base 18.2, ns1 12.6=0.69x, ns2 9.9=0.54x) — PROVEN irreducible: GLM's DSA sparse
+    # attention makes base decode flat ~18 tok/s at any length (weight-light), so per group MTP
+    # does ns+2 O(ctx) indexer scans for <=ns+1 tokens => strictly more sparse-attn work than
+    # base. For long ctx use pp4-1m (no spec); use pp4-mtp only for short-ctx latency.
+    export VLLM_PP_LAYER_PARTITION="${VLLM_PP_LAYER_PARTITION:-20,20,20,18}"
+    PAR="--pipeline-parallel-size 4"; SPEC=2; DEFLEN=32768; NUM_SPEC="${NUM_SPEC:-2}"; UTIL_DEFAULT=0.97 ;;
   pp4-tpdraft) # PP4 target (MLA KV split by layer -> long ctx) + DSpark draft sharded
     # TP4 across the PP ranks (draft-TP-over-PP). Draft's 64 KV heads shard 16/rank,
     # freeing the KV that a co-located draft would eat -> ~2x the spec-decode ceiling.

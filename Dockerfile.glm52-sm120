@@ -11,18 +11,24 @@
 # Build:
 #   docker build -f Dockerfile.glm52-sm120 -t glm52-sm120 .
 #
-# Run (1M context, PP4 + DSpark — the full-window config):
+# Run (1M context — PP4, NO speculator; the full-window config, default):
 #   docker run --gpus all --ipc=host -p 8001:8000 \
 #     -v /path/to/GLM-5.2-NVFP4-AQLM-hybrid:/models/1m:ro \
 #     -v $HOME/.cache/huggingface:/root/.cache/huggingface \
-#     -e MODEL_DIR=/models/1m -e MAXLEN=1048576 \
+#     -e PARALLEL=pp4-1m \
 #     glm52-sm120
 #
-# Run (~200K context, TP2xPP2 + DSpark — faster single-stream decode):
+# Run (speculative decode — TP4 + DSpark, ~200K, fastest ~59.6 tok/s):
 #   docker run --gpus all --ipc=host -p 8001:8000 \
 #     -v /path/to/GLM-5.2-NVFP4-AQLM-hybrid:/models/1m:ro \
-#     -e MODEL_DIR=/models/1m -e PARALLEL=tp2pp2 -e MAXLEN=200000 \
-#     glm52-sm120
+#     -e PARALLEL=tp4-dspark glm52-sm120
+#
+# Run (speculative decode — TP2xPP2 + DSpark, ~223K, ~35 tok/s):
+#   docker run --gpus all --ipc=host -p 8001:8000 \
+#     -v /path/to/GLM-5.2-NVFP4-AQLM-hybrid:/models/1m:ro \
+#     -e PARALLEL=tp2pp2 glm52-sm120
+#
+# 1M + DSpark is NOT possible on 4x96GB (drafter KV won't co-fit) — see entrypoint.
 
 FROM nvidia/cuda:12.9.1-devel-ubuntu22.04
 
@@ -70,11 +76,18 @@ ENV VLLM_MEMORY_PROFILER_ESTIMATE_CUDAGRAPHS=0
 ENV VLLM_DISABLE_FP8_W8A16=1
 
 # Runtime knobs (override with -e):
-#   MODEL_DIR  path to mounted weights            (default /models/1m)
-#   PARALLEL   pp4 (1M) | tp2pp2 (~200K, faster)  (default pp4)
-#   MAXLEN     max model len                      (default 1048576)
-#   NUM_SPEC   dspark speculative tokens          (default 5)
-ENV MODEL_DIR=/models/1m PARALLEL=pp4 MAXLEN=1048576 NUM_SPEC=5
+#   MODEL_DIR    path to mounted weights          (default /models/1m)
+#   PARALLEL     serving topology                 (default pp4-1m)
+#                  pp4-1m      PP4, no spec, 1M window        (KV 1.27M tok, ~22 tok/s)
+#                  tp2pp2      TP2xPP2 + DSpark, ~223K        (~35 tok/s)
+#                  tp4-dspark  TP4 + DSpark, ~200K            (~59.6 tok/s, fastest)
+#                  pp4-dspark  PP4 + DSpark, ~130K            (dominated by tp2pp2)
+#   MAXLEN       max model len                    (per-mode default)
+#   NUM_SPEC     dspark speculative tokens        (default 5)
+#   DRAFT_MAXLEN cap drafter KV window (optional; does NOT enable 1M+spec)
+# NOTE: 1M context and DSpark cannot co-fit on 4x96GB — use pp4-1m for 1M,
+#       tp4-dspark/tp2pp2 for speculative decode at <=~200K.
+ENV MODEL_DIR=/models/1m PARALLEL=pp4-1m NUM_SPEC=5
 
 COPY docker-entrypoint.glm52.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh

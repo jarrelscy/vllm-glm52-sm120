@@ -30,17 +30,23 @@ PARALLEL="${PARALLEL:-pp4-1m}"
 NUM_SPEC="${NUM_SPEC:-5}"
 
 case "$PARALLEL" in
-  pp4-1m)
+  pp4-1m)      # full 1M window, NO speculator (verified: KV 1.27M tokens, ~22 tok/s)
     export VLLM_PP_LAYER_PARTITION="${VLLM_PP_LAYER_PARTITION:-21,19,19,19}"
     PAR="--pipeline-parallel-size 4"; SPEC=0; DEFLEN=1048576 ;;
-  pp4-dspark)
-    export VLLM_PP_LAYER_PARTITION="${VLLM_PP_LAYER_PARTITION:-21,19,19,19}"
-    PAR="--pipeline-parallel-size 4"; SPEC=1; DEFLEN=262144 ;;
-  tp2pp2)
+  tp2pp2)      # TP2xPP2 + DSpark, ~223K, ~35 tok/s (best spec-decode single-stream)
     export VLLM_PP_LAYER_PARTITION="${VLLM_PP_LAYER_PARTITION:-39,39}"
     PAR="--tensor-parallel-size 2 --pipeline-parallel-size 2"; SPEC=1; DEFLEN=200000 ;;
-  *) echo "unknown PARALLEL=$PARALLEL (use pp4-1m | pp4-dspark | tp2pp2)"; exit 1 ;;
+  tp4-dspark)  # TP4 + DSpark, ~200K, ~59.6 tok/s (fastest decode, no PP bubble)
+    PAR="--tensor-parallel-size 4"; SPEC=1; DEFLEN=200000 ;;
+  pp4-dspark)  # PP4 + DSpark, ~130K (drafter co-locates on last rank; dominated by tp2pp2)
+    export VLLM_PP_LAYER_PARTITION="${VLLM_PP_LAYER_PARTITION:-21,19,19,19}"
+    PAR="--pipeline-parallel-size 4"; SPEC=1; DEFLEN=131072 ;;
+  *) echo "unknown PARALLEL=$PARALLEL (use pp4-1m | tp2pp2 | tp4-dspark | pp4-dspark)"; exit 1 ;;
 esac
+# NOTE: 1M context and the DSpark drafter cannot co-fit on 4x96GB. The drafter
+# needs ~92 GiB KV on its rank vs ~8 GiB available; capping the draft window
+# (DRAFT_MAXLEN, below) does NOT free it — vLLM sizes the draft KV at target len.
+# For 1M use pp4-1m (no spec); for spec decode use tp4-dspark / tp2pp2 (<=~200K).
 MAXLEN="${MAXLEN:-$DEFLEN}"
 
 ARGS=(vllm serve "$MODEL_DIR" $PAR
@@ -52,7 +58,12 @@ ARGS=(vllm serve "$MODEL_DIR" $PAR
   --no-enable-flashinfer-autotune
   --enforce-eager
   --port 8000)
-[ "$SPEC" = 1 ] && ARGS+=(--speculative-config "{\"model\": \"RedHatAI/GLM-5.2-speculator.dspark\", \"method\": \"dspark\", \"num_speculative_tokens\": $NUM_SPEC}")
+if [ "$SPEC" = 1 ]; then
+  SC="{\"model\": \"RedHatAI/GLM-5.2-speculator.dspark\", \"method\": \"dspark\", \"num_speculative_tokens\": $NUM_SPEC"
+  [ -n "${DRAFT_MAXLEN:-}" ] && SC="$SC, \"max_model_len\": $DRAFT_MAXLEN"
+  SC="$SC}"
+  ARGS+=(--speculative-config "$SC")
+fi
 
 echo ">> GLM-5.2 SM120  PARALLEL=$PARALLEL  MAXLEN=$MAXLEN  spec=$SPEC  model=$MODEL_DIR"
 exec "${ARGS[@]}"

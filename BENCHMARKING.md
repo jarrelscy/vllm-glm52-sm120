@@ -104,7 +104,11 @@ Ceiling = KV-pool tokens that fit.
 | **250k** | 327K / 18.7  | ~31K / 29/27/23 | ~35K / 40/37/31 | ~38K / 65/59/33 | — | — |
 
 DCP configs (G/H) are 1M-only (the whole point is the ~1M ceiling on TP; use the
-short-context configs on the smaller variants). Prefill ~1.2–1.6K tok/s.
+short-context configs on the smaller variants). Prefill ~1.2–1.6K tok/s (measured
+on the PP4/MTP configs: 1m ~1.5K, 500k/250k ~1.6K); per-config TP4-vs-PP4 prefill
+(TTFT) is not yet separately characterized — a cold ~750K DCP prefill ran ~18 min
+eager incl. one-time kernel JIT, so warm/graphed prefill is faster than that
+implies. Prefix caching amortizes prefill across requests.
 NVFP4/AQLM expert split: 1m 29/71, 500k 48/52, 250k 57/43.
 
 ### MTP ns-sweep (config H, PIECEWISE graphs, counting workload)

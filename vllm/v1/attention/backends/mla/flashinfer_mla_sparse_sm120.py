@@ -17,6 +17,7 @@ from vllm.v1.attention.backends.mla.flashinfer_mla_sparse import (
 )
 from vllm.v1.attention.backends.mla.sparse_utils import (
     triton_convert_req_index_to_global_index,
+    triton_filter_and_convert_dcp_index,
 )
 
 if TYPE_CHECKING:
@@ -31,6 +32,14 @@ def _kv_scale_format_for_model(model_type: str | None) -> str:
 
 class FlashInferMLASparseSM120Impl(SparseMLAAttentionImpl[FlashInferMLASparseMetadata]):
     """SM120 FlashInfer sparse-MLA implementation."""
+
+    # Decode Context Parallelism support: the trtllm sparse-MLA decode kernel
+    # can emit the softmax LSE (return_lse), which the shared DCP reducer needs
+    # to merge partial attention across the sequence-sharded KV ranks. Mirrors
+    # the SM100 FlashInferMLASparseImpl. The parent __new__ derives
+    # need_to_return_lse_for_decode = (dcp_world_size > 1 and this flag).
+    can_return_lse_for_decode: bool = True
+    lse_base_on_e: bool = False
 
     def __init__(
         self,
@@ -115,16 +124,35 @@ class FlashInferMLASparseSM120Impl(SparseMLAAttentionImpl[FlashInferMLASparseMet
         assert self.topk_indices_buffer is not None
         topk_indices = self.topk_indices_buffer[:num_actual_toks]
 
-        topk_indices_physical = cast(
-            torch.Tensor,
-            triton_convert_req_index_to_global_index(
+        # Under DCP the sequence KV is sharded across the DCP ranks: filter the
+        # global top-k indices to this rank's shard (and get per-token valid
+        # counts as seq_lens). Otherwise keep the single-rank global mapping.
+        if self.dcp_world_size > 1:
+            topk_indices_physical, seq_lens = triton_filter_and_convert_dcp_index(
                 attn_metadata.req_id_per_token[:num_actual_toks],
                 attn_metadata.block_table,
                 topk_indices,
+                dcp_size=self.dcp_world_size,
+                dcp_rank=self.dcp_rank,
+                cp_kv_cache_interleave_size=(
+                    attn_metadata.cp_kv_cache_interleave_size
+                ),
                 BLOCK_SIZE=attn_metadata.block_size,
                 NUM_TOPK_TOKENS=topk_indices.shape[1],
-            ),
-        )
+                return_valid_counts=True,
+            )
+        else:
+            topk_indices_physical = cast(
+                torch.Tensor,
+                triton_convert_req_index_to_global_index(
+                    attn_metadata.req_id_per_token[:num_actual_toks],
+                    attn_metadata.block_table,
+                    topk_indices,
+                    BLOCK_SIZE=attn_metadata.block_size,
+                    NUM_TOPK_TOKENS=topk_indices.shape[1],
+                ),
+            )
+            seq_lens = None
 
         output = q.new_empty(
             (num_actual_toks, self.num_heads, self.kv_lora_rank),
@@ -138,7 +166,8 @@ class FlashInferMLASparseSM120Impl(SparseMLAAttentionImpl[FlashInferMLASparseMet
             flashinfer_trtllm_batch_decode_with_kv_cache_mla,
         )
 
-        out = flashinfer_trtllm_batch_decode_with_kv_cache_mla(
+        return_lse = self.need_to_return_lse_for_decode
+        res = flashinfer_trtllm_batch_decode_with_kv_cache_mla(
             query=q.unsqueeze(1),
             kv_cache=kv_c_and_k_pe_cache.view(torch.uint8).unsqueeze(1),
             workspace_buffer=self._workspace_buffer,
@@ -146,12 +175,44 @@ class FlashInferMLASparseSM120Impl(SparseMLAAttentionImpl[FlashInferMLASparseMet
             kv_lora_rank=self.kv_lora_rank,
             qk_rope_head_dim=self.qk_rope_head_dim,
             block_tables=topk_indices_physical.unsqueeze(1),
-            seq_lens=None,
+            seq_lens=seq_lens,
             max_seq_len=attn_metadata.topk_tokens,
             out=output.unsqueeze(1),
             bmm1_scale=self.scale,
             bmm2_scale=1.0,
             sparse_mla_top_k=attn_metadata.topk_tokens,
             kv_scale_format=self.kv_scale_format,
+            return_lse=return_lse,
         )
-        return out.squeeze(1), None
+        if return_lse:
+            # flashinfer returns (out, lse) when return_lse=True.
+            _, lse = res if isinstance(res, tuple) else (res, None)
+            out = output.squeeze(1)
+            lse = self._normalize_lse(lse, out.shape[0], out.shape[1])
+            empty_rows = (topk_indices_physical == -1).all(dim=-1)
+            out.masked_fill_(empty_rows.view(-1, 1, 1), 0.0)
+            lse.masked_fill_(empty_rows.view(-1, 1), float("-inf"))
+            return out, lse
+        return output.squeeze(1), None
+
+    @staticmethod
+    def _normalize_lse(
+        lse: torch.Tensor,
+        num_tokens: int,
+        num_heads: int,
+    ) -> torch.Tensor:
+        # FlashInfer returns the decode LSE as 2D (num_tokens, num_heads) or 3D
+        # variants; collapse to (num_tokens, num_heads) for the DCP reducer.
+        if lse.dim() == 3:
+            if lse.shape[-1] == 1:
+                lse = lse.squeeze(-1)
+            elif lse.shape[1] == 1:
+                lse = lse.squeeze(1)
+            elif lse.shape[0] * lse.shape[1] == num_tokens:
+                lse = lse.reshape(num_tokens, lse.shape[-1])
+        if lse.shape != (num_tokens, num_heads):
+            raise RuntimeError(
+                "Unexpected FlashInfer sparse MLA LSE shape: "
+                f"{tuple(lse.shape)}, expected ({num_tokens}, {num_heads})."
+            )
+        return lse

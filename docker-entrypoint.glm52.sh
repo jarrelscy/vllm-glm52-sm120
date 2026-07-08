@@ -131,6 +131,11 @@ ARGS=(vllm serve "$MODEL_DIR" $PAR
   "${GRAPH_FLAGS[@]}"
   --served-model-name "${SERVED_NAME:-glm-5.2}"
   --port "${PORT:-8001}")
+# Function/tool calling (GLM-5.2 = GLM-4.7 lineage -> glm47_moe parser; chat template
+# ships <tool_call> tags). Default on; set ENABLE_TOOLS=0 to disable, TOOL_PARSER to override.
+if [ "${ENABLE_TOOLS:-1}" = 1 ]; then
+  ARGS+=(--enable-auto-tool-choice --tool-call-parser "${TOOL_PARSER:-glm47}")
+fi
 [ -n "$DCP" ] && ARGS+=(--decode-context-parallel-size "$DCP" --dcp-comm-backend ag_rs)
 if [ "$SPEC" = 1 ]; then
   SC="{\"model\": \"RedHatAI/GLM-5.2-speculator.dspark\", \"method\": \"dspark\", \"num_speculative_tokens\": $NUM_SPEC"

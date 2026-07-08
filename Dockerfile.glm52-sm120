@@ -12,19 +12,19 @@
 #   docker build -f Dockerfile.glm52-sm120 -t glm52-sm120 .
 #
 # Run (1M context — PP4, NO speculator; the full-window config, default):
-#   docker run --gpus all --ipc=host -p 8001:8000 \
+#   docker run --gpus all --ipc=host -p 8001:8001 \
 #     -v /path/to/GLM-5.2-NVFP4-AQLM-hybrid:/models/1m:ro \
 #     -v $HOME/.cache/huggingface:/root/.cache/huggingface \
 #     -e PARALLEL=pp4-1m \
 #     glm52-sm120
 #
 # Run (speculative decode — TP4 + DSpark, ~200K, fastest ~59.6 tok/s):
-#   docker run --gpus all --ipc=host -p 8001:8000 \
+#   docker run --gpus all --ipc=host -p 8001:8001 \
 #     -v /path/to/GLM-5.2-NVFP4-AQLM-hybrid:/models/1m:ro \
 #     -e PARALLEL=tp4-dspark glm52-sm120
 #
 # Run (speculative decode — TP2xPP2 + DSpark, ~223K, ~35 tok/s):
-#   docker run --gpus all --ipc=host -p 8001:8000 \
+#   docker run --gpus all --ipc=host -p 8001:8001 \
 #     -v /path/to/GLM-5.2-NVFP4-AQLM-hybrid:/models/1m:ro \
 #     -e PARALLEL=tp2pp2 glm52-sm120
 #

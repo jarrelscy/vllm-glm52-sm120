@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Entrypoint for the GLM-5.2 hybrid SM120 image. Selects a serving topology via
-# $PARALLEL and launches vllm serve on :8000.
+# $PARALLEL and launches vllm serve on :8001.
 #
 #   PARALLEL=pp4-1m      PP4, NO speculator, 1M window   (default; the full-context config)
 #   PARALLEL=pp4-dspark  PP4 + DSpark, ~256K             (spec decode, reduced context)

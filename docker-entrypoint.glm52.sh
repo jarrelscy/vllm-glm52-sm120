@@ -121,8 +121,8 @@ ARGS=(vllm serve "$MODEL_DIR" $PAR
   --gpu-memory-utilization "$UTIL"
   --kv-cache-dtype fp8_ds_mla
   --max-model-len "$MAXLEN"
-  --max-num-seqs 2
-  --max-num-batched-tokens 2048
+  --max-num-seqs "${MAX_NUM_SEQS:-2}"
+  --max-num-batched-tokens "${MAX_NUM_BATCHED_TOKENS:-2048}"
   --no-enable-flashinfer-autotune
   "${GRAPH_FLAGS[@]}"
   --served-model-name "${SERVED_NAME:-glm-5.2}"

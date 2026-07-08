@@ -154,8 +154,14 @@ class FlashInferMLASparseSM120Impl(SparseMLAAttentionImpl[FlashInferMLASparseMet
             )
             seq_lens = None
 
+        # Size the output from the query's actual head count, not the cached
+        # self.num_heads: under DCP the query carries all heads (KV is sharded
+        # instead of the heads), so num heads here may exceed the TP-sharded
+        # self.num_heads. The flashinfer kernel derives expected out shape from
+        # the query, so these must match.
+        num_q_heads = q.shape[1]
         output = q.new_empty(
-            (num_actual_toks, self.num_heads, self.kv_lora_rank),
+            (num_actual_toks, num_q_heads, self.kv_lora_rank),
             dtype=q.dtype,
         )
 

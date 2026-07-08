@@ -34,6 +34,7 @@ NUM_SPEC_ENV="${NUM_SPEC:-}"   # user override only; per-mode default applied AF
 
 UTIL_DEFAULT=0.95   # per-mode default; env UTIL overrides
 DRAFT_TP=""         # non-empty -> draft_tensor_parallel_size in the spec config
+DCP=""              # non-empty -> --decode-context-parallel-size (shard MLA KV across TP ranks -> ~1M at TP4)
 
 case "$PARALLEL" in
   pp4-1m)      # full 1M window, NO speculator (verified: KV 1.27M tokens, ~22 tok/s)
@@ -44,6 +45,15 @@ case "$PARALLEL" in
     PAR="--tensor-parallel-size 2 --pipeline-parallel-size 2"; SPEC=1; DEFLEN=200000 ;;
   tp4-dspark)  # TP4 + DSpark, ~200K, ~59.6 tok/s (fastest decode, no PP bubble)
     PAR="--tensor-parallel-size 4"; SPEC=1; DEFLEN=200000 ;;
+  tp4-1m)      # TP4 + Decode Context Parallelism (DCP4) -> ~1M at TP speed, NO spec.
+    # DCP sequence-shards the MLA latent KV across the 4 TP ranks (TP4 alone caps ~371K
+    # because MLA KV replicates); reaches the same ~1.13M KV ceiling as PP4 but at TP speed
+    # with no pipeline bubble. VALIDATED: KV 1,128,940 tok @ 950K; needle @ 749,035 tok
+    # depth-0.5 = PASS (coherent at depth). DECODE with graphs (default-on for TP) = 24.9
+    # tok/s @ ~700K — BEATS PP4-base@1M (18.7) by ~33%; eager is only 10.8 (DCP LSE
+    # all-gather over PCIe is comm-bound -> graphs are ESSENTIAL here, they capture the
+    # ag_rs comms). Needs the SM120 return-LSE + decode-out-size fix (on this branch).
+    PAR="--tensor-parallel-size 4"; SPEC=0; DEFLEN=950000; DCP=4 ;;
   pp4-dspark)  # PP4 + DSpark, ~130K (drafter co-locates on last rank; dominated by tp2pp2)
     export VLLM_PP_LAYER_PARTITION="${VLLM_PP_LAYER_PARTITION:-21,19,19,19}"
     PAR="--pipeline-parallel-size 4"; SPEC=1; DEFLEN=131072 ;;
@@ -70,7 +80,7 @@ case "$PARALLEL" in
     # Validated: KV 514,697 tokens @ 450K, mean accepted ~3.0, ~17-19 tok/s.
     export VLLM_PP_LAYER_PARTITION="${VLLM_PP_LAYER_PARTITION:-21,19,19,19}"
     PAR="--pipeline-parallel-size 4"; SPEC=1; DEFLEN=450000; UTIL_DEFAULT=0.97; DRAFT_TP=4 ;;
-  *) echo "unknown PARALLEL=$PARALLEL (use pp4-1m | pp4-mtp | tp2pp2 | tp2pp2-mtp | tp4-dspark | pp4-dspark | pp4-tpdraft)"; exit 1 ;;
+  *) echo "unknown PARALLEL=$PARALLEL (use pp4-1m | pp4-mtp | tp2pp2 | tp2pp2-mtp | tp4-dspark | tp4-1m | pp4-dspark | pp4-tpdraft)"; exit 1 ;;
 esac
 UTIL="${UTIL:-$UTIL_DEFAULT}"
 # per-mode spec-token default: MTP=2 (matrix optimum, best all-round), DSpark=5; env NUM_SPEC overrides
@@ -106,6 +116,7 @@ ARGS=(vllm serve "$MODEL_DIR" $PAR
   "${GRAPH_FLAGS[@]}"
   --served-model-name "${SERVED_NAME:-glm-5.2}"
   --port "${PORT:-8001}")
+[ -n "$DCP" ] && ARGS+=(--decode-context-parallel-size "$DCP" --dcp-comm-backend ag_rs)
 if [ "$SPEC" = 1 ]; then
   SC="{\"model\": \"RedHatAI/GLM-5.2-speculator.dspark\", \"method\": \"dspark\", \"num_speculative_tokens\": $NUM_SPEC"
   [ -n "${DRAFT_MAXLEN:-}" ] && SC="$SC, \"max_model_len\": $DRAFT_MAXLEN"
@@ -118,5 +129,5 @@ elif [ "$SPEC" = 2 ]; then
   ARGS+=(--speculative-config "{\"method\": \"deepseek_mtp\", \"num_speculative_tokens\": $NUM_SPEC}")
 fi
 
-echo ">> GLM-5.2 SM120  PARALLEL=$PARALLEL  MAXLEN=$MAXLEN  util=$UTIL  graph=$CUDAGRAPH  spec=$SPEC  draft_tp=${DRAFT_TP:-1}  served=${SERVED_NAME:-glm-5.2}  model=$MODEL_DIR"
+echo ">> GLM-5.2 SM120  PARALLEL=$PARALLEL  MAXLEN=$MAXLEN  util=$UTIL  graph=$CUDAGRAPH  spec=$SPEC  draft_tp=${DRAFT_TP:-1}  dcp=${DCP:-1}  served=${SERVED_NAME:-glm-5.2}  model=$MODEL_DIR"
 exec "${ARGS[@]}" "$@"

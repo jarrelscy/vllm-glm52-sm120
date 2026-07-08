@@ -19,7 +19,7 @@ lossless MTP speculative decode *at TP speed, with CUDA graphs*. This is the con
 ```
 vllm serve /models/1m \
   --tensor-parallel-size 4 \
-  --decode-context-parallel-size 4 --dcp-comm-backend ag_rs \
+  --decode-context-parallel-size 4 --dcp-comm-backend a2a \
   --speculative-config '{"method":"deepseek_mtp","num_speculative_tokens":3}' \
   --compilation-config '{"mode":3,"cudagraph_mode":"PIECEWISE"}' \
   --gpu-memory-utilization 0.95 --kv-cache-dtype fp8_ds_mla \
@@ -47,8 +47,8 @@ All configs serve an OpenAI-compatible API on `:8001`. Pick a weight variant via
 | C | tp2pp2-base    | `--tensor-parallel-size 2 --pipeline-parallel-size 2 --enforce-eager` |
 | D | tp2pp2-mtp     | `--tensor-parallel-size 2 --pipeline-parallel-size 2 --enforce-eager --speculative-config '{"method":"deepseek_mtp","num_speculative_tokens":2}'` |
 | E | tp4-dspark     | `--tensor-parallel-size 4 --speculative-config '{"model":"RedHatAI/GLM-5.2-speculator.dspark","method":"dspark","num_speculative_tokens":3}'` (graphs default: FULL_AND_PIECEWISE) |
-| G | tp4-1m         | `--tensor-parallel-size 4 --decode-context-parallel-size 4 --dcp-comm-backend ag_rs` (graphs default: FULL_AND_PIECEWISE) |
-| H | **tp4-1m-mtp** ★ | `--tensor-parallel-size 4 --decode-context-parallel-size 4 --dcp-comm-backend ag_rs --speculative-config '{"method":"deepseek_mtp","num_speculative_tokens":3}' --compilation-config '{"mode":3,"cudagraph_mode":"PIECEWISE"}'` |
+| G | tp4-1m         | `--tensor-parallel-size 4 --decode-context-parallel-size 4 --dcp-comm-backend a2a` (graphs default: FULL_AND_PIECEWISE) |
+| H | **tp4-1m-mtp** ★ | `--tensor-parallel-size 4 --decode-context-parallel-size 4 --dcp-comm-backend a2a --speculative-config '{"method":"deepseek_mtp","num_speculative_tokens":3}' --compilation-config '{"mode":3,"cudagraph_mode":"PIECEWISE"}'` |
 
 Common env for all: `VLLM_DISABLE_FP8_W8A16=1` (v2-only, bit-exact; set `=0` for
 the optional v4 fp8 path, +6–8% base), `--gpu-memory-utilization 0.95`,
@@ -63,7 +63,7 @@ are net-negative there). *(This supersedes the old "spec must be enforce-eager"
 rule, which predated the V2 custom-op registration.)*
 
 **DCP (decode context parallelism):** `--decode-context-parallel-size 4
---dcp-comm-backend ag_rs` shards the MLA latent KV *by sequence* across the 4 TP
+--dcp-comm-backend a2a` shards the MLA latent KV *by sequence* across the 4 TP
 ranks (each holds ~¼ of the tokens) with an exact LSE combine. This is what lets
 plain TP4 reach ~1M (KV 994K) instead of the 371K it hits when MLA KV replicates
 under TP. MTP's MLA-shaped draft KV shares the DCP-sharded latent correctly;

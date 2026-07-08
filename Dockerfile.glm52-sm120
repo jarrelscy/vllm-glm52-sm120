@@ -90,7 +90,7 @@ ENV VLLM_DISABLE_FP8_W8A16=1
 #       tp4-dspark/tp2pp2 for speculative decode at <=~200K.
 # NUM_SPEC is intentionally NOT set here: baking it would defeat the entrypoint's
 # per-mode default (it can't tell an image default from a user override). Set -e NUM_SPEC=N to override.
-ENV MODEL_DIR=/models/1m PARALLEL=pp4-1m
+ENV MODEL_DIR=/models/1m PARALLEL=tp4-1m-mtp
 
 COPY docker-entrypoint.glm52.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh

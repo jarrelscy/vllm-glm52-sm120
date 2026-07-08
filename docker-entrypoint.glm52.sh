@@ -33,7 +33,7 @@ PARALLEL="${PARALLEL:-pp4-1m}"
 NUM_SPEC_ENV="${NUM_SPEC:-}"   # user override only; per-mode default applied AFTER the case
 
 UTIL_DEFAULT=0.95   # per-mode default; env UTIL overrides
-DRAFT_TP=""         # non-empty -> draft_tensor_parallel_size in the spec config
+DRAFT_TP="${DRAFT_TP:-}"   # non-empty -> draft_tensor_parallel_size in the spec config (env-overridable for speed hunt)
 DCP=""              # non-empty -> --decode-context-parallel-size (shard MLA KV across TP ranks -> ~1M at TP4)
 CGMODE=""           # per-mode cudagraph_mode override (empty -> FULL_AND_PIECEWISE); DCP+spec MUST use PIECEWISE
 NSDEF=""            # per-mode spec-token default override (empty -> MTP=2 / DSpark=5); env NUM_SPEC always wins
@@ -64,7 +64,7 @@ case "$PARALLEL" in
     # VALIDATED: needle@749K PASS (lossless); decode PIECEWISE 54.8/50.8/40.7 short, ~28-30
     # @123K -> ~2x eager (30.8/28.7/24.3) and beats base tp4-1m (24.9). Counting: ns=5 wins
     # (graphs amortize drafts + ~100% accept) — raise NUM_SPEC for predictable workloads.
-    PAR="--tensor-parallel-size 4"; SPEC=2; DEFLEN=950000; DCP=4; CGMODE=PIECEWISE; NSDEF=5 ;;
+    PAR="--tensor-parallel-size 4"; SPEC=2; DEFLEN=950000; DCP=4; CGMODE=PIECEWISE; NSDEF=3 ;;
   pp4-dspark)  # PP4 + DSpark, ~130K (drafter co-locates on last rank; dominated by tp2pp2)
     export VLLM_PP_LAYER_PARTITION="${VLLM_PP_LAYER_PARTITION:-21,19,19,19}"
     PAR="--pipeline-parallel-size 4"; SPEC=1; DEFLEN=131072 ;;
@@ -113,8 +113,12 @@ case "$PAR" in *tensor-parallel-size*) CG_DEFAULT=1 ;; *) CG_DEFAULT=0 ;; esac
 CUDAGRAPH="${CUDAGRAPH:-$CG_DEFAULT}"
 GRAPH_FLAGS=(--enforce-eager)
 if [ "$CUDAGRAPH" = 1 ]; then
-  GRAPH_FLAGS=(--compilation-config \
-    "{\"mode\": 3, \"cudagraph_mode\": \"${CUDAGRAPH_MODE:-${CGMODE:-FULL_AND_PIECEWISE}}\"}")
+  CC="{\"mode\": 3, \"cudagraph_mode\": \"${CUDAGRAPH_MODE:-${CGMODE:-FULL_AND_PIECEWISE}}\""
+  # SPEED HUNT (#14/#18): custom cudagraph capture sizes (e.g. CAP_SIZES="1,2,4,6,8,16"
+  # to give ns=5 an exact graph-6 verify instead of padded graph-8).
+  [ -n "${CAP_SIZES:-}" ] && CC="$CC, \"cudagraph_capture_sizes\": [${CAP_SIZES}]"
+  CC="$CC}"
+  GRAPH_FLAGS=(--compilation-config "$CC")
 fi
 
 ARGS=(vllm serve "$MODEL_DIR" $PAR
@@ -137,7 +141,12 @@ if [ "$SPEC" = 1 ]; then
 elif [ "$SPEC" = 2 ]; then
   # Native MTP self-speculation (checkpoint layer 78). method=deepseek_mtp -> mtp;
   # routed to V2 runner automatically (config/vllm.py force-V2 for mtp).
-  ARGS+=(--speculative-config "{\"method\": \"deepseek_mtp\", \"num_speculative_tokens\": $NUM_SPEC}")
+  SC="{\"method\": \"deepseek_mtp\", \"num_speculative_tokens\": $NUM_SPEC"
+  # SPEED HUNT: draft-side knobs (all lossless by construction — rejection sampling).
+  [ -n "${DRAFT_TP:-}" ] && SC="$SC, \"draft_tensor_parallel_size\": $DRAFT_TP"
+  [ -n "${LOCAL_ARGMAX:-}" ] && SC="$SC, \"use_local_argmax_reduction\": true"
+  SC="$SC}"
+  ARGS+=(--speculative-config "$SC")
 fi
 
 echo ">> GLM-5.2 SM120  PARALLEL=$PARALLEL  MAXLEN=$MAXLEN  util=$UTIL  graph=$CUDAGRAPH  spec=$SPEC  draft_tp=${DRAFT_TP:-1}  dcp=${DCP:-1}  served=${SERVED_NAME:-glm-5.2}  model=$MODEL_DIR"

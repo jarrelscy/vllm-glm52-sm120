@@ -69,9 +69,15 @@ class AutoRegressiveSpeculator(DraftModelSpeculator):
             self.num_speculative_steps + 1,
         )
 
-        # PIECEWISE cudagraphs are not supported for draft decodes.
+        # SPEED HUNT (#17/#18): draft decodes previously forced to NONE (eager),
+        # paying full per-draft launch overhead x(ns-1). The decode manager DOES
+        # support PIECEWISE (skip_attn branch) — graph the draft's MoE/linear while
+        # attention (with the DCP LSE collective) runs eager, exactly like the target
+        # PIECEWISE path (no deadlock; that only affects FULL). Lossless (draft-side).
         if cudagraph_mode.decode_mode() == CUDAGraphMode.FULL:
             cudagraph_mode = CUDAGraphMode.FULL_DECODE_ONLY
+        elif cudagraph_mode.decode_mode() == CUDAGraphMode.PIECEWISE:
+            cudagraph_mode = CUDAGraphMode.PIECEWISE
         else:
             cudagraph_mode = CUDAGraphMode.NONE
 

@@ -137,7 +137,7 @@ ARGS=(vllm serve "$MODEL_DIR" $PAR
 if [ "${ENABLE_TOOLS:-1}" = 1 ]; then
   ARGS+=(--enable-auto-tool-choice --tool-call-parser "${TOOL_PARSER:-glm47}")
 fi
-[ -n "$DCP" ] && ARGS+=(--decode-context-parallel-size "$DCP" --dcp-comm-backend ag_rs)
+[ -n "$DCP" ] && ARGS+=(--decode-context-parallel-size "$DCP" --dcp-comm-backend "${DCP_BACKEND:-a2a}")
 if [ "$SPEC" = 1 ]; then
   SC="{\"model\": \"RedHatAI/GLM-5.2-speculator.dspark\", \"method\": \"dspark\", \"num_speculative_tokens\": $NUM_SPEC"
   [ -n "${DRAFT_MAXLEN:-}" ] && SC="$SC, \"max_model_len\": $DRAFT_MAXLEN"

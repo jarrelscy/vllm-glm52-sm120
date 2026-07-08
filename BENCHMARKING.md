@@ -20,7 +20,7 @@ lossless MTP speculative decode *at TP speed, with CUDA graphs*. This is the con
 vllm serve /models/1m \
   --tensor-parallel-size 4 \
   --decode-context-parallel-size 4 --dcp-comm-backend ag_rs \
-  --speculative-config '{"method":"deepseek_mtp","num_speculative_tokens":5}' \
+  --speculative-config '{"method":"deepseek_mtp","num_speculative_tokens":3}' \
   --compilation-config '{"mode":3,"cudagraph_mode":"PIECEWISE"}' \
   --gpu-memory-utilization 0.95 --kv-cache-dtype fp8_ds_mla \
   --max-model-len 950000 --max-num-seqs 2 --max-num-batched-tokens 2048 \
@@ -46,9 +46,9 @@ All configs serve an OpenAI-compatible API on `:8001`. Pick a weight variant via
 | B | pp4-mtp        | `--pipeline-parallel-size 4 --enforce-eager --speculative-config '{"method":"deepseek_mtp","num_speculative_tokens":2}'` |
 | C | tp2pp2-base    | `--tensor-parallel-size 2 --pipeline-parallel-size 2 --enforce-eager` |
 | D | tp2pp2-mtp     | `--tensor-parallel-size 2 --pipeline-parallel-size 2 --enforce-eager --speculative-config '{"method":"deepseek_mtp","num_speculative_tokens":2}'` |
-| E | tp4-dspark     | `--tensor-parallel-size 4 --speculative-config '{"model":"RedHatAI/GLM-5.2-speculator.dspark","method":"dspark","num_speculative_tokens":5}'` (graphs default: FULL_AND_PIECEWISE) |
+| E | tp4-dspark     | `--tensor-parallel-size 4 --speculative-config '{"model":"RedHatAI/GLM-5.2-speculator.dspark","method":"dspark","num_speculative_tokens":3}'` (graphs default: FULL_AND_PIECEWISE) |
 | G | tp4-1m         | `--tensor-parallel-size 4 --decode-context-parallel-size 4 --dcp-comm-backend ag_rs` (graphs default: FULL_AND_PIECEWISE) |
-| H | **tp4-1m-mtp** ★ | `--tensor-parallel-size 4 --decode-context-parallel-size 4 --dcp-comm-backend ag_rs --speculative-config '{"method":"deepseek_mtp","num_speculative_tokens":5}' --compilation-config '{"mode":3,"cudagraph_mode":"PIECEWISE"}'` |
+| H | **tp4-1m-mtp** ★ | `--tensor-parallel-size 4 --decode-context-parallel-size 4 --dcp-comm-backend ag_rs --speculative-config '{"method":"deepseek_mtp","num_speculative_tokens":3}' --compilation-config '{"mode":3,"cudagraph_mode":"PIECEWISE"}'` |
 
 Common env for all: `VLLM_DISABLE_FP8_W8A16=1` (v2-only, bit-exact; set `=0` for
 the optional v4 fp8 path, +6–8% base), `--gpu-memory-utilization 0.95`,
@@ -120,7 +120,7 @@ amortize the draft passes:
 |------------------------|------|------|-------------|------|
 | count tok/s            | 54.8 | 68.8 | 66.7        | 77.7 |
 
-ns=5 is the shipped default (robust across workloads, within ~15% of the ns=7
+ns=3 is the shipped default (verify batch ns+1=4 hits the exact graph-4 replay; ns>=4 pads verify to graph-8 = 2x work) (robust across workloads, within ~15% of the ns=7
 counting peak). Use `NUM_SPEC=7` for structured/code-heavy traffic, `NUM_SPEC=2`
 for general/high-entropy. MTP acceptance stays healthy (65–98%; up to 7.5/8 mean
 on counting).

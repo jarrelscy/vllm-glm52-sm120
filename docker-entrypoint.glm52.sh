@@ -2,7 +2,8 @@
 # Entrypoint for the GLM-5.2 hybrid SM120 image. Selects a serving topology via
 # $PARALLEL and launches vllm serve on :8001.
 #
-#   PARALLEL=pp4-1m      PP4, NO speculator, 1M window   (default; the full-context config)
+#   PARALLEL=tp4-1m-mtp  TP4+DCP4+MTP ns3 + PIECEWISE graphs + glm47 tools  (DEFAULT; coherent ~1M + lossless spec, ~57 tok/s @32K)
+#   PARALLEL=pp4-1m      PP4, NO speculator, 1M window   (full-context, no spec)
 #   PARALLEL=pp4-dspark  PP4 + DSpark, ~256K             (spec decode, reduced context)
 #   PARALLEL=tp2pp2      TP2xPP2 + DSpark, ~200K         (spec decode, fastest single-stream decode)
 #   PARALLEL=pp4-mtp     PP4 + native MTP self-spec, ~32K   (coherent+lossless; short-ctx ~1.17x @ns=2, net-neg >=100K)

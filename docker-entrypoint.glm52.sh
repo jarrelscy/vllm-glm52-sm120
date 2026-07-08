@@ -81,6 +81,17 @@ if [ "$SPEC" = 2 ]; then NUM_SPEC="${NUM_SPEC_ENV:-2}"; else NUM_SPEC="${NUM_SPE
 # For 1M use pp4-1m (no spec); for spec decode use tp4-dspark / tp2pp2 (<=~200K).
 MAXLEN="${MAXLEN:-$DEFLEN}"
 
+# CUDA graphs (V2 hybrid kernel is graph-safe via torch.library custom ops).
+# Default = --enforce-eager (safe). CUDAGRAPH=1 -> compiled cudagraphs.
+# Use FULL_AND_PIECEWISE (single full-graph replay per decode forward): measured
+# uniformly >= eager for MTP ns=2 (+1..3%). Plain PIECEWISE is net-NEGATIVE here
+# (per-segment replay loop on PP4/batch-1 latency-bound decode) — do NOT use it.
+GRAPH_FLAGS=(--enforce-eager)
+if [ "${CUDAGRAPH:-0}" = 1 ]; then
+  GRAPH_FLAGS=(--compilation-config \
+    "{\"mode\": 3, \"cudagraph_mode\": \"${CUDAGRAPH_MODE:-FULL_AND_PIECEWISE}\"}")
+fi
+
 ARGS=(vllm serve "$MODEL_DIR" $PAR
   --gpu-memory-utilization "$UTIL"
   --kv-cache-dtype fp8_ds_mla
@@ -88,7 +99,7 @@ ARGS=(vllm serve "$MODEL_DIR" $PAR
   --max-num-seqs 2
   --max-num-batched-tokens 2048
   --no-enable-flashinfer-autotune
-  --enforce-eager
+  "${GRAPH_FLAGS[@]}"
   --served-model-name "${SERVED_NAME:-glm-5.2}"
   --port "${PORT:-8001}")
 if [ "$SPEC" = 1 ]; then

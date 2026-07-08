@@ -35,6 +35,7 @@ NUM_SPEC_ENV="${NUM_SPEC:-}"   # user override only; per-mode default applied AF
 UTIL_DEFAULT=0.95   # per-mode default; env UTIL overrides
 DRAFT_TP=""         # non-empty -> draft_tensor_parallel_size in the spec config
 DCP=""              # non-empty -> --decode-context-parallel-size (shard MLA KV across TP ranks -> ~1M at TP4)
+CGMODE=""           # per-mode cudagraph_mode override (empty -> FULL_AND_PIECEWISE); DCP+spec MUST use PIECEWISE
 
 case "$PARALLEL" in
   pp4-1m)      # full 1M window, NO speculator (verified: KV 1.27M tokens, ~22 tok/s)
@@ -54,6 +55,15 @@ case "$PARALLEL" in
     # all-gather over PCIe is comm-bound -> graphs are ESSENTIAL here, they capture the
     # ag_rs comms). Needs the SM120 return-LSE + decode-out-size fix (on this branch).
     PAR="--tensor-parallel-size 4"; SPEC=0; DEFLEN=950000; DCP=4 ;;
+  tp4-1m-mtp)  # TP4 + DCP4 + native MTP (ns2) -> coherent ~1M WITH lossless spec at TP speed.
+    # THE best long-ctx config. DCP shards KV (fits ~1M) + MTP spec verifies k+1 tok/step.
+    # MUST use PIECEWISE cudagraphs (FULL/FULL_AND_PIECEWISE DEADLOCK: the in-graph DCP
+    # LSE-combine collective + spec drafter/verify NCCL ordering hangs). PIECEWISE splits at
+    # attention -> DCP collective runs eager, MoE/linear graphed -> no hang, keeps the win.
+    # VALIDATED: needle@749K PASS (lossless); decode PIECEWISE 54.8/50.8/40.7 short, ~28-30
+    # @123K -> ~2x eager (30.8/28.7/24.3) and beats base tp4-1m (24.9). Counting: ns=5 wins
+    # (graphs amortize drafts + ~100% accept) — raise NUM_SPEC for predictable workloads.
+    PAR="--tensor-parallel-size 4"; SPEC=2; DEFLEN=950000; DCP=4; CGMODE=PIECEWISE ;;
   pp4-dspark)  # PP4 + DSpark, ~130K (drafter co-locates on last rank; dominated by tp2pp2)
     export VLLM_PP_LAYER_PARTITION="${VLLM_PP_LAYER_PARTITION:-21,19,19,19}"
     PAR="--pipeline-parallel-size 4"; SPEC=1; DEFLEN=131072 ;;
@@ -80,7 +90,7 @@ case "$PARALLEL" in
     # Validated: KV 514,697 tokens @ 450K, mean accepted ~3.0, ~17-19 tok/s.
     export VLLM_PP_LAYER_PARTITION="${VLLM_PP_LAYER_PARTITION:-21,19,19,19}"
     PAR="--pipeline-parallel-size 4"; SPEC=1; DEFLEN=450000; UTIL_DEFAULT=0.97; DRAFT_TP=4 ;;
-  *) echo "unknown PARALLEL=$PARALLEL (use pp4-1m | pp4-mtp | tp2pp2 | tp2pp2-mtp | tp4-dspark | tp4-1m | pp4-dspark | pp4-tpdraft)"; exit 1 ;;
+  *) echo "unknown PARALLEL=$PARALLEL (use pp4-1m | pp4-mtp | tp2pp2 | tp2pp2-mtp | tp4-dspark | tp4-1m | tp4-1m-mtp | pp4-dspark | pp4-tpdraft)"; exit 1 ;;
 esac
 UTIL="${UTIL:-$UTIL_DEFAULT}"
 # per-mode spec-token default: MTP=2 (matrix optimum, best all-round), DSpark=5; env NUM_SPEC overrides
@@ -103,7 +113,7 @@ CUDAGRAPH="${CUDAGRAPH:-$CG_DEFAULT}"
 GRAPH_FLAGS=(--enforce-eager)
 if [ "$CUDAGRAPH" = 1 ]; then
   GRAPH_FLAGS=(--compilation-config \
-    "{\"mode\": 3, \"cudagraph_mode\": \"${CUDAGRAPH_MODE:-FULL_AND_PIECEWISE}\"}")
+    "{\"mode\": 3, \"cudagraph_mode\": \"${CUDAGRAPH_MODE:-${CGMODE:-FULL_AND_PIECEWISE}}\"}")
 fi
 
 ARGS=(vllm serve "$MODEL_DIR" $PAR

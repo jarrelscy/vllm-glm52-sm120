@@ -36,6 +36,7 @@ UTIL_DEFAULT=0.95   # per-mode default; env UTIL overrides
 DRAFT_TP=""         # non-empty -> draft_tensor_parallel_size in the spec config
 DCP=""              # non-empty -> --decode-context-parallel-size (shard MLA KV across TP ranks -> ~1M at TP4)
 CGMODE=""           # per-mode cudagraph_mode override (empty -> FULL_AND_PIECEWISE); DCP+spec MUST use PIECEWISE
+NSDEF=""            # per-mode spec-token default override (empty -> MTP=2 / DSpark=5); env NUM_SPEC always wins
 
 case "$PARALLEL" in
   pp4-1m)      # full 1M window, NO speculator (verified: KV 1.27M tokens, ~22 tok/s)
@@ -55,7 +56,7 @@ case "$PARALLEL" in
     # all-gather over PCIe is comm-bound -> graphs are ESSENTIAL here, they capture the
     # ag_rs comms). Needs the SM120 return-LSE + decode-out-size fix (on this branch).
     PAR="--tensor-parallel-size 4"; SPEC=0; DEFLEN=950000; DCP=4 ;;
-  tp4-1m-mtp)  # TP4 + DCP4 + native MTP (ns2) -> coherent ~1M WITH lossless spec at TP speed.
+  tp4-1m-mtp)  # TP4 + DCP4 + native MTP (ns5 default, preferred) -> coherent ~1M WITH lossless spec at TP speed.
     # THE best long-ctx config. DCP shards KV (fits ~1M) + MTP spec verifies k+1 tok/step.
     # MUST use PIECEWISE cudagraphs (FULL/FULL_AND_PIECEWISE DEADLOCK: the in-graph DCP
     # LSE-combine collective + spec drafter/verify NCCL ordering hangs). PIECEWISE splits at
@@ -63,7 +64,7 @@ case "$PARALLEL" in
     # VALIDATED: needle@749K PASS (lossless); decode PIECEWISE 54.8/50.8/40.7 short, ~28-30
     # @123K -> ~2x eager (30.8/28.7/24.3) and beats base tp4-1m (24.9). Counting: ns=5 wins
     # (graphs amortize drafts + ~100% accept) — raise NUM_SPEC for predictable workloads.
-    PAR="--tensor-parallel-size 4"; SPEC=2; DEFLEN=950000; DCP=4; CGMODE=PIECEWISE ;;
+    PAR="--tensor-parallel-size 4"; SPEC=2; DEFLEN=950000; DCP=4; CGMODE=PIECEWISE; NSDEF=5 ;;
   pp4-dspark)  # PP4 + DSpark, ~130K (drafter co-locates on last rank; dominated by tp2pp2)
     export VLLM_PP_LAYER_PARTITION="${VLLM_PP_LAYER_PARTITION:-21,19,19,19}"
     PAR="--pipeline-parallel-size 4"; SPEC=1; DEFLEN=131072 ;;
@@ -94,7 +95,7 @@ case "$PARALLEL" in
 esac
 UTIL="${UTIL:-$UTIL_DEFAULT}"
 # per-mode spec-token default: MTP=2 (matrix optimum, best all-round), DSpark=5; env NUM_SPEC overrides
-if [ "$SPEC" = 2 ]; then NUM_SPEC="${NUM_SPEC_ENV:-2}"; else NUM_SPEC="${NUM_SPEC_ENV:-5}"; fi
+if [ "$SPEC" = 2 ]; then NUM_SPEC="${NUM_SPEC_ENV:-${NSDEF:-2}}"; else NUM_SPEC="${NUM_SPEC_ENV:-${NSDEF:-5}}"; fi
 # NOTE: 1M context and the DSpark drafter cannot co-fit on 4x96GB. The drafter
 # needs ~92 GiB KV on its rank vs ~8 GiB available; capping the draft window
 # (DRAFT_MAXLEN, below) does NOT free it — vLLM sizes the draft KV at target len.

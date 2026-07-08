@@ -20,11 +20,14 @@ ASYNC_FLAG=""
 [ "${SYNC:-0}" = "1" ] && ASYNC_FLAG="--no-async-scheduling"
 
 # CUDA-graph toggle. Default = safe eager fallback (enforce-eager).
-# CUDAGRAPH=1 -> drop enforce-eager and enable piecewise compiled cudagraphs
-# for the V2 hybrid kernel path. CUDAGRAPH_MODE overrides the mode string.
+# CUDAGRAPH=1 -> drop enforce-eager and enable compiled cudagraphs for the V2
+# hybrid kernel path. Default mode FULL_AND_PIECEWISE (FULL decode graph = one
+# replay/forward; the sparse-MLA-SM120 backend supports it). Do NOT use plain
+# PIECEWISE: on this PP4/batch-1 latency-bound decode its per-segment replay
+# loop is net-NEGATIVE (measured -15..-20% for MTP). See CUDAGRAPH_PROGRESS.md.
 GRAPH_FLAGS=(--enforce-eager)
 if [ "${CUDAGRAPH:-0}" = "1" ]; then
-  CGMODE="${CUDAGRAPH_MODE:-PIECEWISE}"
+  CGMODE="${CUDAGRAPH_MODE:-FULL_AND_PIECEWISE}"
   GRAPH_FLAGS=(--compilation-config '{"mode": 3, "cudagraph_mode": "'"$CGMODE"'"}')
 fi
 

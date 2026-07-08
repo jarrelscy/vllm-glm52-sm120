@@ -82,12 +82,16 @@ if [ "$SPEC" = 2 ]; then NUM_SPEC="${NUM_SPEC_ENV:-2}"; else NUM_SPEC="${NUM_SPE
 MAXLEN="${MAXLEN:-$DEFLEN}"
 
 # CUDA graphs (V2 hybrid kernel is graph-safe via torch.library custom ops).
-# Default = --enforce-eager (safe). CUDAGRAPH=1 -> compiled cudagraphs.
-# Use FULL_AND_PIECEWISE (single full-graph replay per decode forward): measured
-# uniformly >= eager for MTP ns=2 (+1..3%). Plain PIECEWISE is net-NEGATIVE here
-# (per-segment replay loop on PP4/batch-1 latency-bound decode) — do NOT use it.
+# FULL_AND_PIECEWISE = one full-graph replay per decode forward (plain PIECEWISE is
+# net-NEGATIVE — per-segment replay loop — do NOT use it).
+# DEFAULT is per-mode: ON for TP configs, OFF for pure-PP. Graphs amortize TP's
+# all-reduce/launch overhead spectacularly (measured @32K: tp4-dspark +25% ->74.6,
+# tp2pp2 +54%, tp4-base +180%, tp2pp2-mtp +16-22%) but do ~nothing for pure-PP
+# (bubble-bound: pp4 +0-2%). Override with CUDAGRAPH=0/1.
+case "$PAR" in *tensor-parallel-size*) CG_DEFAULT=1 ;; *) CG_DEFAULT=0 ;; esac
+CUDAGRAPH="${CUDAGRAPH:-$CG_DEFAULT}"
 GRAPH_FLAGS=(--enforce-eager)
-if [ "${CUDAGRAPH:-0}" = 1 ]; then
+if [ "$CUDAGRAPH" = 1 ]; then
   GRAPH_FLAGS=(--compilation-config \
     "{\"mode\": 3, \"cudagraph_mode\": \"${CUDAGRAPH_MODE:-FULL_AND_PIECEWISE}\"}")
 fi
@@ -114,5 +118,5 @@ elif [ "$SPEC" = 2 ]; then
   ARGS+=(--speculative-config "{\"method\": \"deepseek_mtp\", \"num_speculative_tokens\": $NUM_SPEC}")
 fi
 
-echo ">> GLM-5.2 SM120  PARALLEL=$PARALLEL  MAXLEN=$MAXLEN  util=$UTIL  spec=$SPEC  draft_tp=${DRAFT_TP:-1}  served=${SERVED_NAME:-glm-5.2}  model=$MODEL_DIR"
+echo ">> GLM-5.2 SM120  PARALLEL=$PARALLEL  MAXLEN=$MAXLEN  util=$UTIL  graph=$CUDAGRAPH  spec=$SPEC  draft_tp=${DRAFT_TP:-1}  served=${SERVED_NAME:-glm-5.2}  model=$MODEL_DIR"
 exec "${ARGS[@]}" "$@"

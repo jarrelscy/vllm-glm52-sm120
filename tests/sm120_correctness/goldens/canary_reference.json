@@ -1,0 +1,13 @@
+{
+ "questions": {
+  "gpqa-79": {"gold": "A", "ref_depth": 11000},
+  "gpqa-36": {"gold": "D", "ref_depth": 17000},
+  "gpqa-13": {"gold": "D", "ref_depth": 24000}
+ },
+ "gates": {
+  "depth_frac": 0.6,
+  "min_stop_tokens": 8000,
+  "max_tokens": 40000
+ },
+ "note": "ref_depth values are the documented known-good depths (gpqa-79 ~10-12k, gpqa-36 ~17-27k, gpqa-13 ~24k); re-measure with test_reasoning_canary.py --capture-golden against a TRUSTED config. Gold letters derive from the seeded shuffle (random.Random(0)) over gpqa_diamond.csv and are sanity-checked at runtime."
+}

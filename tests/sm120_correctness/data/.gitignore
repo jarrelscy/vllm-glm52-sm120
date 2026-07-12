@@ -1,0 +1,4 @@
+# GPQA question text must never be committed (public-remote fork +
+# dataset contamination policy). Copy gpqa_diamond.csv here locally.
+*
+!.gitignore

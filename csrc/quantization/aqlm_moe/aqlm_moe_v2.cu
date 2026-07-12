@@ -363,6 +363,302 @@ __global__ void HybridMatVecMoE(
 }
 
 // ---------------------------------------------------------------------------
+// V3 fused hybrid kernel (DECODE-K, env-gated default-OFF):
+//   GLM_MOE_DEDUP=1     cross-slot expert dedup. Slots routed to the same
+//     (format, expert) repeat identical codebook gathers / weight reads /
+//     fp4 decodes. A leader block (occurrence index % UMAX == 0 in slot
+//     order) computes up to UMAX=4 duplicate slots with ONE weight stream
+//     and per-slot activation buffers; follower blocks exit. Grid shape is
+//     unchanged (graph-safe); election is a 2*n_slots-int scan per block.
+//   GLM_MOE_LANE_ROWS=1 rows-per-warp grouping for small-K projections
+//     (w2: K=512). When the NVFP4 row stride s = K/32 is a power of two
+//     <= 16, lanes are split into R = 32/s groups of G = s lanes, each
+//     group owning one row (AQLM uses the first G/2 lanes of a group).
+//     Removes the 50-75% idle lanes of the w2 gemv.
+// BIT-EXACTNESS: per (slot, row) the per-lane fp16/fp32 accumulation
+// content and order are IDENTICAL to the V2 kernel; the within-group
+// shuffle tree (offsets G/2..1) has the same fp32 pairing as the V2
+// 32-lane tree over zero-padded idle lanes (adds of +0.0 only, and res is
+// never -0.0 since it accumulates from +0.0). Dedup only shares loaded
+// bytes, never arithmetic between slots.
+// ---------------------------------------------------------------------------
+template <int BOOKS, int UMAX>
+__device__ __forceinline__ void aqlm_multi_gemv(
+    const int4* __restrict__ codes, const int4* __restrict__ codebooks,
+    const half* __restrict__ scales, const int expert,
+    const int4* __restrict__ B_all, half* __restrict__ C,
+    const int* __restrict__ slots_u, const int U, const int prob_m,
+    const int prob_k, int4* sh_b, const int row0, const int G) {
+  const int lane = threadIdx.x % 32;
+  const int g = lane / G;        // row group within the warp
+  const int tt = lane - g * G;   // in-group lane
+  const int row = row0 + g;
+  const bool pred = row < prob_m;
+  const int a_gl_stride = prob_k / 8 / 8;
+  const int4* a_base[BOOKS];
+#pragma unroll
+  for (int b = 0; b < BOOKS; b++) {
+    a_base[b] = codes + ((int64_t)expert * BOOKS + b) * prob_m * a_gl_stride;
+  }
+  int b_gl_rd = 0;
+  int a_rd = a_gl_stride * row + tt;
+  const int a_end = a_gl_stride * row + a_gl_stride;
+  const uint4* cb = reinterpret_cast<const uint4*>(codebooks);
+
+  float res[UMAX];
+#pragma unroll
+  for (int su = 0; su < UMAX; su++) res[su] = 0.f;
+
+  int iters = (prob_k / 8 + 8 * 32 - 1) / (8 * 32);
+  while (iters--) {
+    __syncthreads();
+    for (int i = threadIdx.x; i < 32 * 8 * UMAX; i += blockDim.x) {
+      const int su = i / 256, ii = i - su * 256;
+      if (su < U && b_gl_rd + ii < prob_k / 8) {
+        sh_b[su * 288 + 9 * (ii / 8) + ii % 8] =
+            B_all[(int64_t)slots_u[su] * (prob_k / 8) + b_gl_rd + ii];
+      }
+    }
+    __syncthreads();
+    b_gl_rd += 32 * 8;
+
+    if (pred && a_rd < a_end) {
+      union alignas(16) {
+        int4 raw;
+        uint16_t u16[8];
+      } enc[BOOKS];
+#pragma unroll
+      for (int b = 0; b < BOOKS; b++) enc[b].raw = __ldg(&a_base[b][a_rd]);
+
+#pragma unroll
+      for (int i0 = 0; i0 < 8; i0 += AQLM_MLP) {
+        uint4 w[AQLM_MLP][BOOKS];
+#pragma unroll
+        for (int u = 0; u < AQLM_MLP; u++) {
+#pragma unroll
+          for (int b = 0; b < BOOKS; b++) {
+            w[u][b] = ld_cb(cb + (int64_t)b * 65536 + enc[b].u16[i0 + u]);
+          }
+        }
+#pragma unroll
+        for (int u = 0; u < AQLM_MLP; u++) {
+          half2 wsum[4];
+          const half2* a0 = reinterpret_cast<const half2*>(&w[u][0]);
+#pragma unroll
+          for (int j = 0; j < 4; j++) wsum[j] = a0[j];
+          if (BOOKS == 2) {
+            const half2* a1 = reinterpret_cast<const half2*>(&w[u][BOOKS - 1]);
+#pragma unroll
+            for (int j = 0; j < 4; j++) wsum[j] = __hadd2(wsum[j], a1[j]);
+          }
+#pragma unroll
+          for (int su = 0; su < UMAX; su++) {
+            if (su < U) {
+              const half2* bb = reinterpret_cast<const half2*>(
+                  &sh_b[su * 288 + 9 * tt + i0 + u]);
+              half2 res2 = {};
+#pragma unroll
+              for (int j = 0; j < 4; j++) res2 = __hfma2(wsum[j], bb[j], res2);
+              res[su] += __half2float(res2.x) + __half2float(res2.y);
+            }
+          }
+        }
+      }
+      a_rd += 32;
+    }
+  }
+
+#pragma unroll
+  for (int su = 0; su < UMAX; su++) {
+    if (su < U) {
+      float r = res[su];
+      for (int off = G / 2; off > 0; off /= 2) {
+        r += __shfl_down_sync(0xffffffff, r, off);
+      }
+      if (pred && tt == 0) {
+        const float s = __half2float(scales[(int64_t)expert * prob_m + row]);
+        C[(int64_t)slots_u[su] * prob_m + row] = __float2half(r * s);
+      }
+    }
+  }
+}
+
+template <int UMAX>
+__device__ __forceinline__ void nvfp4_multi_gemv(
+    const int4* __restrict__ packed, const uchar2* __restrict__ bscale,
+    const float* __restrict__ scale2, const int s2n, const int expert,
+    const int4* __restrict__ B_all, half* __restrict__ C,
+    const int* __restrict__ slots_u, const int U, const int prob_m,
+    const int prob_k, int4* sh_b, const int row0, const int G) {
+  const int lane = threadIdx.x % 32;
+  const int g = lane / G;
+  const int tt = lane - g * G;
+  const int row = row0 + g;
+  const bool pred = row < prob_m;
+  const int a_gl_stride = prob_k / 32;
+  const uint4* a_row = reinterpret_cast<const uint4*>(
+      packed + ((int64_t)expert * prob_m + row) * a_gl_stride);
+  const uchar2* s_row =
+      bscale + ((int64_t)expert * prob_m + row) * a_gl_stride;
+
+#if NVFP4_LUT256
+  half2* lut = reinterpret_cast<half2*>(sh_b + UMAX * 288);
+  nvfp4_fill_lut(lut);  // synced by the first staging barrier below
+#endif
+
+  float res[UMAX];
+#pragma unroll
+  for (int su = 0; su < UMAX; su++) res[su] = 0.f;
+
+  int iters = (prob_k / 8 + 4 * 32 - 1) / (4 * 32);
+  int b_gl_rd = 0;
+  int a_rd = tt;
+  bool have = pred && a_rd < a_gl_stride;
+  uint4 w_cur = {};
+  uchar2 bs_cur = {};
+  if (have) {
+    w_cur = a_row[a_rd];
+    bs_cur = s_row[a_rd];
+  }
+
+  while (iters--) {
+    __syncthreads();
+    for (int i = threadIdx.x; i < 32 * 4 * UMAX; i += blockDim.x) {
+      const int su = i / 128, ii = i - su * 128;
+      if (su < U && b_gl_rd + ii < prob_k / 8) {
+        sh_b[su * 288 + ii] =
+            B_all[(int64_t)slots_u[su] * (prob_k / 8) + b_gl_rd + ii];
+      }
+    }
+    __syncthreads();
+    b_gl_rd += 32 * 4;
+
+    if (have) {
+      const int a_nx = a_rd + 32;
+      const bool have_nx = a_nx < a_gl_stride;
+      uint4 w_nx = {};
+      uchar2 bs_nx = {};
+      if (have_nx) {
+        w_nx = a_row[a_nx];
+        bs_nx = s_row[a_nx];
+      }
+#pragma unroll
+      for (int su = 0; su < UMAX; su++) {
+        if (su < U) {
+          const half2* bb =
+              reinterpret_cast<const half2*>(&sh_b[su * 288 + tt * 4]);
+#if NVFP4_LUT256
+          res[su] += nvfp4_chunk_dot_lut(w_cur, bs_cur, bb, lut);
+#else
+          res[su] += nvfp4_chunk_dot(w_cur, bs_cur, bb);
+#endif
+        }
+      }
+      a_rd = a_nx;
+      w_cur = w_nx;
+      bs_cur = bs_nx;
+      have = have_nx;
+    }
+  }
+
+#pragma unroll
+  for (int su = 0; su < UMAX; su++) {
+    if (su < U) {
+      float r = res[su];
+      for (int off = G / 2; off > 0; off /= 2) {
+        r += __shfl_down_sync(0xffffffff, r, off);
+      }
+      if (pred && tt == 0) {
+        const float gsc =
+            scale2[expert * s2n + (int)(((int64_t)row * s2n) / prob_m)];
+        C[(int64_t)slots_u[su] * prob_m + row] = __float2half(r * gsc);
+      }
+    }
+  }
+}
+
+template <int BOOKS, int UMAX>
+__global__ void HybridMatVecMoEV3(
+    const int4* __restrict__ codes, const int4* __restrict__ codebooks,
+    const half* __restrict__ scales, const int* __restrict__ aqlm_ids,
+    const int4* __restrict__ packed, const uchar2* __restrict__ bscale,
+    const float* __restrict__ scale2, const int s2n,
+    const int* __restrict__ nv_ids, const int4* __restrict__ B_all,
+    half* __restrict__ C, const int prob_m, const int prob_k,
+    const int n_slots, const int G) {
+  const int slot = blockIdx.y;
+  const int my_a = __ldg(&aqlm_ids[slot]);
+  const int my_n = __ldg(&nv_ids[slot]);
+  const int fmt = my_a >= 0 ? 0 : (my_n >= 0 ? 1 : 2);
+  const int key = fmt == 0 ? my_a : (fmt == 1 ? my_n : -1);
+
+  int slots_u[UMAX];
+  slots_u[0] = slot;
+  int U = 1;
+  __shared__ int s_meta[UMAX > 1 ? UMAX : 1];  // [0]=U or -1, [1..]=slots
+  if (UMAX > 1) {
+    // Leader election in slot order (occurrence index of (fmt, key)),
+    // computed ONCE by thread 0 and broadcast via smem: a per-thread scan
+    // costs ~400M redundant L1TEX loads across the w2 grid (measured 2x
+    // kernel-time regression before this fix).
+    if (threadIdx.x == 0) {
+      int occ = 0;
+      for (int j = 0; j < slot; j++) {
+        const int ja = __ldg(&aqlm_ids[j]);
+        const int jn = __ldg(&nv_ids[j]);
+        const int jf = ja >= 0 ? 0 : (jn >= 0 ? 1 : 2);
+        const int jk = jf == 0 ? ja : (jf == 1 ? jn : -1);
+        occ += (jf == fmt) & (jk == key);
+      }
+      if (occ % UMAX) {
+        s_meta[0] = -1;  // follower block: leader writes our output
+      } else {
+        int u = 1;
+        for (int j = slot + 1; j < n_slots && u < UMAX; j++) {
+          const int ja = __ldg(&aqlm_ids[j]);
+          const int jn = __ldg(&nv_ids[j]);
+          const int jf = ja >= 0 ? 0 : (jn >= 0 ? 1 : 2);
+          const int jk = jf == 0 ? ja : (jf == 1 ? jn : -1);
+          if ((jf == fmt) & (jk == key)) s_meta[u++] = j;
+        }
+        s_meta[0] = u;
+      }
+    }
+    __syncthreads();
+    U = s_meta[0];
+    if (U < 0) return;  // uniform across the block (same smem value)
+#pragma unroll
+    for (int su = 1; su < UMAX; su++) {
+      if (su < U) slots_u[su] = s_meta[su];
+    }
+  }
+
+  const int R = 32 / G;
+  const int row0 = ((blockDim.x / 32) * blockIdx.x + (threadIdx.x / 32)) * R;
+  __shared__ int4 sh_b[UMAX * 288 + (NVFP4_SMEM_EXTRA + 3) / 4];
+
+  if (fmt == 0) {
+    aqlm_multi_gemv<BOOKS, UMAX>(codes, codebooks, scales, my_a, B_all, C,
+                                 slots_u, U, prob_m, prob_k, sh_b, row0, G);
+  } else if (fmt == 1) {
+    nvfp4_multi_gemv<UMAX>(packed, bscale, scale2, s2n, my_n, B_all, C,
+                           slots_u, U, prob_m, prob_k, sh_b, row0, G);
+  } else {
+    const int lane = threadIdx.x % 32;
+    const int g = lane / G, tt = lane - g * G;
+    const int row = row0 + g;
+    if (row < prob_m && tt == 0) {
+#pragma unroll
+      for (int su = 0; su < UMAX; su++) {
+        if (su < U) {
+          C[(int64_t)slots_u[su] * prob_m + row] = __float2half(0.f);
+        }
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Prefill dequant kernels: copied unchanged from baseline (not decode-hot).
 // ---------------------------------------------------------------------------
 template <int BOOKS>
@@ -496,14 +792,55 @@ void launch_matvec(const int4* codes, const int4* B, half* C,
       codes, B, C, codebooks, scales, expert_ids, prob_m, prob_k);
 }
 
+static bool env_flag(const char* name) {
+  const char* e = getenv(name);
+  return e && e[0] && e[0] != '0';
+}
+
 template <int BOOKS>
 void launch_hybrid(const int4* codes, const int4* codebooks,
                    const half* scales, const int* aqlm_ids, const int4* packed,
                    const uchar2* bscale, const float* scale2, int s2n,
                    const int* nv_ids, const int4* B, half* C, int n_rows_out,
                    int prob_m, int prob_k, cudaStream_t stream) {
+  // DECODE-K features, env-gated per launch (cheap; also lets the tier-1
+  // variant harness A/B within one process), default OFF -> V2 kernel.
+  // GLM_MOE_DEDUP: 0/off | 2 = dedup pairs (UMAX=2, half the smem/regs) |
+  // any other nonzero = UMAX=4.
+  const char* de = getenv("GLM_MOE_DEDUP");
+  int kDedup = 0;
+  if (de && de[0] && de[0] != '0') {
+    kDedup = atoi(de);
+    if (kDedup <= 0) kDedup = 4;  // non-numeric truthy value -> default width
+  }
+  const bool kLaneRows = env_flag("GLM_MOE_LANE_ROWS");
   dim3 blocks;
   int threads;
+  if (kDedup || kLaneRows) {
+    static bool logged = false;
+    if (!logged) {
+      logged = true;
+      fprintf(stderr, "[aqlm_moe_v2] DECODE-K V3 kernel active: dedup=%d "
+              "lane_rows=%d\n", kDedup, (int)kLaneRows);
+    }
+    int G = 32;
+    if (kLaneRows) {
+      const int s_n = prob_k / 32;  // NVFP4 uint4s per row (2*AQLM int4s)
+      if (s_n >= 2 && s_n <= 16 && (s_n & (s_n - 1)) == 0) G = s_n;
+    }
+    const int R = 32 / G;
+    pick_grid(ceildiv(prob_m, R), n_rows_out, blocks, threads);
+    auto kern = HybridMatVecMoEV3<BOOKS, 1>;
+    if (kDedup == 2) {
+      kern = HybridMatVecMoEV3<BOOKS, 2>;
+    } else if (kDedup) {
+      kern = HybridMatVecMoEV3<BOOKS, 4>;
+    }
+    kern<<<blocks, threads, 0, stream>>>(
+        codes, codebooks, scales, aqlm_ids, packed, bscale, scale2, s2n,
+        nv_ids, B, C, prob_m, prob_k, n_rows_out, G);
+    return;
+  }
   pick_grid(prob_m, n_rows_out, blocks, threads);
   HybridMatVecMoE<BOOKS><<<blocks, threads, 0, stream>>>(
       codes, codebooks, scales, aqlm_ids, packed, bscale, scale2, s2n, nv_ids,

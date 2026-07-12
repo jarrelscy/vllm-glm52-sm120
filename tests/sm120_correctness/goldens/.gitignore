@@ -1,0 +1,3 @@
+# Per-run artifacts (not goldens): graph-parity probe files are captured
+# per candidate/boot and compared locally, never committed.
+graph_parity/

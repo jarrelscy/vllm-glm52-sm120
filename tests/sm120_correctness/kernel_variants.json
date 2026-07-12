@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "_doc": "Append an entry for EVERY env- or compile-gated kernel variant. tier1_kernel/test_kernel_variant_equivalence.py auto-discovers this file; schema in common/variant_registry.py. The shipped kernel is the reference: variants gate bit-exact (maxdiff==0) unless a tolerance is explicitly declared and justified.",
+  "variants": [
+    {
+      "name": "nvfp4_lut256",
+      "kind": "cuda_cflag",
+      "cflags": [
+        "-DNVFP4_LUT256=1"
+      ],
+      "ops": [
+        "hybrid_moe_gemv",
+        "nvfp4_moe_gemv"
+      ],
+      "bit_exact": true,
+      "notes": "Shipped-source variant: byte->half2 smem LUT instead of the SM120a cvt.rn.f16x2.e2m1x2 hardware conversion. Values are identical by construction; guards the fp4 decode table."
+    },
+    {
+      "name": "aqlm_cb_l1",
+      "kind": "cuda_cflag",
+      "cflags": [
+        "-DAQLM_CB_L1=1"
+      ],
+      "ops": [
+        "hybrid_moe_gemv",
+        "aqlm_moe_gemv"
+      ],
+      "bit_exact": true,
+      "notes": "Shipped-source variant: __ldca (L1-cached) codebook loads instead of __ldcg. Load-path-only change; exercises the machinery that will gate the L2-residency/__ldcs optimization (idea 5)."
+    },
+    {
+      "name": "pcie_custom_allreduce",
+      "kind": "python_env",
+      "env": {
+        "VLLM_PCIE_CUSTOM_AR": "1"
+      },
+      "compare": "common.decodec_hooks:pcie_custom_allreduce",
+      "bit_exact": false,
+      "deterministic": true,
+      "tolerance": {
+        "atol": 0.02,
+        "rtol": 0.02
+      },
+      "notes": "decode-C: VLLM_PCIE_CUSTOM_AR un-gates vLLM's custom CUDA-IPC P2P allreduce for 4x PCIe-only SM120 (NCCL SHM-bounces on this box). fp-reorder-class: deterministic rank-ordered sum (1stage <512KB / 2stage above) vs NCCL's ring order; the real gate is tier2 test_allreduce_equivalence's exact-fp64 reorder bound + repeat determinism, plus the 64K NLL envelope. Tolerance here covers the tier1 trivial pass (comms variant has no single-GPU content)."
+    },
+    {
+      "name": "aqlm_mlp4",
+      "kind": "cuda_cflag",
+      "cflags": [
+        "-DAQLM_MLP=4"
+      ],
+      "ops": [
+        "hybrid_moe_gemv",
+        "aqlm_moe_gemv"
+      ],
+      "bit_exact": true,
+      "notes": "Shipped-source variant: codebook gathers batched 4 instead of 8 in flight. Load scheduling only; arithmetic order unchanged, so bit-exactness is REQUIRED (regression tripwire for anyone touching the gather batching)."
+    },
+    {
+      "name": "moe_dedup",
+      "kind": "python_env",
+      "env": {
+        "GLM_MOE_DEDUP": "1"
+      },
+      "compare": "common.decodek_hooks:moe_dedup",
+      "bit_exact": true,
+      "notes": "DECODE-K: cross-slot expert dedup in hybrid_moe_gemv (V3 kernel). Leader block computes up to 4 slots sharing (format, expert) with one weight/gather stream; per-slot accumulation content, order and shuffle tree unchanged -> bit-exact REQUIRED."
+    },
+    {
+      "name": "moe_lane_rows",
+      "kind": "python_env",
+      "env": {
+        "GLM_MOE_LANE_ROWS": "1"
+      },
+      "compare": "common.decodek_hooks:moe_lane_rows",
+      "bit_exact": true,
+      "notes": "DECODE-K: rows-per-warp grouping for small-K (w2) projections in hybrid_moe_gemv (V3 kernel). Lane groups of G=K/32 own one row each; within-group shuffle tree (offsets G/2..1) has identical fp32 pairing to the 32-lane tree over zero lanes -> bit-exact REQUIRED."
+    },
+    {
+      "name": "moe_dedup_lane_rows",
+      "kind": "python_env",
+      "env": {
+        "GLM_MOE_DEDUP": "1",
+        "GLM_MOE_LANE_ROWS": "1"
+      },
+      "compare": "common.decodek_hooks:moe_dedup_lane_rows",
+      "bit_exact": true,
+      "notes": "DECODE-K: both V3 features stacked (the intended production setting)."
+    }
+  ]
+}

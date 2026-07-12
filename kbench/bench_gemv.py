@@ -159,8 +159,13 @@ def main():
             w["w2_packed"], w["w2_bscale"], w["w2_scale2"], n_ids)))
 
     if args.check:
-        ref = build("/home/jarrelscy/glm52/vllm/csrc/quantization/aqlm_moe/"
-                    "aqlm_moe_v2.cu", "kb_ref_shipped", [])
+        ref_src = os.environ.get(
+            "KB_REF_SRC",
+            "/shipped/csrc/quantization/aqlm_moe/aqlm_moe_v2.cu")
+        if not pathlib.Path(ref_src).exists():
+            ref_src = ("/home/jarrelscy/glm52/vllm/csrc/quantization/"
+                       "aqlm_moe/aqlm_moe_v2.cu")
+        ref = build(ref_src, "kb_ref_shipped", [])
         for nm, fn in runs:
             got = fn()
             x = x13 if nm.strip() == "w13" else x2

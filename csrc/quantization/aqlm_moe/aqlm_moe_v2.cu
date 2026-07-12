@@ -595,23 +595,41 @@ __global__ void HybridMatVecMoEV3(
   int slots_u[UMAX];
   slots_u[0] = slot;
   int U = 1;
+  __shared__ int s_meta[UMAX > 1 ? UMAX : 1];  // [0]=U or -1, [1..]=slots
   if (UMAX > 1) {
-    // Leader election in slot order: occurrence index of (fmt, key).
-    int occ = 0;
-    for (int j = 0; j < slot; j++) {
-      const int ja = __ldg(&aqlm_ids[j]);
-      const int jn = __ldg(&nv_ids[j]);
-      const int jf = ja >= 0 ? 0 : (jn >= 0 ? 1 : 2);
-      const int jk = jf == 0 ? ja : (jf == 1 ? jn : -1);
-      occ += (jf == fmt) & (jk == key);
+    // Leader election in slot order (occurrence index of (fmt, key)),
+    // computed ONCE by thread 0 and broadcast via smem: a per-thread scan
+    // costs ~400M redundant L1TEX loads across the w2 grid (measured 2x
+    // kernel-time regression before this fix).
+    if (threadIdx.x == 0) {
+      int occ = 0;
+      for (int j = 0; j < slot; j++) {
+        const int ja = __ldg(&aqlm_ids[j]);
+        const int jn = __ldg(&nv_ids[j]);
+        const int jf = ja >= 0 ? 0 : (jn >= 0 ? 1 : 2);
+        const int jk = jf == 0 ? ja : (jf == 1 ? jn : -1);
+        occ += (jf == fmt) & (jk == key);
+      }
+      if (occ % UMAX) {
+        s_meta[0] = -1;  // follower block: leader writes our output
+      } else {
+        int u = 1;
+        for (int j = slot + 1; j < n_slots && u < UMAX; j++) {
+          const int ja = __ldg(&aqlm_ids[j]);
+          const int jn = __ldg(&nv_ids[j]);
+          const int jf = ja >= 0 ? 0 : (jn >= 0 ? 1 : 2);
+          const int jk = jf == 0 ? ja : (jf == 1 ? jn : -1);
+          if ((jf == fmt) & (jk == key)) s_meta[u++] = j;
+        }
+        s_meta[0] = u;
+      }
     }
-    if (occ % UMAX) return;  // follower block: leader writes our output
-    for (int j = slot + 1; j < n_slots && U < UMAX; j++) {
-      const int ja = __ldg(&aqlm_ids[j]);
-      const int jn = __ldg(&nv_ids[j]);
-      const int jf = ja >= 0 ? 0 : (jn >= 0 ? 1 : 2);
-      const int jk = jf == 0 ? ja : (jf == 1 ? jn : -1);
-      if ((jf == fmt) & (jk == key)) slots_u[U++] = j;
+    __syncthreads();
+    U = s_meta[0];
+    if (U < 0) return;  // uniform across the block (same smem value)
+#pragma unroll
+    for (int su = 1; su < UMAX; su++) {
+      if (su < U) slots_u[su] = s_meta[su];
     }
   }
 
@@ -787,7 +805,14 @@ void launch_hybrid(const int4* codes, const int4* codebooks,
                    int prob_m, int prob_k, cudaStream_t stream) {
   // DECODE-K features, env-gated per launch (cheap; also lets the tier-1
   // variant harness A/B within one process), default OFF -> V2 kernel.
-  const bool kDedup = env_flag("GLM_MOE_DEDUP");
+  // GLM_MOE_DEDUP: 0/off | 2 = dedup pairs (UMAX=2, half the smem/regs) |
+  // any other nonzero = UMAX=4.
+  const char* de = getenv("GLM_MOE_DEDUP");
+  int kDedup = 0;
+  if (de && de[0] && de[0] != '0') {
+    kDedup = atoi(de);
+    if (kDedup <= 0) kDedup = 4;  // non-numeric truthy value -> default width
+  }
   const bool kLaneRows = env_flag("GLM_MOE_LANE_ROWS");
   dim3 blocks;
   int threads;
@@ -799,15 +824,15 @@ void launch_hybrid(const int4* codes, const int4* codebooks,
     }
     const int R = 32 / G;
     pick_grid(ceildiv(prob_m, R), n_rows_out, blocks, threads);
-    if (kDedup) {
-      HybridMatVecMoEV3<BOOKS, 4><<<blocks, threads, 0, stream>>>(
-          codes, codebooks, scales, aqlm_ids, packed, bscale, scale2, s2n,
-          nv_ids, B, C, prob_m, prob_k, n_rows_out, G);
-    } else {
-      HybridMatVecMoEV3<BOOKS, 1><<<blocks, threads, 0, stream>>>(
-          codes, codebooks, scales, aqlm_ids, packed, bscale, scale2, s2n,
-          nv_ids, B, C, prob_m, prob_k, n_rows_out, G);
+    auto kern = HybridMatVecMoEV3<BOOKS, 1>;
+    if (kDedup == 2) {
+      kern = HybridMatVecMoEV3<BOOKS, 2>;
+    } else if (kDedup) {
+      kern = HybridMatVecMoEV3<BOOKS, 4>;
     }
+    kern<<<blocks, threads, 0, stream>>>(
+        codes, codebooks, scales, aqlm_ids, packed, bscale, scale2, s2n,
+        nv_ids, B, C, prob_m, prob_k, n_rows_out, G);
     return;
   }
   pick_grid(prob_m, n_rows_out, blocks, threads);

@@ -12,10 +12,12 @@ would violate FIRST.
   bytes [512, 528): 4x fp32 per-tile scales (tile i at 512 + 4*i)
   bytes [528, 656): 64x 16-bit RoPE values, copied verbatim
 
-Scale semantics: tile_scale = max( max|x_tile| / 448, FLT_MIN ) — an
-ARBITRARY fp32.  A pow2-truncated (ue8m0-style) scale here is exactly
-the SM100 hypothesis-space regression; we assert the stored scale equals
-the fp32 division result bit-for-bit and is NOT its pow2 truncation.
+Scale semantics (2026-07-12, commit 2dce07864): tile_scale = the SMALLEST
+POWER OF TWO >= max( max|x_tile| / 448, FLT_MIN ).  Pow2 storage makes the
+SM100 FlashMLA e8m0 scale read lossless (its truncation of an arbitrary
+fp32 scale to 2^floor(log2) was the SM100 decode-corruption bug) while the
+SM120 arbitrary-fp32 read path reads the same stored value exactly.  We pin
+pow2-ness, the >= bound (no fp8 saturation), and minimality (< 2x raw).
 
 Requires the compiled vLLM _C ops (run inside the glm52-sm120 container).
 """
@@ -157,11 +159,15 @@ def test_bytes_match_reference(cache_op, gpu):
         assert np.array_equal(got[528:], ref[528:])
 
 
-def test_scales_are_arbitrary_fp32_not_pow2(cache_op, gpu):
-    """(b) The SM100 hypothesis-space regression: scales must NOT be
-    pow2-truncated (ue8m0-style)."""
+def test_scales_are_pow2_rounded_up(cache_op, gpu):
+    """(b) Scale convention pin (2026-07-12, commit 2dce07864): stored per-tile
+    scales are the SMALLEST POWER OF TWO >= max_abs/448.  Exact pow2 storage
+    makes SM100 FlashMLA's e8m0 scale read lossless while the SM120
+    arbitrary-fp32 read path reads the same value exactly.  A stored scale that
+    is NOT a pow2, or that is below max_abs/448 (would saturate fp8), or more
+    than 2x above it (over-rounded), is a regression."""
     g = np.random.default_rng(3)
-    # values chosen so max_abs/448 has an odd mantissa (never a pow2)
+    # values chosen so max_abs/448 has an odd mantissa (never already a pow2)
     kv = _bf16((g.random((4, KV_LORA)).astype(np.float32) + 0.5) * 3.1416)
     pe = _bf16(g.standard_normal((4, PE_DIM)).astype(np.float32))
     cache = _write(cache_op, gpu, kv, pe, [0, 1, 2, 3])
@@ -170,17 +176,19 @@ def test_scales_are_arbitrary_fp32_not_pow2(cache_op, gpu):
         scales = e[512:528].view(np.float32)
         for t in range(4):
             vals = kv[tok].astype(np.float32)[t * 128:(t + 1) * 128]
-            expect = np.maximum(
+            raw = np.maximum(
                 (np.float32(np.max(np.abs(vals))) / np.float32(448.0))
                 .astype(F32), FLT_MIN)
-            assert scales[t] == expect, \
-                (f"tile {t}: stored scale {scales[t]!r} != max_abs/448 "
-                 f"{expect!r} — scale semantics changed")
             frac, _ = math.frexp(float(scales[t]))
-            assert frac != 0.5, \
-                (f"tile {t}: scale {scales[t]!r} is a power of two on "
-                 "non-pow2 input — looks pow2-TRUNCATED (ue8m0 regression, "
-                 "the SM100 bug class)")
+            assert frac == 0.5, \
+                (f"tile {t}: stored scale {scales[t]!r} is not a power of two "
+                 "— pow2 KV-scale convention regressed")
+            assert scales[t] >= raw, \
+                (f"tile {t}: pow2 scale {scales[t]!r} < max_abs/448 {raw!r} "
+                 "— fp8 quotient would saturate")
+            assert scales[t] < 2.0 * raw, \
+                (f"tile {t}: pow2 scale {scales[t]!r} not the SMALLEST pow2 "
+                 f">= {raw!r} — over-rounded")
 
 
 def test_roundtrip_error_bounds(cache_op, gpu):

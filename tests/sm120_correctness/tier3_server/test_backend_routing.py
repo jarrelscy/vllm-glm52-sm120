@@ -42,11 +42,13 @@ REPO_ROOT = _SUITE.parents[1]
 
 
 def test_sm120_priority_list():
-    vllm_cuda = pytest.importorskip(
-        "vllm.platforms.cuda",
-        reason="needs importable vllm (glm52-sm120 container)")
-    from vllm.platforms.interface import DeviceCapability
-    from vllm.v1.attention.backends.registry import AttentionBackendEnum
+    try:
+        from vllm.platforms import cuda as vllm_cuda
+        from vllm.platforms.interface import DeviceCapability
+        from vllm.v1.attention.backends.registry import AttentionBackendEnum
+    except ImportError as e:  # incl. missing libcuda in CPU-only sandboxes
+        pytest.skip(f"needs importable vllm with CUDA libs "
+                    f"(glm52-sm120 container with --gpus): {e}")
 
     got = vllm_cuda._get_backend_priorities(
         use_mla=True,
@@ -73,9 +75,11 @@ def test_sm120_priority_list():
 
 
 def test_sm120_backend_class_contract():
-    pytest.importorskip("vllm")
-    from vllm.platforms.interface import DeviceCapability
-    from vllm.v1.attention.backends.registry import AttentionBackendEnum
+    try:
+        from vllm.platforms.interface import DeviceCapability
+        from vllm.v1.attention.backends.registry import AttentionBackendEnum
+    except ImportError as e:
+        pytest.skip(f"needs importable vllm: {e}")
 
     cls = AttentionBackendEnum.FLASHINFER_MLA_SPARSE_SM120.get_class()
     assert cls.get_name() == "FLASHINFER_MLA_SPARSE_SM120"

@@ -1,0 +1,23 @@
+{
+ "w13_small-all_aqlm-S4-b1": {
+  "plain": "2b7dd1a40a3f0389d123569aae36cc60f2532614ed8b0af76e6c073d9df7d5bb"
+ },
+ "w13_small-all_aqlm-S4-b2": {
+  "plain": "e751457558218a4ebceec849f83caf8cf23bd17fcef54415aced01f84bf6bd3e"
+ },
+ "w2_small-all_aqlm-S2-b2": {
+  "plain": "b55ece935d4e737d761c01deabf3a2f9cee8d1426d96e4730038cece9722b374"
+ },
+ "w13_small-all_nvfp4-S4-b1": {
+  "plain": "bcce7f803426d233751466e8dfa40e773a866afd023539636fc4e04c00883aa0",
+  "fma_b": "bcce7f803426d233751466e8dfa40e773a866afd023539636fc4e04c00883aa0",
+  "fma_a": "bcce7f803426d233751466e8dfa40e773a866afd023539636fc4e04c00883aa0",
+  "fma_chain": "bcce7f803426d233751466e8dfa40e773a866afd023539636fc4e04c00883aa0"
+ },
+ "w2_small-mixed-S8-b1": {
+  "plain": "1e17864a215af536ea629657cc9c9596f9df346ef5487c3e123a2638ae9478fa",
+  "fma_b": "1e17864a215af536ea629657cc9c9596f9df346ef5487c3e123a2638ae9478fa",
+  "fma_a": "1e17864a215af536ea629657cc9c9596f9df346ef5487c3e123a2638ae9478fa",
+  "fma_chain": "1e17864a215af536ea629657cc9c9596f9df346ef5487c3e123a2638ae9478fa"
+ }
+}

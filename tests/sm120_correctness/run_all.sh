@@ -65,7 +65,7 @@ run_pytest() {
   [ -n "$KEXPR" ] && kargs="-k $KEXPR"
   if in_container; then
     ( source /opt/vllm/.venv/bin/activate
-      python -m pytest --version >/dev/null 2>&1 || pip install -q pytest
+      python -m pytest --version >/dev/null 2>&1 || (uv pip install -q pytest 2>/dev/null || python -m pip install -q pytest)
       cd "$SUITE_DIR"
       env GLM_SM120_TESTS=1 $extra_env PYTHONPATH="$REPO_ROOT:$SUITE_DIR" \
         python -m pytest $target -v --junitxml="$junit" $kargs )
@@ -73,10 +73,10 @@ run_pytest() {
     docker run --rm $gpuargs --shm-size 8g --entrypoint /bin/bash \
       -v "$REPO_ROOT:/work" \
       -v "${TORCH_EXT_CACHE:-$HOME/.cache/sm120_test_ext}:/root/.cache/torch_extensions" \
-      -e GLM_SM120_TESTS=1 ${QUICK:+-e GLM_SM120_QUICK=1} \
+      -e GLM_SM120_TESTS=1 -e PYTHONDONTWRITEBYTECODE=1 ${QUICK:+-e GLM_SM120_QUICK=1} \
       "$IMAGE" -c "
         source /opt/vllm/.venv/bin/activate
-        python -m pytest --version >/dev/null 2>&1 || pip install -q pytest
+        python -m pytest --version >/dev/null 2>&1 || (uv pip install -q pytest 2>/dev/null || python -m pip install -q pytest)
         cd /work/tests/sm120_correctness
         env $extra_env PYTHONPATH=/work:/work/tests/sm120_correctness \
           python -m pytest $target -v \

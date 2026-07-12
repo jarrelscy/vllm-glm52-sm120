@@ -56,12 +56,12 @@ EOF
   }
   if [ -d /opt/vllm/.venv ]; then
     source /opt/vllm/.venv/bin/activate
-    python -c "import pytest" 2>/dev/null || pip install -q pytest
+    python -c "import pytest" 2>/dev/null || (uv pip install -q pytest 2>/dev/null || python -m pip install -q pytest)
     gen "$REPO_ROOT"
   else
     docker run --rm --entrypoint /bin/bash -v "$REPO_ROOT:/work" "$IMAGE" -c \
       "source /opt/vllm/.venv/bin/activate && \
-       (python -c 'import pytest' 2>/dev/null || pip install -q pytest) && \
+       (python -c 'import pytest' 2>/dev/null || (uv pip install -q pytest 2>/dev/null || python -m pip install -q pytest)) && \
        cd /work/tests/sm120_correctness && \
        PYTHONPATH=.:tier1_kernel python -c '
 import json, sys

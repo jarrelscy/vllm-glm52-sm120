@@ -23,7 +23,7 @@ else
     -e GLM_SM120_TESTS=1 -e GLM_SM120_DIST_TESTS=1 \
     "$IMAGE" -c "
       source /opt/vllm/.venv/bin/activate &&
-      python -m pytest --version >/dev/null 2>&1 || pip install -q pytest &&
+      python -m pytest --version >/dev/null 2>&1 || (uv pip install -q pytest 2>/dev/null || python -m pip install -q pytest) &&
       cd /work/tests/sm120_correctness &&
       PYTHONPATH=/work:/work/tests/sm120_correctness \
       torchrun --standalone --nproc-per-node $NPROC -m pytest tier2_dist/ -v $*"

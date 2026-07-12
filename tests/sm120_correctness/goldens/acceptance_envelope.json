@@ -1,0 +1,7 @@
+{
+ "overall": [0.72, 0.86],
+ "p0": [0.78, 0.94],
+ "raw_rates": [],
+ "raw_p0": [],
+ "note": "DEFAULT band derived from the documented baseline (tp4-1m-mtp ns=3: overall run-to-run 0.76-0.82, p0~0.86) widened by 0.04. Re-measure with test_mtp_acceptance_envelope.py --capture-golden on a known-good boot to tighten."
+}

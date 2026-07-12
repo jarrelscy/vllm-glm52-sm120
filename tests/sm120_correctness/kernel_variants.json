@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "_doc": "Append an entry for EVERY env- or compile-gated kernel variant. tier1_kernel/test_kernel_variant_equivalence.py auto-discovers this file; schema in common/variant_registry.py. The shipped kernel is the reference: variants gate bit-exact (maxdiff==0) unless a tolerance is explicitly declared and justified.",
+  "variants": [
+    {
+      "name": "nvfp4_lut256",
+      "kind": "cuda_cflag",
+      "cflags": ["-DNVFP4_LUT256=1"],
+      "ops": ["hybrid_moe_gemv", "nvfp4_moe_gemv"],
+      "bit_exact": true,
+      "notes": "Shipped-source variant: byte->half2 smem LUT instead of the SM120a cvt.rn.f16x2.e2m1x2 hardware conversion. Values are identical by construction; guards the fp4 decode table."
+    },
+    {
+      "name": "aqlm_cb_l1",
+      "kind": "cuda_cflag",
+      "cflags": ["-DAQLM_CB_L1=1"],
+      "ops": ["hybrid_moe_gemv", "aqlm_moe_gemv"],
+      "bit_exact": true,
+      "notes": "Shipped-source variant: __ldca (L1-cached) codebook loads instead of __ldcg. Load-path-only change; exercises the machinery that will gate the L2-residency/__ldcs optimization (idea 5)."
+    },
+    {
+      "name": "aqlm_mlp4",
+      "kind": "cuda_cflag",
+      "cflags": ["-DAQLM_MLP=4"],
+      "ops": ["hybrid_moe_gemv", "aqlm_moe_gemv"],
+      "bit_exact": true,
+      "notes": "Shipped-source variant: codebook gathers batched 4 instead of 8 in flight. Load scheduling only; arithmetic order unchanged, so bit-exactness is REQUIRED (regression tripwire for anyone touching the gather batching)."
+    }
+  ]
+}

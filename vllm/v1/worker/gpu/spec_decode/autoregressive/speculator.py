@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
+import os
 from typing import Any
 
 import torch
@@ -8,6 +9,9 @@ from vllm.config import VllmConfig
 from vllm.config.compilation import CUDAGraphMode
 from vllm.forward_context import BatchDescriptor, set_forward_context
 from vllm.logger import init_logger
+from vllm.model_executor.layers.sparse_attn_indexer import (
+    set_mtp_draft_reuse_topk,
+)
 from vllm.multimodal import MULTIMODAL_REGISTRY
 from vllm.triton_utils import tl, triton
 from vllm.v1.worker.gpu.attn_utils import build_slot_mappings_by_layer
@@ -49,6 +53,26 @@ class AutoRegressiveSpeculator(DraftModelSpeculator):
 
         self.prefill_cudagraph_manager: PrefillSpeculatorCudaGraphManager | None = None
         self.decode_cudagraph_manager: DecodeSpeculatorCudaGraphManager | None = None
+
+        # index_share_for_mtp_iteration (GLM-5.2 DSA): draft decode steps 1+
+        # reuse the DSA indexer top-k anchored by the draft-extend (step-0)
+        # pass instead of re-running the full indexer (paged logits over the
+        # whole context + top-k) every step. Draft-side only => lossless by
+        # rejection sampling. Env-gated default-OFF.
+        # Reference: sgl-project/sglang #29654 / #29787.
+        self._share_mtp_indices = (
+            os.getenv("VLLM_MTP_INDEX_SHARE", "0") == "1"
+            and getattr(
+                self.draft_model_config.hf_config,
+                "index_share_for_mtp_iteration",
+                False,
+            )
+        )
+        if self._share_mtp_indices:
+            logger.info(
+                "MTP IndexShare enabled: draft decode steps reuse the "
+                "draft-extend DSA indexer top-k (VLLM_MTP_INDEX_SHARE=1)."
+            )
 
     @property
     def advance_draft_positions(self) -> bool:
@@ -266,13 +290,32 @@ class AutoRegressiveSpeculator(DraftModelSpeculator):
             need_eager=is_profile,
         )
 
-        # Generate the remaining num_speculative_steps - 1 draft tokens.
-        self._multi_step_decode(
-            num_reqs,
-            dummy_run and skip_attn_for_dummy_run,
-            decode_batch_desc,
-            num_tokens_across_dp,
+        # index_share_for_mtp_iteration: the draft-extend (prefill) pass above
+        # computed the MTP layer's indexer top-k for every query token. Move
+        # each request's last-token row to rows [0:num_reqs) so the 1-token
+        # decode steps below read the anchored indices, then flip the runtime
+        # flag that makes the (eager, splitting-op) indexer a no-op for the
+        # remaining draft steps.
+        share_indices = self._share_mtp_indices and hasattr(
+            getattr(self.model, "model", None), "compact_topk_indices"
         )
+        if share_indices:
+            self.model.model.compact_topk_indices(
+                self.last_token_indices[:num_reqs]
+            )
+            set_mtp_draft_reuse_topk(True)
+
+        try:
+            # Generate the remaining num_speculative_steps - 1 draft tokens.
+            self._multi_step_decode(
+                num_reqs,
+                dummy_run and skip_attn_for_dummy_run,
+                decode_batch_desc,
+                num_tokens_across_dp,
+            )
+        finally:
+            if share_indices:
+                set_mtp_draft_reuse_topk(False)
 
         return self.draft_tokens[:num_reqs]
 

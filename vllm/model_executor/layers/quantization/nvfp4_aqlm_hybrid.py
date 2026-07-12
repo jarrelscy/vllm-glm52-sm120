@@ -94,10 +94,17 @@ def _get_ext():
             / "aqlm_moe_v2.cu"
         )
         logger.info_once("Building aqlm_moe extension from %s", src)
+        # DECODE-K: opt-in NVFP4 smem-LUT decode (bit-exact registered
+        # variant "nvfp4_lut256"; measured faster than the SM120a hw cvt).
+        cflags = ["-O3"]
+        name = "aqlm_moe_ext_v2"
+        if os.environ.get("GLM_NVFP4_LUT256", "0") not in ("", "0"):
+            cflags.append("-DNVFP4_LUT256=1")
+            name += "_lut256"
         _ext = load(
-            name="aqlm_moe_ext_v2",
+            name=name,
             sources=[str(src)],
-            extra_cuda_cflags=["-O3"],
+            extra_cuda_cflags=cflags,
             verbose=False,
         )
     return _ext

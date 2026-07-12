@@ -1,0 +1,21 @@
+{
+ "overall": [
+  0.675,
+  0.7971
+ ],
+ "p0": [
+  0.8234,
+  0.9646
+ ],
+ "raw_rates": [
+  0.7571189279731994,
+  0.714975845410628,
+  0.7203252032520325
+ ],
+ "raw_p0": [
+  0.9246231155778895,
+  0.8888888888888888,
+  0.8634146341463415
+ ],
+ "note": "measured by make_goldens.sh on the shipped config; documented memory envelope was 0.76-0.82 overall, p0~0.86"
+}

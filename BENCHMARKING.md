@@ -11,28 +11,47 @@ tok/s** the correct way (non-streamed, prefix-cache-warmed, true
 
 ## ★ Preferred config
 
-**`tp4-1m-mtp` — TP4 + DCP4 + native MTP (ns=5) + PIECEWISE CUDA graphs.**
-Coherent **~1M context** (KV 994,543 tok, needle @ 749K depth-0.5 = PASS) *with*
-lossless MTP speculative decode *at TP speed, with CUDA graphs*. This is the config
-`./switch.sh glm5.2-hybrid-1m-mtp` ships.
+**`tp4-1m-mtp` — TP4 + DCP4(ag_rs) + native MTP (ns=3, IndexShare) + PIECEWISE
+graphs + bit-exact gemv kernels + forced NCCL P2P.** Coherent **~1M context**
+(KV 1,006,063 tok, needle @ 749K depth-0.5 = PASS) *with* lossless MTP spec.
+This is the config `./switch.sh glm5.2-hybrid-1m-mtp` ships (2026-07-12 stack;
+every knob is env-overridable and each change passed the 64K temp-0 golden gate
++ 1M capability + acceptance envelope, individually and combined).
+
+**Measured (this stack, non-streamed):** short 73/64/52 tok/s (count/code/tcp),
+@123K 44/41/32 — vs the pre-stack 55/51/41 and ~29–30 @123K. Fresh prefill
+~1,200–1,270 tok/s (was ~750): ~950K prompt ≈ 12.5 min.
 
 ```
+export NCCL_P2P_LEVEL=SYS VLLM_MTP_INDEX_SHARE=1 GLM_MOE_LANE_ROWS=1 GLM_NVFP4_LUT256=1
 vllm serve /models/1m \
   --tensor-parallel-size 4 \
-  --decode-context-parallel-size 4 --dcp-comm-backend a2a \
+  --decode-context-parallel-size 4 --dcp-comm-backend ag_rs \
   --speculative-config '{"method":"deepseek_mtp","num_speculative_tokens":3}' \
   --compilation-config '{"mode":3,"cudagraph_mode":"PIECEWISE"}' \
-  --gpu-memory-utilization 0.95 --kv-cache-dtype fp8_ds_mla \
-  --max-model-len 950000 --max-num-seqs 2 --max-num-batched-tokens 2048 \
+  --gpu-memory-utilization 0.97 --kv-cache-dtype fp8_ds_mla \
+  --max-model-len 950000 --max-num-seqs 2 --max-num-batched-tokens 4096 \
   --no-enable-flashinfer-autotune --served-model-name glm-5.2 --port 8001
 ```
 
-`cudagraph_mode` **must be `PIECEWISE`** for DCP+spec: `FULL`/`FULL_AND_PIECEWISE`
-deadlock (the in-graph DCP LSE-combine collective `cp_lse_ag_out_rs` +
-spec drafter/verify NCCL ordering hang when captured in a full decode graph).
-PIECEWISE splits at attention ops so the DCP collective runs eager while
-MoE/linear stay graphed — ~2× the eager throughput. Set `NUM_SPEC=7` to trade
-generality for structured-content speed (see ns-sweep below).
+The 2026-07-12 stack, all lossless-gated:
+- **`VLLM_MTP_INDEX_SHARE=1`** — MTP draft steps reuse the verify-anchored DSA
+  indexer top-k instead of recomputing it per draft forward (which produced bad
+  top-k: count acceptance 0.43→0.96). Draft-only ⇒ lossless by rejection
+  sampling. +24–47% on structured content, grows with context.
+- **`GLM_MOE_LANE_ROWS=1` + `GLM_NVFP4_LUT256=1`** — bit-exact gemv lane-rows
+  repack (w2 −32%) + smem LUT beating the SM120a hw fp4 cvt (NV slice −26%).
+- **`--dcp-comm-backend ag_rs` + `NCCL_P2P_LEVEL=SYS`** — NCCL default topology
+  detection SHM-bounces this box (all-NODE); forcing P2P is 1.3–2.4× on
+  ar/ag but NCCL a2a-over-P2P is pathological, so P2P **requires** ag_rs.
+  +3–5% decode @123K, +35% fresh prefill. (This supersedes the old "a2a +5.2%"
+  result, which was an artifact of the SHM transport.)
+- **chunk 4096 + util 0.97** — +13% prefill, still boots the 950K window.
+
+`cudagraph_mode` default remains `PIECEWISE`. The old FULL-graph deadlock was
+specific to the a2a-era collective; `CUDAGRAPH_MODE=FULL_AND_PIECEWISE` now
+boots under ag_rs and adds +2–9% (opt-in pending a long soak). Set `NUM_SPEC=7`
+to trade generality for structured-content speed (see ns-sweep below).
 
 ## 1. Launch a server config
 
@@ -72,7 +91,8 @@ not combine DSpark with DCP).
 
 Or via the docker entrypoint modes:
 `PARALLEL=pp4-1m|pp4-mtp|tp2pp2|tp2pp2-mtp|tp4-dspark|tp4-1m|tp4-1m-mtp`.
-The entrypoint sets per-mode defaults (DCP, cudagraph_mode, and NSDEF: MTP=2 for
+The entrypoint sets per-mode defaults (DCP, cudagraph_mode, the tp4-1m-mtp
+promoted-stack envs above, and NSDEF: MTP=2 for
 pp4/tp2pp2, **5** for tp4-1m-mtp, 5 for dspark); `NUM_SPEC` env overrides.
 
 ## 2. Run the benchmark
@@ -99,16 +119,16 @@ Ceiling = KV-pool tokens that fit.
 
 | variant | A pp4-base | B pp4-mtp | D tp2pp2-mtp | E tp4-dspark | G tp4-1m | H **tp4-1m-mtp** ★ |
 |---------|-----------|-----------|--------------|--------------|----------|--------------------|
-| **1m**   | 1.27M / 18.7 | 999K / 29/24/24 | 580K / 40/36/30 | 247K / 66/53/28 | 994K / 24.9 | 994K / 55/51/41 (short), ~29–30 @123K |
+| **1m**   | 1.27M / 18.7 | 999K / 29/24/24 | 580K / 40/36/30 | 247K / 66/53/28 | 994K / 24.9 | 1.006M / **73/64/52 (short), 44/41/32 @123K** |
 | **500k** | 659K / 18.7  | 296K / 28/26/22 | 219K / 39/37/31 | 105K / 64/60/31 | — | — |
 | **250k** | 327K / 18.7  | ~31K / 29/27/23 | ~35K / 40/37/31 | ~38K / 65/59/33 | — | — |
 
 DCP configs (G/H) are 1M-only (the whole point is the ~1M ceiling on TP; use the
-short-context configs on the smaller variants). Prefill ~1.2–1.6K tok/s (measured
-on the PP4/MTP configs: 1m ~1.5K, 500k/250k ~1.6K); per-config TP4-vs-PP4 prefill
-(TTFT) is not yet separately characterized — a cold ~750K DCP prefill ran ~18 min
-eager incl. one-time kernel JIT, so warm/graphed prefill is faster than that
-implies. Prefix caching amortizes prefill across requests.
+short-context configs on the smaller variants). H (promoted stack) fresh prefill:
+~1,200–1,270 tok/s at 115–123K (chunk 4096 + ag_rs/P2P; was ~750 at chunk 2048
+over SHM transport) — a ~950K prompt ≈ 12.5 min. Prefill is NCCL-bound (67% of
+chunk time), flat vs context (sparse MLA). Prefix caching amortizes it across
+requests.
 NVFP4/AQLM expert split: 1m 29/71, 500k 48/52, 250k 57/43.
 
 ### MTP ns-sweep (config H, PIECEWISE graphs, counting workload)

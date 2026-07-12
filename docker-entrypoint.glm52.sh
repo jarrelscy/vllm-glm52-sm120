@@ -57,15 +57,27 @@ case "$PARALLEL" in
     # all-gather over PCIe is comm-bound -> graphs are ESSENTIAL here, they capture the
     # ag_rs comms). Needs the SM120 return-LSE + decode-out-size fix (on this branch).
     PAR="--tensor-parallel-size 4"; SPEC=0; DEFLEN=950000; DCP=4 ;;
-  tp4-1m-mtp)  # TP4 + DCP4 + native MTP (ns5 default, preferred) -> coherent ~1M WITH lossless spec at TP speed.
-    # THE best long-ctx config. DCP shards KV (fits ~1M) + MTP spec verifies k+1 tok/step.
-    # MUST use PIECEWISE cudagraphs (FULL/FULL_AND_PIECEWISE DEADLOCK: the in-graph DCP
-    # LSE-combine collective + spec drafter/verify NCCL ordering hangs). PIECEWISE splits at
-    # attention -> DCP collective runs eager, MoE/linear graphed -> no hang, keeps the win.
-    # VALIDATED: needle@749K PASS (lossless); decode PIECEWISE 54.8/50.8/40.7 short, ~28-30
-    # @123K -> ~2x eager (30.8/28.7/24.3) and beats base tp4-1m (24.9). Counting: ns=5 wins
-    # (graphs amortize drafts + ~100% accept) — raise NUM_SPEC for predictable workloads.
-    PAR="--tensor-parallel-size 4"; SPEC=2; DEFLEN=950000; DCP=4; CGMODE=PIECEWISE; NSDEF=3 ;;
+  tp4-1m-mtp)  # TP4 + DCP4 + native MTP (ns3) -> coherent ~1M WITH lossless spec at TP speed.
+    # THE default config. DCP shards KV (fits ~1M) + MTP spec verifies k+1 tok/step.
+    # 2026-07-12 promoted stack (all 64K-golden/1M/acceptance gated, lossless):
+    #   - VLLM_MTP_INDEX_SHARE=1: draft steps reuse the verify-anchored DSA top-k
+    #     (fixes bad in-loop draft top-k; count accept 0.43->0.96; +24-47% count)
+    #   - GLM_MOE_LANE_ROWS=1 + GLM_NVFP4_LUT256=1: bit-exact gemv lane repack (w2 -32%)
+    #     + smem LUT for fp4 cvt (NV slice -26%); server +7.3% count @123K
+    #   - DCP_BACKEND=ag_rs + NCCL_P2P_LEVEL=SYS: NCCL was SHM-bouncing (topology NODE);
+    #     forced P2P needs ag_rs (a2a-over-P2P is pathological). +3-5% decode, +35% prefill
+    #   - chunk 4096 + util 0.97: prefill +13%, still boots the 950K window (KV ~1.006M)
+    # MEASURED (this stack): short 73/64/52 tok/s, @123K 44/41/32; fresh prefill ~1.2K tok/s.
+    # PIECEWISE cudagraphs remain the default (FULL_AND_PIECEWISE now boots under ag_rs —
+    # +2-9% more — but is opt-in pending soak: CUDAGRAPH_MODE=FULL_AND_PIECEWISE).
+    # Every knob env-overridable; set VLLM_MTP_INDEX_SHARE=0 etc. to peel back.
+    export VLLM_MTP_INDEX_SHARE="${VLLM_MTP_INDEX_SHARE:-1}"
+    export GLM_MOE_LANE_ROWS="${GLM_MOE_LANE_ROWS:-1}"
+    export GLM_NVFP4_LUT256="${GLM_NVFP4_LUT256:-1}"
+    export NCCL_P2P_LEVEL="${NCCL_P2P_LEVEL:-SYS}"
+    DCP_BACKEND="${DCP_BACKEND:-ag_rs}"
+    MAX_NUM_BATCHED_TOKENS="${MAX_NUM_BATCHED_TOKENS:-4096}"
+    PAR="--tensor-parallel-size 4"; SPEC=2; DEFLEN=950000; DCP=4; CGMODE=PIECEWISE; NSDEF=3; UTIL_DEFAULT=0.97 ;;
   pp4-dspark)  # PP4 + DSpark, ~130K (drafter co-locates on last rank; dominated by tp2pp2)
     export VLLM_PP_LAYER_PARTITION="${VLLM_PP_LAYER_PARTITION:-21,19,19,19}"
     PAR="--pipeline-parallel-size 4"; SPEC=1; DEFLEN=131072 ;;

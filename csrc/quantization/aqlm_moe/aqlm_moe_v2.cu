@@ -817,6 +817,12 @@ void launch_hybrid(const int4* codes, const int4* codebooks,
   dim3 blocks;
   int threads;
   if (kDedup || kLaneRows) {
+    static bool logged = false;
+    if (!logged) {
+      logged = true;
+      fprintf(stderr, "[aqlm_moe_v2] DECODE-K V3 kernel active: dedup=%d "
+              "lane_rows=%d\n", kDedup, (int)kLaneRows);
+    }
     int G = 32;
     if (kLaneRows) {
       const int s_n = prob_k / 32;  // NVFP4 uint4s per row (2*AQLM int4s)

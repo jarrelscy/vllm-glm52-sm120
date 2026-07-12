@@ -29,6 +29,7 @@ from vllm.v1.attention.backend import (
 )
 from vllm.v1.attention.backends.mla.sparse_utils import (
     triton_convert_req_index_to_global_index,
+    triton_filter_and_convert_dcp_index,
 )
 from vllm.v1.attention.backends.utils import (
     reshape_attn_output_for_spec_decode,
@@ -538,6 +539,15 @@ class FlashMLASparseMetadataBuilder(AttentionMetadataBuilder[FlashMLASparseMetad
 
 
 class FlashMLASparseImpl(SparseMLAAttentionImpl[FlashMLASparseMetadata]):
+    # Decode Context Parallelism support: the FlashMLA sparse fp8 decode kernel
+    # (flash_mla_with_kvcache) already emits the softmax LSE, which the shared
+    # DCP reducer needs to merge partial attention across the sequence-sharded
+    # KV ranks. The parent __new__ derives
+    # need_to_return_lse_for_decode = (dcp_world_size > 1 and this flag).
+    # FlashMLA returns the LSE in natural log (base e).
+    can_return_lse_for_decode: bool = True
+    lse_base_on_e: bool = True
+
     @staticmethod
     def _compute_fp8_decode_padded_heads(num_heads: int) -> int:
         # FP8 decode kernel only supports h_q = 64 or 128
@@ -581,6 +591,11 @@ class FlashMLASparseImpl(SparseMLAAttentionImpl[FlashMLASparseMetadata]):
         self.fp8_decode_padded_heads = self._compute_fp8_decode_padded_heads(num_heads)
 
         vllm_config = get_current_vllm_config()
+        # DCP de-interleave stride for filtering top-k indices to this rank's
+        # KV shard (read only on the dcp_world_size > 1 path in forward_mqa).
+        self.cp_kv_cache_interleave_size = (
+            vllm_config.parallel_config.cp_kv_cache_interleave_size
+        )
         max_tokens = vllm_config.scheduler_config.max_num_batched_tokens
         q_concat_shape = (max_tokens, num_heads, head_size)
         if is_quantized_kv_cache(kv_cache_dtype):
@@ -746,22 +761,44 @@ class FlashMLASparseImpl(SparseMLAAttentionImpl[FlashMLASparseMetadata]):
         kv_c_and_k_pe_cache: torch.Tensor,
         topk_indices: torch.Tensor,
         attn_metadata: FlashMLASparseMetadata,
-    ) -> torch.Tensor:
+        return_lse: bool = False,
+    ) -> tuple[torch.Tensor, torch.Tensor | None]:
         """Mixed batch FP8 forward path that treats all tokens as one batch.
 
         This is equivalent to main branch's approach and avoids the BF16
         prefill kernel which has head padding overhead when num_heads is small.
         Used when use_mixed_batch is True.
+
+        When ``return_lse`` (Decode Context Parallelism), also returns the
+        softmax LSE shaped ``(num_tokens, num_heads)`` for the DCP reducer.
         """
         # Convert per-request indices to global slots (decode) or workspace
         # offsets (prefill).
-        topk_indices = triton_convert_req_index_to_global_index(
-            attn_metadata.req_id_per_token,
-            attn_metadata.block_table,
-            topk_indices,
-            BLOCK_SIZE=attn_metadata.block_size,
-            NUM_TOPK_TOKENS=topk_indices.shape[1],
-        )
+        if self.dcp_world_size > 1:
+            # Under DCP the sequence KV is sharded across the DCP ranks: filter
+            # the global top-k indices to this rank's shard, marking non-owned
+            # slots -1. The FlashMLA sparse decode kernel masks -1 indices out
+            # of the softmax (same as the short-sequence padding case), so no
+            # per-token length is needed; the fused compaction is harmless.
+            topk_indices = triton_filter_and_convert_dcp_index(
+                attn_metadata.req_id_per_token,
+                attn_metadata.block_table,
+                topk_indices,
+                dcp_size=self.dcp_world_size,
+                dcp_rank=self.dcp_rank,
+                cp_kv_cache_interleave_size=self.cp_kv_cache_interleave_size,
+                BLOCK_SIZE=attn_metadata.block_size,
+                NUM_TOPK_TOKENS=topk_indices.shape[1],
+                return_valid_counts=False,
+            )
+        else:
+            topk_indices = triton_convert_req_index_to_global_index(
+                attn_metadata.req_id_per_token,
+                attn_metadata.block_table,
+                topk_indices,
+                BLOCK_SIZE=attn_metadata.block_size,
+                NUM_TOPK_TOKENS=topk_indices.shape[1],
+            )
 
         assert attn_metadata.fp8_extra_metadata is not None
         assert isinstance(
@@ -769,7 +806,7 @@ class FlashMLASparseImpl(SparseMLAAttentionImpl[FlashMLASparseMetadata]):
         )
         fp8_metadata = attn_metadata.fp8_extra_metadata
 
-        _attn_out, _ = self._fp8_flash_mla_kernel(
+        _attn_out, _lse = self._fp8_flash_mla_kernel(
             q=q.unsqueeze(0),  # unsqueeze to add batch_dim: (T, H, D) -> (1, T, H, D)
             kv_c_and_k_pe_cache=kv_c_and_k_pe_cache,
             topk_indices=topk_indices.unsqueeze(0),  # (T, topk) -> (1, T, topk)
@@ -777,7 +814,44 @@ class FlashMLASparseImpl(SparseMLAAttentionImpl[FlashMLASparseMetadata]):
         )
 
         # Output is (1, T, H, D_v), squeeze back to (T, H, D_v)
-        return _attn_out.squeeze(0)
+        out = _attn_out.squeeze(0)
+
+        if not return_lse:
+            return out, None
+
+        # FlashMLA LSE is (batch=1, num_heads, seq_len_q); the DCP reducer wants
+        # (num_tokens, num_heads). squeeze the batch dim and swap heads<->tokens.
+        num_tokens, num_heads = out.shape[0], out.shape[1]
+        lse = _lse.squeeze(0).transpose(0, 1).contiguous()
+        lse = self._normalize_lse(lse, num_tokens, num_heads)
+        # A token whose shard owns none of its top-k tokens has an all -1 row:
+        # the kernel result is meaningless, so force out->0 and lse->-inf so the
+        # cross-shard softmax combine contributes nothing for this rank.
+        empty_rows = (topk_indices == -1).all(dim=-1)
+        out.masked_fill_(empty_rows.view(-1, 1, 1), 0.0)
+        lse.masked_fill_(empty_rows.view(-1, 1), float("-inf"))
+        return out, lse
+
+    @staticmethod
+    def _normalize_lse(
+        lse: torch.Tensor,
+        num_tokens: int,
+        num_heads: int,
+    ) -> torch.Tensor:
+        # Collapse the decode LSE to (num_tokens, num_heads) for the DCP reducer.
+        if lse.dim() == 3:
+            if lse.shape[-1] == 1:
+                lse = lse.squeeze(-1)
+            elif lse.shape[1] == 1:
+                lse = lse.squeeze(1)
+            elif lse.shape[0] * lse.shape[1] == num_tokens:
+                lse = lse.reshape(num_tokens, lse.shape[-1])
+        if lse.shape != (num_tokens, num_heads):
+            raise RuntimeError(
+                "Unexpected FlashMLA sparse LSE shape: "
+                f"{tuple(lse.shape)}, expected ({num_tokens}, {num_heads})."
+            )
+        return lse
 
     def _fp8_flash_mla_kernel(
         self,
@@ -812,9 +886,11 @@ class FlashMLASparseImpl(SparseMLAAttentionImpl[FlashMLASparseMetadata]):
             softmax_scale=self.softmax_scale,
         )
 
-        # Slice output back to actual head count if we padded
+        # Slice output back to actual head count if we padded. lse is
+        # (batch, num_heads_q, seq_len_q), so its head dim is dim 1.
         if actual_num_heads < padded_num_heads:
             out = out[:, :, :actual_num_heads, :]
+            lse = lse[:, :actual_num_heads, :]
 
         return out, lse
 
@@ -878,14 +954,22 @@ class FlashMLASparseImpl(SparseMLAAttentionImpl[FlashMLASparseMetadata]):
 
         use_fp8_cache = self.kv_cache_dtype == "fp8_ds_mla"
 
+        # Only the fp8 mixed-batch decode path threads the softmax LSE (needed
+        # for Decode Context Parallelism); it is the path taken under TP+DCP for
+        # this model (num_heads < MIN_HEADS_FOR_BF16_PREFILL). DCP is never
+        # combined with the bf16 or separate-prefill-decode paths.
+        return_lse = self.need_to_return_lse_for_decode
+
         if not use_fp8_cache:
             attn_out = self._forward_bf16_kv(
                 q, kv_c_and_k_pe_cache, topk_indices, attn_metadata
             )
         elif attn_metadata.fp8_use_mixed_batch:
-            attn_out = self._forward_fp8_kv_mixed_batch(
-                q, kv_c_and_k_pe_cache, topk_indices, attn_metadata
+            attn_out, lse = self._forward_fp8_kv_mixed_batch(
+                q, kv_c_and_k_pe_cache, topk_indices, attn_metadata,
+                return_lse=return_lse,
             )
+            return attn_out, lse
         else:
             attn_out = self._forward_fp8_kv_separate_prefill_decode(
                 q, kv_c_and_k_pe_cache, topk_indices, attn_metadata

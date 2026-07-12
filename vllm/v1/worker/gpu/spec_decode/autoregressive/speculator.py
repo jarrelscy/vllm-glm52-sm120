@@ -142,16 +142,27 @@ class AutoRegressiveSpeculator(DraftModelSpeculator):
         # Capture the decode draft generation routine (model forward +
         # sample + update_draft_inputs) for a single
         # step.
+        # index_share_for_mtp_iteration: at runtime the reuse flag is always
+        # ON during draft decode steps, so capture the decode routine with it
+        # ON as well. Irrelevant for PIECEWISE (the indexer op stays eager and
+        # consults the flag per step) but keeps FULL decode graphs consistent
+        # (indexer excluded from the captured graph).
         assert self.decode_cudagraph_manager is not None
-        self.decode_cudagraph_manager.capture(
-            self._generate_draft,
-            self.model_state,
-            self.input_buffers,
-            self.block_tables,
-            self.attn_groups,
-            self.kv_cache_config,
-            progress_bar_desc="Capturing decode CUDA graphs",
-        )
+        if self._share_mtp_indices:
+            set_mtp_draft_reuse_topk(True)
+        try:
+            self.decode_cudagraph_manager.capture(
+                self._generate_draft,
+                self.model_state,
+                self.input_buffers,
+                self.block_tables,
+                self.attn_groups,
+                self.kv_cache_config,
+                progress_bar_desc="Capturing decode CUDA graphs",
+            )
+        finally:
+            if self._share_mtp_indices:
+                set_mtp_draft_reuse_topk(False)
 
     @torch.inference_mode()
     def propose(

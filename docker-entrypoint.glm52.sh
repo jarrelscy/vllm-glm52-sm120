@@ -190,6 +190,10 @@ fi
 # Connector = LMCacheConnectorV1 (in-tree wrapper -> lmcache pip package's own
 # vllm_v1_adapter, the default non-native path). All knobs env-overridable.
 if [ "${ENABLE_LMCACHE:-0}" = 1 ]; then
+  # LMCache's chunk keys use Python's builtin hash — PYTHONHASHSEED MUST be
+  # pinned or keys differ across processes AND across restarts (= silent
+  # 0% hit rate on the persistent disk tier).
+  export PYTHONHASHSEED="${PYTHONHASHSEED:-0}"
   export LMCACHE_CHUNK_SIZE="${LMCACHE_CHUNK_SIZE:-256}"
   export LMCACHE_LOCAL_CPU="${LMCACHE_LOCAL_CPU:-True}"
   export LMCACHE_MAX_LOCAL_CPU_SIZE="${LMCACHE_MAX_LOCAL_CPU_SIZE:-24}"   # GB (per engine instance — keep modest, box has 251GB)

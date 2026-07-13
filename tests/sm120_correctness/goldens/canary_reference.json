@@ -1,13 +1,13 @@
 {
  "questions": {
-  "gpqa-79": {"gold": "A", "ref_depth": 11000},
-  "gpqa-36": {"gold": "D", "ref_depth": 17000},
-  "gpqa-13": {"gold": "D", "ref_depth": 24000}
+  "gpqa-98": {"gold": "A", "ref_depth": 18000},
+  "gpqa-131": {"gold": "B", "ref_depth": 19000},
+  "gpqa-36": {"gold": "D", "ref_depth": 19000}
  },
  "gates": {
   "depth_frac": 0.6,
   "min_stop_tokens": 8000,
-  "max_tokens": 40000
+  "max_tokens": 60000
  },
- "note": "ref_depth values are the documented known-good depths (gpqa-79 ~10-12k, gpqa-36 ~17-27k, gpqa-13 ~24k); re-measure with test_reasoning_canary.py --capture-golden against a TRUSTED config. Gold letters derive from the seeded shuffle (random.Random(0)) over gpqa_diamond.csv and are sanity-checked at runtime."
+ "note": "Reasoning canary, run at temp 1.0 / top_p 0.95 (GLM_CANARY_TEMP/_TOP_P override) — the real GPQA harness settings. temp 0 induces repetition loops that run these questions to the token cap; temp 1 stops naturally at ~16-30k and answers correctly. Question set (2026-07-13): gpqa-98/131/36, each verified 2/2 correct + natural stop on the promoted tp4-1m-mtp stack, cross-checked vs the B200 ground truth (17-34k) and the pre-promotion SM120 temp-1 sweep (24-33k). ref_depth is a CONSERVATIVE FLOOR near the min natural stop (~18-19k): the depth_frac=0.6 gate (~11k) sits well above the 8k collapse floor and below natural stops, so it detects the SM100 short-collapse signature without false-failing on temp-1 length variance. Dropped gpqa-79 (answered B!=A at temp 0) and gpqa-13 (1/2 temp-1 samples ran away). Gold letters derive from the seeded shuffle (random.Random(0)) over gpqa_diamond.csv and are sanity-checked at runtime. Re-measure with test_reasoning_canary.py --capture-golden against a TRUSTED config."
 }

@@ -70,11 +70,22 @@ case "$PARALLEL" in
     # MEASURED (this stack): short 73/64/52 tok/s, @123K 44/41/32; fresh prefill ~1.2K tok/s.
     # PIECEWISE cudagraphs remain the default (FULL_AND_PIECEWISE now boots under ag_rs —
     # +2-9% more — but is opt-in pending soak: CUDAGRAPH_MODE=FULL_AND_PIECEWISE).
+    #   - VLLM_DISABLE_SHARED_EXPERTS_STREAM=1 (2026-07-13 crash fix): upstream
+    #     shared_experts.py aux-stream overlap leaves its _output slot in an
+    #     inconsistent state under THIS execution mode (TP4+DCP4+MTP+hybrid
+    #     modular-MoE) -> `assert self._output[idx] is None` engine-death,
+    #     reproducible on /v1/messages request shapes, crash-loops the engine.
+    #     Disabling the overlap is LOSSLESS (identical shared-experts compute,
+    #     only the gate-overlap optimization is dropped) and is the escape hatch
+    #     upstream provides for modes still under test. Verified: /v1/messages
+    #     -> HTTP 200, 0 engine deaths. Re-enable only once the upstream slot
+    #     state-machine is fixed for this mode.
     # Every knob env-overridable; set VLLM_MTP_INDEX_SHARE=0 etc. to peel back.
     export VLLM_MTP_INDEX_SHARE="${VLLM_MTP_INDEX_SHARE:-1}"
     export GLM_MOE_LANE_ROWS="${GLM_MOE_LANE_ROWS:-1}"
     export GLM_NVFP4_LUT256="${GLM_NVFP4_LUT256:-1}"
     export NCCL_P2P_LEVEL="${NCCL_P2P_LEVEL:-SYS}"
+    export VLLM_DISABLE_SHARED_EXPERTS_STREAM="${VLLM_DISABLE_SHARED_EXPERTS_STREAM:-1}"
     DCP_BACKEND="${DCP_BACKEND:-ag_rs}"
     MAX_NUM_BATCHED_TOKENS="${MAX_NUM_BATCHED_TOKENS:-4096}"
     PAR="--tensor-parallel-size 4"; SPEC=2; DEFLEN=950000; DCP=4; CGMODE=PIECEWISE; NSDEF=3; UTIL_DEFAULT=0.97 ;;

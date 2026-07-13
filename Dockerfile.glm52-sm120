@@ -73,8 +73,19 @@ RUN . .venv/bin/activate \
 # lmcache's dependency list would drag cupy-cuda13x/nixl/transformers/numpy
 # pins into the image; sortedcontainers+aiofile+caio are the only imports it
 # actually needs on top of what's already here (verified by adapter import).
+#
+# Installs OUR FORK (github.com/jarrelscy/LMCache, branch glm52-dcp-dsa),
+# not upstream pip lmcache==0.5.1: stock lmcache cannot serve this profile
+# (DCP4 token-sharded KV -> slot_mapping/token_ids mismatches on every
+# save; see /home/jarrelscy/glm52/LMCACHE_PROGRESS.md for the evaluation
+# and /home/jarrelscy/glm52/LMCACHE_FORK_PROGRESS.md for the fix). The
+# fork is upstream-0.5.1-plus-dev-HEAD-plus-surgical-DCP-patches; pin the
+# branch, not a moving ref, so rebuilds are reproducible until this is
+# merged upstream and can move back to a released version.
 RUN . .venv/bin/activate \
-    && uv pip install --no-deps lmcache==0.5.1 sortedcontainers aiofile caio
+    && uv pip install --no-deps sortedcontainers aiofile caio \
+    && uv pip install --no-deps \
+         "lmcache @ git+https://github.com/jarrelscy/LMCache.git@glm52-dcp-dsa"
 
 # Locate the CPython include dir (Python.h) and the nvidia CUDA home for JIT
 ENV PYINC=/root/.local/share/uv/python

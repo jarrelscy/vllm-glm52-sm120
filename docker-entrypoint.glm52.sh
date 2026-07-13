@@ -187,18 +187,33 @@ fi
 
 # LMCache KV offload/persistence (opt-in, default OFF — set ENABLE_LMCACHE=1).
 # CPU RAM hot tier + NVMe disk tier (mount the disk dir at /lmcache/disk).
-# Connector = LMCacheConnectorV1 (in-tree wrapper -> lmcache pip package's own
-# vllm_v1_adapter, the default non-native path). All knobs env-overridable.
+# Connector = LMCacheConnectorV1, from OUR FORK (github.com/jarrelscy/LMCache
+# @ glm52-dcp-dsa — see LMCACHE_FORK_PROGRESS.md), not stock lmcache: stock
+# lmcache is DCP4-unaware and drops every save on this profile. All knobs
+# env-overridable.
 if [ "${ENABLE_LMCACHE:-0}" = 1 ]; then
-  # LMCache's chunk keys use Python's builtin hash — PYTHONHASHSEED MUST be
-  # pinned or keys differ across processes AND across restarts (= silent
-  # 0% hit rate on the persistent disk tier).
+  # LMCache's builtin-hash fallback is process-randomized — PYTHONHASHSEED
+  # MUST be pinned or keys would differ across processes AND across
+  # restarts (= silent 0% hit rate on the persistent disk tier). We also
+  # switch the hash algorithm to vLLM's stable sha256_cbor below, which
+  # does not depend on PYTHONHASHSEED at all; PYTHONHASHSEED is kept as a
+  # belt-and-suspenders fallback in case sha256_cbor is ever unavailable
+  # (silently falls back to builtin — see token_database.py).
   export PYTHONHASHSEED="${PYTHONHASHSEED:-0}"
   export LMCACHE_CHUNK_SIZE="${LMCACHE_CHUNK_SIZE:-256}"
   export LMCACHE_LOCAL_CPU="${LMCACHE_LOCAL_CPU:-True}"
   export LMCACHE_MAX_LOCAL_CPU_SIZE="${LMCACHE_MAX_LOCAL_CPU_SIZE:-24}"   # GB (per engine instance — keep modest, box has 251GB)
   export LMCACHE_LOCAL_DISK="${LMCACHE_LOCAL_DISK:-file:///lmcache/disk}"
   export LMCACHE_MAX_LOCAL_DISK_SIZE="${LMCACHE_MAX_LOCAL_DISK_SIZE:-800}" # GB
+  # Stable, non-randomized chunk hashing (blocker-2-adjacent hardening;
+  # see LMCACHE_FORK_PROGRESS.md).
+  export LMCACHE_PRE_CACHING_HASH_ALGORITHM="${LMCACHE_PRE_CACHING_HASH_ALGORITHM:-sha256_cbor}"
+  # Multi-KV-group-aware GPU connector (blocker 2: this model registers
+  # extra per-layer tensors beyond attention KV -- DSA indexer K-cache --
+  # which the V2 connector's flat num_attention_layers assumption cannot
+  # size/address; see LMCACHE_PROGRESS.md for the (N,) vs (M,) pointer
+  # crash this fixes).
+  export LMCACHE_USE_GPU_CONNECTOR_V3="${LMCACHE_USE_GPU_CONNECTOR_V3:-True}"
   ARGS+=(--kv-transfer-config "${KV_TRANSFER_CONFIG:-{\"kv_connector\":\"LMCacheConnectorV1\",\"kv_role\":\"kv_both\"}}")
 fi
 

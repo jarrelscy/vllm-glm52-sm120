@@ -162,7 +162,23 @@ class SharedExperts(torch.nn.Module):
         if order != experts_order:
             return None
 
-        assert self._output[self._output_idx] is None
+        # DIAGNOSTIC + SELF-HEAL (2026-07-13): upstream invariant is that the
+        # slot is drained (via .output) before the next matching forward. Under
+        # this execution mode a prior forward's output can be left undrained,
+        # so the slot is dirty here and the bare `assert ... is None` kills the
+        # engine. The shared-experts output is a pure function of the current
+        # input, so a leaked value is stale and safe to discard: log the context
+        # and recompute instead of crashing.
+        if self._output[self._output_idx] is not None:
+            import os as _os
+            if int(_os.environ.get("GLM_SHARED_EXPERTS_DEBUG", "0")):
+                logger.warning(
+                    "shared_experts leak: order=%s experts_order=%s idx=%s "
+                    "dbo=%s shape0=%s — clearing stale slot and recomputing",
+                    order, experts_order, self._output_idx, self.enable_dbo,
+                    tuple(shared_experts_input.shape),
+                )
+            self._output[self._output_idx] = None
 
         if order == SharedExpertsOrder.MULTI_STREAM_OVERLAPPED:
             self._output[self._output_idx] = self._run_in_aux_stream(

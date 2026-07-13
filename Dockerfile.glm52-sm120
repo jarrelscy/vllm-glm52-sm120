@@ -68,6 +68,14 @@ RUN . .venv/bin/activate \
     && for f in "$CUX"/lib/lib*.so.*; do [ -e "$f" ] || continue; b=$(basename "$f"); s=${b%%.so.*}; \
          [ -e "$CUX/lib/$s.so" ] || ln -s "$b" "$CUX/lib/$s.so"; done
 
+# LMCache (KV-cache offload/persistence to CPU RAM + NVMe disk; opt-in at
+# runtime via ENABLE_LMCACHE=1 — see entrypoint). --no-deps on purpose:
+# lmcache's dependency list would drag cupy-cuda13x/nixl/transformers/numpy
+# pins into the image; sortedcontainers+aiofile+caio are the only imports it
+# actually needs on top of what's already here (verified by adapter import).
+RUN . .venv/bin/activate \
+    && uv pip install --no-deps lmcache==0.5.1 sortedcontainers aiofile caio
+
 # Locate the CPython include dir (Python.h) and the nvidia CUDA home for JIT
 ENV PYINC=/root/.local/share/uv/python
 ENV FLASHINFER_DISABLE_VERSION_CHECK=1

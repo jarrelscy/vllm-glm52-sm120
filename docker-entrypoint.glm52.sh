@@ -185,5 +185,18 @@ elif [ "$SPEC" = 2 ]; then
   ARGS+=(--speculative-config "$SC")
 fi
 
-echo ">> GLM-5.2 SM120  PARALLEL=$PARALLEL  MAXLEN=$MAXLEN  util=$UTIL  graph=$CUDAGRAPH  spec=$SPEC  draft_tp=${DRAFT_TP:-1}  dcp=${DCP:-1}  served=${SERVED_NAME:-glm-5.2}  model=$MODEL_DIR"
+# LMCache KV offload/persistence (opt-in, default OFF — set ENABLE_LMCACHE=1).
+# CPU RAM hot tier + NVMe disk tier (mount the disk dir at /lmcache/disk).
+# Connector = LMCacheConnectorV1 (in-tree wrapper -> lmcache pip package's own
+# vllm_v1_adapter, the default non-native path). All knobs env-overridable.
+if [ "${ENABLE_LMCACHE:-0}" = 1 ]; then
+  export LMCACHE_CHUNK_SIZE="${LMCACHE_CHUNK_SIZE:-256}"
+  export LMCACHE_LOCAL_CPU="${LMCACHE_LOCAL_CPU:-True}"
+  export LMCACHE_MAX_LOCAL_CPU_SIZE="${LMCACHE_MAX_LOCAL_CPU_SIZE:-24}"   # GB (per engine instance — keep modest, box has 251GB)
+  export LMCACHE_LOCAL_DISK="${LMCACHE_LOCAL_DISK:-file:///lmcache/disk}"
+  export LMCACHE_MAX_LOCAL_DISK_SIZE="${LMCACHE_MAX_LOCAL_DISK_SIZE:-800}" # GB
+  ARGS+=(--kv-transfer-config "${KV_TRANSFER_CONFIG:-{\"kv_connector\":\"LMCacheConnectorV1\",\"kv_role\":\"kv_both\"}}")
+fi
+
+echo ">> GLM-5.2 SM120  PARALLEL=$PARALLEL  MAXLEN=$MAXLEN  util=$UTIL  graph=$CUDAGRAPH  spec=$SPEC  draft_tp=${DRAFT_TP:-1}  dcp=${DCP:-1}  lmcache=${ENABLE_LMCACHE:-0}  served=${SERVED_NAME:-glm-5.2}  model=$MODEL_DIR"
 exec "${ARGS[@]}" "$@"

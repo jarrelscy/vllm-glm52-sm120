@@ -89,11 +89,20 @@ RUN . .venv/bin/activate \
 # at a toolchain matching torch's CUDA version. Reuse the SAME pip-installed
 # nvcc/crt/nvvm/cccl toolchain (already installed above for the SM120 JIT
 # toolchain) instead of the base image's system CUDA.
+# LMCACHE_CACHEBUST: bump via --build-arg during active fork development
+# to force a fresh `git+https://...@glm52-dcp-dsa` checkout instead of
+# reusing a stale cached layer (the branch ref is a moving target while
+# the fork is being fixed up; docker's layer cache is keyed on this
+# RUN's literal text, not on upstream repo state). Defaults to 0 so
+# normal/CI builds stay byte-for-byte reproducible unless a rebuild is
+# explicitly requested.
+ARG LMCACHE_CACHEBUST=0
 RUN . .venv/bin/activate \
     && NV="/opt/vllm/.venv/lib/python3.12/site-packages/nvidia" \
     && CUX="$NV/cu13"; [ -d "$CUX" ] || CUX="$NV/cu12" \
     && export CUDA_HOME="$CUX" PATH="$CUX/bin:$PATH" \
     && export TORCH_CUDA_ARCH_LIST="12.0" \
+    && echo "lmcache cachebust=${LMCACHE_CACHEBUST}" \
     && uv pip install --no-deps sortedcontainers aiofile caio \
     && uv pip install --no-deps \
          "lmcache @ git+https://github.com/jarrelscy/LMCache.git@glm52-dcp-dsa"

@@ -21,6 +21,17 @@ from vllm.v1.worker.ubatching import (
 
 logger = init_logger(__name__)
 
+# --- shared-experts slot diagnostics (2026-07-13, see forward()) ---
+import collections as _collections
+import itertools as _itertools
+import os as _os
+
+_SE_DEBUG = int(_os.environ.get("GLM_SHARED_EXPERTS_DEBUG", "0"))
+_SE_HEAL = int(_os.environ.get("GLM_SHARED_EXPERTS_HEAL", "1"))
+_SE_EVENTS: "_collections.deque" = _collections.deque(maxlen=2048)
+_SE_DUMPS = 0
+_SE_IDS = _itertools.count()
+
 
 class SharedExpertsOrder(IntEnum):
     # No shared experts.
@@ -54,6 +65,7 @@ class SharedExperts(torch.nn.Module):
         self._output: list[torch.Tensor | None] = [None, None]
         self._layer = layer
         self._moe_config = moe_config
+        self._se_id = next(_SE_IDS)  # instance id for slot diagnostics
 
         self._mk_can_overlap_shared_experts = mk_can_overlap_shared_experts
 
@@ -145,8 +157,82 @@ class SharedExperts(torch.nn.Module):
     def _output_idx(self) -> int:
         return dbo_current_ubatch_id() if self.enable_dbo else 0
 
+    # ------------------------------------------------------------------ #
+    # DIAGNOSTIC instrumentation (2026-07-13): the _output slot is being
+    # left undrained under TP4+DCP4+MTP+hybrid modular-MoE, so a later
+    # forward() hits a dirty slot (upstream: fatal assert -> engine death).
+    # Every slot event (SET / DRAIN / SKIP / DIRTY) is recorded in a global
+    # ring buffer with full context; on DIRTY we dump the recent history +
+    # current stack. GLM_SHARED_EXPERTS_DEBUG>=2 additionally captures the
+    # python stack at every SET (costly; only for deep tracing).
+    # GLM_SHARED_EXPERTS_HEAL=1 (default) clears the stale slot and
+    # recomputes after dumping — the output is a pure function of the
+    # current input, so this is lossless and keeps the engine alive to
+    # collect MANY leak samples per run; set =0 for the original hard
+    # assert (one sample, then crash).
+    # ------------------------------------------------------------------ #
+
+    def _se_ctx(self, event: str, order=None, experts_order=None, shape0=None):
+        import time as _t
+        try:
+            capturing = torch.cuda.is_current_stream_capturing()
+        except Exception:
+            capturing = "?"
+        stream = None
+        try:
+            stream = torch.cuda.current_stream().stream_id
+        except Exception:
+            pass
+        fwd = None
+        try:
+            from vllm.forward_context import get_forward_context
+            fc = get_forward_context()
+            am = getattr(fc, "attn_metadata", None)
+            fwd = {
+                "num_tokens": getattr(fc, "num_tokens", None),
+                "cudagraph_runtime_mode": str(
+                    getattr(fc, "cudagraph_runtime_mode", None)),
+                "attn_meta": type(am).__name__ if am is not None else None,
+            }
+        except Exception:
+            pass
+        ev = {
+            "t": round(_t.monotonic(), 6), "ev": event, "inst": self._se_id,
+            "idx": self._output_idx, "dbo": self.enable_dbo,
+            "order": None if order is None else int(order),
+            "det": None if experts_order is None else int(experts_order),
+            "shape0": shape0, "capturing": capturing, "stream": stream,
+            "fwd": fwd,
+            "slots": [x is not None for x in self._output],
+        }
+        if _SE_DEBUG >= 2 and event == "SET":
+            import traceback as _tb
+            ev["stack"] = "".join(_tb.format_stack(limit=10)[:-1])
+        _SE_EVENTS.append(ev)
+        return ev
+
+    def _se_dump(self, reason: str, current_ev):
+        import traceback as _tb
+        global _SE_DUMPS
+        _SE_DUMPS += 1
+        if _SE_DUMPS > 20:  # cap full dumps; keep counting
+            logger.error("shared_experts %s #%d (dump suppressed after 20)",
+                         reason, _SE_DUMPS)
+            return
+        lines = [f"shared_experts {reason} #{_SE_DUMPS} — current={current_ev}"]
+        lines.append("---- last slot events (most recent last) ----")
+        for e in list(_SE_EVENTS)[-80:]:
+            lines.append(repr(e))
+        lines.append("---- current python stack ----")
+        lines.append("".join(_tb.format_stack(limit=24)[:-2]))
+        logger.error("\n".join(lines))
+
     @property
     def output(self) -> torch.Tensor:
+        if _SE_DEBUG:
+            ev = self._se_ctx("DRAIN")
+            if self._output[self._output_idx] is None:
+                self._se_dump("DRAIN-OF-EMPTY-SLOT", ev)
         assert self._output[self._output_idx] is not None
         output = self._output[self._output_idx]
         self._output[self._output_idx] = None
@@ -160,25 +246,24 @@ class SharedExperts(torch.nn.Module):
         experts_order = self._determine_shared_experts_order(shared_experts_input)
 
         if order != experts_order:
+            if _SE_DEBUG:
+                self._se_ctx("SKIP", order, experts_order,
+                             shared_experts_input.shape[0])
             return None
 
-        # DIAGNOSTIC + SELF-HEAL (2026-07-13): upstream invariant is that the
-        # slot is drained (via .output) before the next matching forward. Under
-        # this execution mode a prior forward's output can be left undrained,
-        # so the slot is dirty here and the bare `assert ... is None` kills the
-        # engine. The shared-experts output is a pure function of the current
-        # input, so a leaked value is stale and safe to discard: log the context
-        # and recompute instead of crashing.
         if self._output[self._output_idx] is not None:
-            import os as _os
-            if int(_os.environ.get("GLM_SHARED_EXPERTS_DEBUG", "0")):
-                logger.warning(
-                    "shared_experts leak: order=%s experts_order=%s idx=%s "
-                    "dbo=%s shape0=%s — clearing stale slot and recomputing",
-                    order, experts_order, self._output_idx, self.enable_dbo,
-                    tuple(shared_experts_input.shape),
-                )
+            ev = self._se_ctx("DIRTY", order, experts_order,
+                              shared_experts_input.shape[0]) \
+                if _SE_DEBUG else None
+            if _SE_DEBUG:
+                self._se_dump("DIRTY-SLOT-AT-SET", ev)
+            if not _SE_HEAL:
+                assert self._output[self._output_idx] is None
             self._output[self._output_idx] = None
+
+        if _SE_DEBUG:
+            self._se_ctx("SET", order, experts_order,
+                         shared_experts_input.shape[0])
 
         if order == SharedExpertsOrder.MULTI_STREAM_OVERLAPPED:
             self._output[self._output_idx] = self._run_in_aux_stream(

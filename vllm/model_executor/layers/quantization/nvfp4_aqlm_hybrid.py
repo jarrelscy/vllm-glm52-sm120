@@ -687,11 +687,24 @@ class HybridExpertsMoEMethod(FusedMoEMethodBase):
                     h13 = xg[sl] @ w13[j].t()
                     y[sl] = _silu_and_mul(h13) @ w2[j].t()
 
-        yw = y.float() * topk_weights.reshape(-1)[order].unsqueeze(-1).float()
+        # Weight + accumulate in bounded TILES (2026-07-13 OOM fix): the old
+        # single-shot `y.float() * w` materialized a full [num_slots, H] fp32
+        # transient (768 MiB at chunk 4096 x topk 8) — at util 0.97 the
+        # remaining headroom is routing-dependent and real-content prompts
+        # blew it: torch.OutOfMemoryError mid-forward, which aborts the pass
+        # between the shared-experts slot SET and its drain (the engine-death
+        # cascade seen in prod). Tiling caps the transient at TILE*H*4 bytes
+        # (~96 MiB) with identical per-element math (same fp32 multiply;
+        # index_add_ on CUDA is atomic and unordered either way).
         out = torch.zeros(
             num_tokens, hidden, dtype=torch.float32, device=x.device
         )
-        out.index_add_(0, tok_of_slot, yw)
+        wv = topk_weights.reshape(-1)[order]
+        TILE = 4096
+        for s0 in range(0, y.shape[0], TILE):
+            sl = slice(s0, min(s0 + TILE, y.shape[0]))
+            yw = y[sl].float() * wv[sl].unsqueeze(-1).float()
+            out.index_add_(0, tok_of_slot[sl], yw)
         return out
 
 

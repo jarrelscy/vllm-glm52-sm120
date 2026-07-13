@@ -104,7 +104,13 @@ def _ask(qid: str, q: dict, max_tokens: int) -> dict:
     prompt = PROMPT_TMPL.format(q=q["question"], a=q["choices"][0],
                                 b=q["choices"][1], c=q["choices"][2],
                                 d=q["choices"][3])
-    obj = chat(prompt, max_tokens, temperature=0, top_p=1.0,
+    # Temp 1.0 / top_p 0.95 = the real GPQA harness settings. temp 0 (greedy)
+    # induces repetition loops that run these deep-reasoning questions to the
+    # token cap (verified 2026-07-13: temp-0 caps 5/6, temp-1 stops naturally
+    # at 16-30k and answers correctly), which would false-fail the canary.
+    temp = float(os.environ.get("GLM_CANARY_TEMP", "1.0"))
+    top_p = float(os.environ.get("GLM_CANARY_TOP_P", "0.95"))
+    obj = chat(prompt, max_tokens, temperature=temp, top_p=top_p,
                chat_template_kwargs={"reasoning_effort": "max"})
     ch = obj["choices"][0]
     usage = obj.get("usage", {})

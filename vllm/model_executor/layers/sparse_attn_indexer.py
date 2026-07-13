@@ -548,12 +548,23 @@ def sparse_attn_indexer(
                 )
                 padded_q_scale = None
         else:
-            padded_q_quant_decode_tokens = q_quant[:num_decode_tokens].reshape(
-                decode_lens.shape[0], -1, *q_quant.shape[1:]
+            # `num_decode_tokens` can be padded up to a CUDA-graph capture size
+            # (PIECEWISE rounds the decode token buffer up to a captured size)
+            # while `decode_lens` tracks only the real requests, so inferring the
+            # per-token width via reshape(-1) from the padded count fails, e.g.
+            # 64 rows against 59 real requests. Derive the width from the
+            # (B, next_n) seq_lens and take exactly batch * next_n real rows,
+            # dropping any graph padding. When unpadded, real_rows ==
+            # num_decode_tokens, so this is byte-identical to the old reshape.
+            b = decode_lens.shape[0]
+            next_n = decode_metadata.seq_lens.shape[-1]
+            real_rows = b * next_n
+            padded_q_quant_decode_tokens = q_quant[:real_rows].reshape(
+                b, next_n, *q_quant.shape[1:]
             )
             if q_scale is not None:
-                padded_q_scale = q_scale[:num_decode_tokens].reshape(
-                    decode_lens.shape[0], -1, *q_scale.shape[1:]
+                padded_q_scale = q_scale[:real_rows].reshape(
+                    b, next_n, *q_scale.shape[1:]
                 )
             else:
                 padded_q_scale = None

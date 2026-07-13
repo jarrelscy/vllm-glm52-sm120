@@ -82,7 +82,18 @@ RUN . .venv/bin/activate \
 # fork is upstream-0.5.1-plus-dev-HEAD-plus-surgical-DCP-patches; pin the
 # branch, not a moving ref, so rebuilds are reproducible until this is
 # merged upstream and can move back to a released version.
+# NOTE: lmcache's setup.py compiles a native `c_ops` CUDA extension via
+# torch.utils.cpp_extension.BuildExtension, which hard-fails with a CUDA
+# major-version mismatch (base image nvcc=12.9 vs torch.version.cuda=13.0 --
+# vLLM's --torch-backend=auto pulls a cu130 build) unless CUDA_HOME points
+# at a toolchain matching torch's CUDA version. Reuse the SAME pip-installed
+# nvcc/crt/nvvm/cccl toolchain (already installed above for the SM120 JIT
+# toolchain) instead of the base image's system CUDA.
 RUN . .venv/bin/activate \
+    && NV="/opt/vllm/.venv/lib/python3.12/site-packages/nvidia" \
+    && CUX="$NV/cu13"; [ -d "$CUX" ] || CUX="$NV/cu12" \
+    && export CUDA_HOME="$CUX" PATH="$CUX/bin:$PATH" \
+    && export TORCH_CUDA_ARCH_LIST="12.0" \
     && uv pip install --no-deps sortedcontainers aiofile caio \
     && uv pip install --no-deps \
          "lmcache @ git+https://github.com/jarrelscy/LMCache.git@glm52-dcp-dsa"

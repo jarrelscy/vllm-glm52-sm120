@@ -83,6 +83,12 @@ case "$PARALLEL" in
     # Every knob env-overridable; set VLLM_MTP_INDEX_SHARE=0 etc. to peel back.
     export VLLM_MTP_INDEX_SHARE="${VLLM_MTP_INDEX_SHARE:-1}"
     export GLM_MOE_LANE_ROWS="${GLM_MOE_LANE_ROWS:-1}"
+    # GLM_MOE_DEDUP intentionally left UNSET (=off): the cross-slot expert-dedup
+    # election is pathological on SM100 (B200) — a net loss at every batch/mix,
+    # scaling superlinearly with slot count (kbench 2026-07-13, real TP-shard
+    # shapes: w2 1.8x slower @ tokens=4 up to ~25x @ tokens=384, prod AND realdup;
+    # see kbench/sweep_dk.sh). No net win measured on SM120 either. LANE_ROWS is
+    # the actual gemv win (bit-exact, ~20-32% w2; kbench/check_lane.py). Keep off.
     export GLM_NVFP4_LUT256="${GLM_NVFP4_LUT256:-1}"
     export NCCL_P2P_LEVEL="${NCCL_P2P_LEVEL:-SYS}"
     export VLLM_DISABLE_SHARED_EXPERTS_STREAM="${VLLM_DISABLE_SHARED_EXPERTS_STREAM:-1}"

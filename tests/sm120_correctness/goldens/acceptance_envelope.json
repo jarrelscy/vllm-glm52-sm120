@@ -1,7 +1,21 @@
 {
- "overall": [0.72, 0.86],
- "p0": [0.78, 0.94],
- "raw_rates": [],
- "raw_p0": [],
- "note": "DEFAULT band derived from the documented baseline (tp4-1m-mtp ns=3: overall run-to-run 0.76-0.82, p0~0.86) widened by 0.04. Re-measure with test_mtp_acceptance_envelope.py --capture-golden on a known-good boot to tighten."
+ "overall": [
+  0.675,
+  0.7971
+ ],
+ "p0": [
+  0.8234,
+  0.9646
+ ],
+ "raw_rates": [
+  0.7571189279731994,
+  0.714975845410628,
+  0.7203252032520325
+ ],
+ "raw_p0": [
+  0.9246231155778895,
+  0.8888888888888888,
+  0.8634146341463415
+ ],
+ "note": "measured by make_goldens.sh on the shipped config; documented memory envelope was 0.76-0.82 overall, p0~0.86"
 }

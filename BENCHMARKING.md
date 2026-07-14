@@ -53,6 +53,22 @@ specific to the a2a-era collective; `CUDAGRAPH_MODE=FULL_AND_PIECEWISE` now
 boots under ag_rs and adds +2–9% (opt-in pending a long soak). Set `NUM_SPEC=7`
 to trade generality for structured-content speed (see ns-sweep below).
 
+**LMCache disk-backed KV persistence — `ENABLE_LMCACHE=1` by default on this
+profile (2026-07-14).** Stock lmcache 0.5.1 can't serve this stack (DCP4
+sequence-sharding drops every save; a KV-tensor-count mismatch against the
+DSA indexer crashes on first save). Our fork
+(`github.com/jarrelscy/LMCache@glm52-dcp-dsa`) fixes both, plus two more
+bugs found during gating (multi-kernel-group disk sizing; a `retrieve()`
+diagnostic-log crash on the DCP `hashes=` path). All 6 gates passed on real
+hardware: save/restore correctness, a byte-identical 64K lossless golden run
+plus MTP acceptance inside the pre-established healthy envelope, ~1M-context
+needle-in-haystack correctness preserved through a genuine disk restore
+(~78x faster than cold compute), and a clean empty-cache/wipe negative check
+(caveat: this multi-GPU MoE stack is not bit-exact deterministic even with
+LMCache off, so "lossless" here means byte-identical cold-vs-restored output
+on a fixed seed, not a claim about cross-run determinism in general). Details
+and full evidence: `/home/jarrelscy/glm52/LMCACHE_FORK_PROGRESS.md`.
+
 ## 1. Launch a server config
 
 All configs serve an OpenAI-compatible API on `:8001`. Pick a weight variant via

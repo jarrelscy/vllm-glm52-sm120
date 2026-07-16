@@ -356,6 +356,7 @@ class Attention(nn.Module, AttentionLayerBase):
                 use_mm_prefix=self.use_mm_prefix,
                 use_per_head_quant_scales=use_per_head_quant_scales,
                 attn_type=attn_type,
+                has_sliding_window=sliding_window is not None,
             )
         else:
             self.attn_backend = attn_backend
@@ -634,8 +635,8 @@ class Attention(nn.Module, AttentionLayerBase):
             # above), so gate on THIS layer's actual backend: a non-MLA layer
             # (e.g. a windowed DSpark draft) may use a sliding window even when
             # the target model uses MLA.
-            assert "MLA" not in self.attn_backend.get_name().upper(), (
-                "MLA is not supported for slidingwindow"
+            assert not self.attn_backend.is_mla(), (
+                "MLA is not supported for sliding window"
             )
             if os.environ.get("VLLM_DSPARK_DRAFT_SWA"):
                 # Windowed DSpark draft alongside an MLA target: use a small

@@ -668,7 +668,14 @@ class FlashAttentionForwardSm80(FlashAttentionForwardBase):
         self.num_Q_load_threads = self.num_threads
         self.num_epilogue_threads = self.num_threads
         # self.use_tma_O = self.arch >= 90 and mCuSeqlensQ is None
-        self.use_tma_O = self.arch >= Arch.sm_90
+        # This SM80-era cp.async __call__/kernel (shared verbatim by the Sm120
+        # subclass) has NO TMA-O descriptor setup (tma_atom_O is None), so TMA-O
+        # must always be off here. self.arch is the REAL device arch, so
+        # `self.arch >= Arch.sm_90` wrongly evaluates True on sm_120 (major=12)
+        # and routes the epilogue into the TMA store path -> None atom crash.
+        # SM90/SM100 have their own __call__ (flash_fwd_sm90/sm100.py) and never
+        # reach this. Same self.arch pitfall as the store-atom fix above.
+        self.use_tma_O = False
         self._setup_attributes()
         SharedStorage = self._get_shared_storage_cls()
         mQ, mK, mV, mO = [assume_tensor_aligned(t) for t in (mQ, mK, mV, mO)]

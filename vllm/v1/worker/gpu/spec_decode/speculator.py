@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from typing import Any
 
+import numpy as np
 import torch
 import torch.nn as nn
 
@@ -254,6 +255,45 @@ class DraftModelSpeculator(BaseSpeculator):
             causal=causal,
         )
         return attn_metadata
+
+    def _build_draft_attn_metadata_from_qsl(
+        self,
+        num_reqs: int,
+        num_reqs_padded: int,
+        num_tokens_padded: int,
+        query_start_loc_np: np.ndarray,
+        causal: bool | Mapping[int, bool] = True,
+    ) -> dict[str, Any]:
+        # Non-uniform query layout (multi-module MTP draft prefill mirrors the
+        # target's per-request query lengths). Fresh tensor: no aliasing with
+        # the caller's array, sized to the padded request count, with the tail
+        # clamped to the last real cumulative value.
+        query_start_loc_cpu = torch.empty(num_reqs_padded + 1, dtype=torch.int32)
+        query_start_loc_cpu[: num_reqs + 1] = torch.from_numpy(
+            query_start_loc_np[: num_reqs + 1]
+        )
+        query_start_loc_cpu[num_reqs:] = query_start_loc_cpu[num_reqs]
+        max_query_len = int((query_start_loc_cpu[1:] - query_start_loc_cpu[:-1]).max())
+        block_tables = [
+            x[:num_reqs_padded] for x in self.block_tables.input_block_tables
+        ]
+        slot_mappings = self.block_tables.slot_mappings[:, :num_tokens_padded]
+        return build_attn_metadata(
+            attn_groups=self.attn_groups,
+            num_reqs=num_reqs_padded,
+            num_tokens=num_tokens_padded,
+            query_start_loc_gpu=self.input_buffers.query_start_loc[
+                : num_reqs_padded + 1
+            ],
+            query_start_loc_cpu=query_start_loc_cpu,
+            max_query_len=max_query_len,
+            seq_lens=self.input_buffers.seq_lens[:num_reqs_padded],
+            max_seq_len=self.draft_max_seq_len,
+            block_tables=block_tables,
+            slot_mappings=slot_mappings,
+            kv_cache_config=self.kv_cache_config,
+            causal=causal,
+        )
 
     def _validate_local_argmax_reduction(self) -> None:
         if not self.use_local_argmax_reduction:

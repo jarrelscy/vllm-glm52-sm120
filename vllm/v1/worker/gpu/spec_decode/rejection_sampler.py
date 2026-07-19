@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
+import os
+
 import torch
 
 from vllm.config import SpeculativeConfig
@@ -134,6 +136,22 @@ class RejectionSampler:
             use_fp64=self.sampler.use_fp64_gumbel,
             use_block_verification=self.use_block_verification,
         )
+
+        if os.path.exists("/tmp/INKLING_MTP_DEBUG_ON"):
+            # Debug tap (sentinel-gated, forces a sync): per-round draft vs
+            # target-argmax vs accepted tokens, for offline token analysis.
+            # Appended straight to a file because worker stdout may not reach
+            # the launcher's log.
+            tgt_argmax = processed_logits.argmax(dim=-1)
+            with open(f"/tmp/inkling_rejsamp_dbg.rank{torch.cuda.current_device()}.log", "a") as f:
+                f.write(
+                    "rejsamp_dbg2:"
+                    f" draft={draft_sampled.tolist()}"
+                    f" tgt={tgt_argmax.tolist()}"
+                    f" sampled={sampled.tolist()}"
+                    f" num_sampled={num_sampled.tolist()}"
+                    f" cu={input_batch.cu_num_logits.tolist()}\n"
+                )
 
         logprobs_tensors = self._get_logprobs_tensors(
             input_batch,

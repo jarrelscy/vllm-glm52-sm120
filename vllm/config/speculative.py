@@ -620,7 +620,15 @@ class SpeculativeConfig:
             mtp_config = getattr(hf_config, "mtp_config", {}) or {}
             n_predict = mtp_config.get("num_nextn_predict_layers", 1)
             hf_config.update(
-                {"n_predict": n_predict, "architectures": ["InklingMTPModel"]}
+                {
+                    "n_predict": n_predict,
+                    # num_speculative_prefill_steps() reads this top-level
+                    # field (the checkpoint only has it nested in mtp_config);
+                    # without it the speculator runs a single prefill step and
+                    # drafts depths >=1 on the decode path.
+                    "num_nextn_predict_layers": n_predict,
+                    "architectures": ["InklingMTPModel"],
+                }
             )
 
         return hf_config
@@ -963,10 +971,16 @@ class SpeculativeConfig:
                         self.num_speculative_tokens > n_predict
                         and self.num_speculative_tokens % n_predict != 0
                     ):
-                        # Ensure divisibility for MTP module reuse.
-                        raise ValueError(
-                            f"num_speculative_tokens:{self.num_speculative_tokens}"
-                            f" must be divisible by {n_predict=}"
+                        # Steps past the module count reuse depth
+                        # (step % n_predict); non-divisible counts leave the
+                        # module cycle incomplete, which is legal but may
+                        # taper acceptance on the trailing steps.
+                        logger.warning(
+                            "num_speculative_tokens=%d is not divisible by "
+                            "n_predict=%d; trailing draft steps reuse MTP "
+                            "modules cyclically.",
+                            self.num_speculative_tokens,
+                            n_predict,
                         )
 
                 if self.num_speculative_tokens is None:
@@ -1348,6 +1362,19 @@ class SpeculativeConfig:
             and getattr(self.draft_model_config.hf_config, "model_type", None)
             == "step3p5_mtp"
         )
+
+    def num_speculative_prefill_steps(self) -> int:
+        """Draft tokens produced by re-running the draft prefill window, one
+        pass per MTP depth module (multi-module MTP, e.g. Inkling's 8). 1 for
+        every other speculative method (single prefill pass, remaining drafts
+        from single-token decode steps)."""
+        if self.method == "mtp" and self.draft_model_config is not None:
+            n_predict = getattr(
+                self.draft_model_config.hf_config, "num_nextn_predict_layers", None
+            )
+            if n_predict and n_predict > 1:
+                return min(int(n_predict), self.num_speculative_tokens)
+        return 1
 
     def use_eagle(self) -> bool:
         # NOTE: This method is usually a stand-in for "speculative decoding using

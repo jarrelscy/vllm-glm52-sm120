@@ -1,64 +1,33 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
-"""MTP (multi-token-prediction) draft model for Inkling.
+"""Inkling MTP (multi-token prediction) draft model.
 
-Task #88. Registered as ``InklingMTPModel`` / ``InklingMTP`` via
-``vllm/config/speculative.py``'s ``hf_config_override`` (model_type
-``inkling_mtp``) and ``vllm/model_executor/models/registry.py``.
+Semantics restored from the reference implementation (upstream commit
+5624be7aa "[Model] Add Inkling LoRA and MTP support", which mirrors the
+``mtp_model.py`` shipped with the original checkpoint):
 
-Real checkpoint evidence (verified directly against the release
-snapshot's ``model.safetensors.index.json`` / tensor shapes, NOT
-assumed):
-  * ``mtp_config`` = ``{"num_nextn_predict_layers": 8,
-    "chain_hidden_post_norm": False, "local_layer_ids": [0, 2, 4, 5, 6, 7]}``
-    (a plain dict on the top-level ``InklingConfig``, sibling of
-    ``text_config``, NOT nested inside it).
-  * Exactly 160 weight tensors under ``model.mtp.layers.{0..7}.*``, 20 per
-    layer: ``embed_norm.weight``, ``hidden_norm.weight``,
-    ``input_proj.weight`` (shape ``[hidden_size, 2*hidden_size]`` --
-    confirmed ``[6144, 12288]`` on the real release, i.e. a plain
-    concat(hidden_norm_out, embed_norm_out) -> hidden_size projection —
-    NOTE: hidden-first, the REVERSE of DeepSeek's ``eh_proj`` order,
-    established empirically via offline fp32 teacher-forcing, task #88),
-    plus 16
-    ``transformer_block.*`` keys identical in name/shape to a main-model
-    ``InklingDecoderLayer`` (``attn_norm``, ``attn.{k_norm,k_sconv,q_norm,
-    rel_logits_proj.proj,v_sconv,wk_dv,wo_ud,wq_du,wr_du,wv_dv}``,
-    ``attn_sconv``, ``mlp.{global_scale,w13_dn,w2_md}``, ``mlp_norm``,
-    ``mlp_sconv``). All BF16 (unquantized) on the real release, unlike the
-    NVFP4/AQLM-hybrid main model -- confirmed via direct tensor dtype
-    inspection of ``transformer_block.attn.wq_du.weight`` and
-    ``transformer_block.mlp.w13_dn.weight``.
-  * There is NO per-layer final-norm or lm_head weight anywhere under
-    ``model.mtp.*`` (unlike DeepSeek's MTP layers, which do ship their own
-    per-step ``.norm``/``.head``). The generic proposer-level sharing in
-    ``vllm/v1/spec_decode/llm_base_proposer.py``
-    (``_maybe_share_embeddings`` / ``_maybe_share_lm_head``) already
-    auto-shares ``embed_tokens`` and each layer's ``shared_head.head``
-    with the target model's own instances post-construction for any
-    draft model that doesn't set ``has_own_embed_tokens`` /
-    ``has_own_lm_head`` (the "MTP model" branch in both methods) -- so
-    those two are handled for free and this module only needs to supply
-    placeholder modules for them to attach to. ``shared_head.norm`` has
-    no equivalent generic auto-share hook, so ``InklingMTP.load_weights``
-    below explicitly broadcasts the target's own ``model.llm.norm``
-    tensor into every layer's ``shared_head.norm.weight``.
+* Each MTP depth ``i`` owns ``hidden_norm`` / ``embed_norm`` RMSNorms, an
+  ``input_proj`` (``2H -> H``, consuming ``cat([hidden_norm(hidden),
+  embed_norm(embed)])`` — hidden first) and a full Inkling transformer block
+  (dense MLP, sliding-window or full attention per depth via
+  ``mtp_config.local_layer_ids``).
+* The block output is returned raw: with ``chain_hidden_post_norm=False``
+  (this checkpoint) there is NO chain norm, NO per-depth final norm and NO
+  extra residual. The same raw value is both the logits input (through the
+  shared muP-scaled LM head) and the previous hidden fed to the next depth.
+* The depth layers consume the *backbone-normed* embedding
+  (``embed_norm(embed(ids))``, weight ``model.llm.embed_norm.weight``), not
+  the raw one: the per-depth ``embed_norm`` weights are near-identity trims,
+  unlike the backbone's whitening ``embed_norm``. Feeding raw embeddings
+  costs real acceptance (upstream: MTP1 ~0.85 -> ~0.70).
+* The draft shares the target's token embedding table and LM head
+  (``load_eagle_model`` attaches both; neither is materialized here).
 
-No HF reference implementation exists for this module anywhere (grepped
-``transformers/models/inkling/modeling_inkling.py`` across all local
-venvs: zero MTP classes; the model's own ``_keys_to_ignore_on_load_unexpected
-= [r"model\\.mtp\\..*"]`` shows even the public release discards these
-weights). The combiner semantics below (plain concat-then-project, no
-extra post-norm) are reverse-engineered from weight names/shapes only.
-
-ASSUMPTION (explicitly flagged per coordinator sign-off, unverified against
-any reference): with ``chain_hidden_post_norm=False`` in this checkpoint,
-no additional norm is applied after the ``input_proj`` combiner -- the
-simplest reading of the flag name, consistent with DeepSeek's simpler
-``eh_proj`` pattern this module mirrors structurally. Real correctness
-here can only be confirmed later via draft/target logprob agreement or
-measured MTP acceptance rate once end-to-end TP4 wiring exists, not from
-static checkpoint inspection alone.
+Scheduling (see ``spec_decode/autoregressive/speculator.py``): the first
+``min(n_predict, num_speculative_tokens)`` draft tokens are produced by
+re-running the draft prefill window once per depth module
+(``spec_step_idx`` selects the depth), chaining the full-window hidden
+module-to-module and shifting input ids left by one per step.
 """
 
 from __future__ import annotations
@@ -73,14 +42,12 @@ import torch.nn as nn
 from vllm.config import VllmConfig
 from vllm.logger import init_logger
 from vllm.model_executor.layers.linear import ReplicatedLinear
-from vllm.model_executor.layers.vocab_parallel_embedding import VocabParallelEmbedding
-from vllm.model_executor.layers.logits_processor import LogitsProcessor
 from vllm.model_executor.model_loader.weight_utils import default_weight_loader
-from vllm.model_executor.models.deepseek_mtp import SharedHead
 from vllm.model_executor.models.utils import WeightsMapper, maybe_prefix
 from vllm.sequence import IntermediateTensors
 
 from .layernorm import InklingRMSNorm
+from .logits_processor import InklingLogitsProcessor
 from .model import InklingDecoderLayer, _TmlForCausalLMBase, _sconv_add_norm
 
 logger = init_logger(__name__)
@@ -88,21 +55,20 @@ logger = init_logger(__name__)
 # Matches the real checkpoint's per-layer MTP tensor names, e.g.
 # "model.mtp.layers.3.transformer_block.attn.wq_du.weight".
 _MTP_LAYER_RE = re.compile(r"^model\.mtp\.layers\.(\d+)\.")
-# The target model's own final norm (shared_head.norm has no counterpart
-# in the checkpoint -- broadcast this single tensor into every MTP layer).
-_TARGET_NORM_NAME = "model.llm.norm.weight"
+# The backbone's whitening embed_norm, applied to the shared embedding
+# table's rows before the per-depth (near-identity) embed_norm.
+_BACKBONE_EMBED_NORM_NAME = "model.llm.embed_norm.weight"
 
 
 class InklingMTPLayer(nn.Module):
-    """One MTP prediction step.
+    """One MTP depth: norm both inputs, fuse (2H->H), run an Inkling block.
 
     ``transformer_block`` reuses the main model's own ``InklingDecoderLayer``
     unmodified -- checkpoint weight names/shapes for it are identical to a
     main-model decoder layer. All 8 MTP layers use dense MLP only (verified:
     no ``mlp.experts.*`` keys anywhere under ``model.mtp.*``), so
     ``dense_mlp_idx`` is forced high on a shallow config copy regardless of
-    the shared text_config's own value (which gates dense-vs-MoE for the
-    much larger main model stack, not for MTP).
+    the shared text_config's own value.
     """
 
     def __init__(
@@ -122,7 +88,7 @@ class InklingMTPLayer(nn.Module):
         self.embed_norm = InklingRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
         self.hidden_norm = InklingRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
         # input_proj.weight: [hidden_size, 2*hidden_size], plain Linear over
-        # concat(embed_norm_out, hidden_norm_out) -- verified shape on the
+        # concat(hidden_norm_out, embed_norm_out) -- verified shape on the
         # real release ([6144, 12288] for hidden_size=6144).
         self.input_proj = ReplicatedLinear(
             2 * config.hidden_size,
@@ -131,9 +97,6 @@ class InklingMTPLayer(nn.Module):
             return_bias=False,
             quant_config=quant_config,
             prefix=f"{prefix}.input_proj",
-        )
-        self.shared_head = SharedHead(
-            config=config, prefix=prefix, quant_config=None
         )
 
         block_config = copy.copy(config)
@@ -153,34 +116,29 @@ class InklingMTPLayer(nn.Module):
         positions: torch.Tensor,
         previous_hidden_states: torch.Tensor,
         inputs_embeds: torch.Tensor,
-    ) -> tuple[torch.Tensor, torch.Tensor]:
-        embed = self.embed_norm(inputs_embeds)
+    ) -> torch.Tensor:
+        # Checkpoint semantics: hidden-first, embed-second (the REVERSE of
+        # DeepSeek MTP's enorm/hnorm cat order; established empirically in
+        # task #88 and confirmed by the reference implementation's
+        # embed_dual_rmsnorm_cat ordering).
         hidden = self.hidden_norm(previous_hidden_states)
-
-        # Checkpoint semantics: hidden-first, embed-second — the REVERSE of
-        # DeepSeek MTP's enorm/hnorm cat order. Determined empirically
-        # (task #88): teacher-forcing this layer offline in fp32 over a real
-        # committed stream gives median true-next-token rank ~6/201k with
-        # [hidden, embed] vs ~130k/201k (and anchor-echo drafts, 0%
-        # acceptance) with [embed, hidden].
+        embed = self.embed_norm(inputs_embeds)
         combined = torch.cat([hidden, embed], dim=-1)
 
-        # return_bias=False (set at construction) means ReplicatedLinear.
-        # forward() returns the output tensor directly, NOT a (tensor, bias)
-        # tuple -- do not unpack.
+        # return_bias=False: ReplicatedLinear.forward() returns the output
+        # tensor directly, NOT a (tensor, bias) tuple -- do not unpack.
         proj_out = self.input_proj(combined)
 
         hidden_states, pending = self.transformer_block(positions, proj_out)
-        # Resolve the transformer_block's deferred MLP delta within this
-        # same call (MTP layers run standalone, not chained into a "next
-        # layer" the way the main model's stack is). norm=None here mirrors
-        # the chain_hidden_post_norm=False assumption documented in the
-        # module docstring: no extra norm on the recycled hidden state.
-        hidden_states = _sconv_add_norm(
+        # Resolve the transformer_block's deferred MLP delta within this same
+        # call (MTP layers run standalone, not chained into a "next layer"
+        # the way the main model's stack is). norm=None: with
+        # chain_hidden_post_norm=False there is no chain norm -- the raw
+        # residual-stream value is both the logits input and the next
+        # depth's hidden.
+        return _sconv_add_norm(
             pending[0], hidden_states, pending[1], None, positions
         )[1]
-        # Second element: shared_head-normed hidden ready for logits.
-        return hidden_states, self.shared_head(hidden_states)
 
 
 class InklingMTPPredictor(nn.Module):
@@ -191,7 +149,13 @@ class InklingMTPPredictor(nn.Module):
         draft_hf_config = speculative_config.draft_model_config.hf_config
         text_config = draft_hf_config.text_config
         mtp_config = getattr(draft_hf_config, "mtp_config", {}) or {}
-        self.num_mtp_layers = mtp_config.get("num_nextn_predict_layers", 1)
+        # The checkpoint ships num_nextn_predict_layers depth blocks, but only
+        # the first num_speculative_tokens are exercised (step i uses depth
+        # i). Build only those to save memory -- each depth is a full Inkling
+        # block with its own sconv caches and KV cache.
+        n_predict = mtp_config.get("num_nextn_predict_layers", 1)
+        num_spec = speculative_config.num_speculative_tokens
+        self.num_mtp_layers = min(n_predict, num_spec) if num_spec else n_predict
         local_layer_ids = set(mtp_config.get("local_layer_ids", []))
 
         self.layers = nn.ModuleDict(
@@ -205,18 +169,44 @@ class InklingMTPPredictor(nn.Module):
                 for idx in range(self.num_mtp_layers)
             }
         )
-        # Own copy, auto-shared with the target's embed_tokens post-load by
-        # llm_base_proposer.py's _maybe_share_embeddings (generic "MTP
-        # model" branch) -- real weights never need to land here.
-        self.embed_tokens = VocabParallelEmbedding(
-            text_config.vocab_size,
-            text_config.hidden_size,
-            prefix=maybe_prefix(prefix, "embed_tokens"),
+        # The target's raw token embedding table, attached post-load by
+        # load_eagle_model (never materialized here: a replicated copy would
+        # transiently double the ~2.3 GiB table).
+        self.embed_tokens = None  # type: ignore[assignment]
+        # The depth layers consume the *backbone-normed* embedding
+        # (embed_norm(embed(ids))), not the raw one: mtp embed_norm weights
+        # are near-identity (trained on already-normalized inputs). Weight
+        # loaded from the target's model.llm.embed_norm.weight; gated like
+        # the target's InklingModel.embed_norm.
+        self.backbone_embed_norm = (
+            InklingRMSNorm(text_config.hidden_size, eps=text_config.rms_norm_eps)
+            if text_config.use_embed_norm
+            else None
         )
-        self.logits_processor = LogitsProcessor(text_config.vocab_size)
 
-    def embed_input_ids(self, input_ids: torch.Tensor) -> torch.Tensor:
-        return self.embed_tokens(input_ids)
+    def embed_input_ids(
+        self,
+        input_ids: torch.Tensor,
+        multimodal_embeddings: object | None = None,
+        *,
+        is_multimodal: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        """Draft-prefill embedding: gather + backbone embed_norm, then the
+        target's tower embeddings scattered in unnormed (the backbone
+        convention -- MM embeds are merged after embed_norm)."""
+        embeds = self.embed_tokens(input_ids)
+        if self.backbone_embed_norm is not None:
+            embeds = self.backbone_embed_norm(embeds)
+        if multimodal_embeddings is None or len(multimodal_embeddings) == 0:  # type: ignore[arg-type]
+            return embeds
+        from vllm.model_executor.models.utils import _merge_multimodal_embeddings
+
+        assert is_multimodal is not None
+        return _merge_multimodal_embeddings(
+            inputs_embeds=embeds,
+            multimodal_embeddings=multimodal_embeddings,
+            is_multimodal=is_multimodal,
+        )
 
     def forward(
         self,
@@ -225,35 +215,26 @@ class InklingMTPPredictor(nn.Module):
         previous_hidden_states: torch.Tensor,
         inputs_embeds: torch.Tensor | None = None,
         spec_step_idx: int = 0,
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+    ) -> torch.Tensor:
         if inputs_embeds is None:
             assert input_ids is not None
+            # inputs_embeds from the speculator's MM path are already
+            # backbone-normed (embed_input_ids); this raw-ids path norms here.
             inputs_embeds = self.embed_tokens(input_ids)
+            if self.backbone_embed_norm is not None:
+                inputs_embeds = self.backbone_embed_norm(inputs_embeds)
         current_step_idx = spec_step_idx % self.num_mtp_layers
         return self.layers[str(current_step_idx)](
             positions, previous_hidden_states, inputs_embeds
         )
-
-    def compute_logits(
-        self, hidden_states: torch.Tensor, spec_step_idx: int = 0
-    ) -> torch.Tensor:
-        current_step_idx = spec_step_idx % self.num_mtp_layers
-        mtp_layer = self.layers[str(current_step_idx)]
-        # hidden_states here is the RAW (pre-shared_head-norm) recycled
-        # state returned by forward()'s first tuple element -- re-apply
-        # shared_head's norm here, mirroring DeepSeekMultiTokenPredictor's
-        # identical re-invocation-at-compute_logits-time pattern.
-        normed = mtp_layer.shared_head(hidden_states)
-        return self.logits_processor(mtp_layer.shared_head.head, normed)
 
 
 class InklingMTP(nn.Module):
     """Top-level registered class (``InklingMTPModel`` -> ``InklingMTP``)."""
 
     # Reuse the main model's substr/stacked/suffix weight-name rules
-    # (w13_dn/w2_md, wq_du/wk_dv/wv_dv/wr_du -> qkvr stacking, NVFP4/AQLM
-    # scale suffixes -- unused here since MTP is unquantized, but harmless)
-    # layered with an MTP-specific prefix rule.
+    # (w13_dn/w2_md, wq_du/wk_dv/wv_dv/wr_du -> qkvr stacking) layered with
+    # an MTP-specific prefix rule.
     hf_to_vllm_mapper = _TmlForCausalLMBase.hf_to_vllm_mapper | WeightsMapper(
         orig_to_new_prefix={
             "model.mtp.layers.": "model.layers.",
@@ -262,13 +243,37 @@ class InklingMTP(nn.Module):
 
     def __init__(self, *, vllm_config: VllmConfig, prefix: str = "") -> None:
         super().__init__()
+        assert vllm_config.speculative_config is not None
         self.config = vllm_config.speculative_config.draft_model_config.hf_config
+        text_config = self.config.text_config
         self.model = InklingMTPPredictor(
             vllm_config=vllm_config, prefix=maybe_prefix(prefix, "model")
         )
+        # The target's (vocab-sharded) LM head, attached by load_eagle_model;
+        # never materialized here (same reasoning as model.embed_tokens).
+        self.lm_head = None  # type: ignore[assignment]
+        # The MTP shares the base model's LM head, which is trained on
+        # ``hidden / mup``-scaled inputs -- apply the same muP scaling for a
+        # matching logit scale (argmax-invariant for greedy draft sampling,
+        # but it matters for gumbel sampling at temperature > 0). NO final
+        # norm: the reference decodes the raw block output.
+        self.logits_processor = InklingLogitsProcessor(
+            text_config.padded_vocab_size,
+            org_vocab_size=text_config.vocab_size,
+            soft_cap=text_config.final_logit_softcapping,
+            logits_mup_width_multiplier=text_config.logits_mup_width_multiplier,
+        )
 
-    def embed_input_ids(self, input_ids: torch.Tensor) -> torch.Tensor:
-        return self.model.embed_input_ids(input_ids)
+    def embed_input_ids(
+        self,
+        input_ids: torch.Tensor,
+        multimodal_embeddings: object | None = None,
+        *,
+        is_multimodal: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        return self.model.embed_input_ids(
+            input_ids, multimodal_embeddings, is_multimodal=is_multimodal
+        )
 
     def forward(
         self,
@@ -278,26 +283,17 @@ class InklingMTP(nn.Module):
         intermediate_tensors: IntermediateTensors | None = None,
         inputs_embeds: torch.Tensor | None = None,
         spec_step_idx: int = 0,
-    ) -> tuple[torch.Tensor, torch.Tensor]:
-        # Pass the (pre-norm, post-norm) tuple straight through, matching
-        # DeepSeekMTP.forward()'s identical pattern -- do NOT unpack/discard
-        # here. model_returns_tuple() (llm_base_proposer.py) now recognizes
-        # InklingMTPModel alongside DeepSeekMTPModel, so the harness splits
-        # this correctly: compute_logits gets the pre-norm element (and
-        # applies shared_head's norm itself), while the post-norm element
-        # is what actually gets recycled as the next draft step's
-        # previous_hidden_states. Previously this unpacked and discarded
-        # the post-norm element, so the recycled state was silently never
-        # normed -- the likely root cause of the flat 0% MTP acceptance
-        # measured across all 8 draft positions.
+    ) -> torch.Tensor:
         return self.model(
             input_ids, positions, hidden_states, inputs_embeds, spec_step_idx
         )
 
     def compute_logits(
-        self, hidden_states: torch.Tensor, spec_step_idx: int = 0
+        self,
+        hidden_states: torch.Tensor,
+        spec_step_idx: int = 0,
     ) -> torch.Tensor | None:
-        return self.model.compute_logits(hidden_states, spec_step_idx)
+        return self.logits_processor(self.lm_head, hidden_states)
 
     def load_weights(self, weights: Iterable[tuple[str, torch.Tensor]]) -> set[str]:
         local_layer_ids = set(
@@ -307,17 +303,18 @@ class InklingMTP(nn.Module):
 
         def _iter_loadable_weights():
             for name, weight in weights:
-                if name == _TARGET_NORM_NAME:
-                    # Broadcast the target's own final norm into every MTP
-                    # layer's shared_head.norm (no per-layer counterpart in
-                    # the checkpoint -- see module docstring).
-                    for idx in range(num_mtp_layers):
-                        yield f"model.layers.{idx}.shared_head.norm.weight", weight
+                if name == _BACKBONE_EMBED_NORM_NAME:
+                    yield "model.backbone_embed_norm.weight", weight
                     continue
-                if not _MTP_LAYER_RE.match(name):
+                m = _MTP_LAYER_RE.match(name)
+                if m is None:
                     # Not an MTP-layer tensor (main-model layers, audio/
                     # visual towers, embed/unembed, etc.) -- irrelevant to
-                    # this module, drop before it ever reaches the mapper.
+                    # this module.
+                    continue
+                if int(m.group(1)) >= num_mtp_layers:
+                    # Depth blocks beyond the ones we built
+                    # (num_speculative_tokens < n_predict).
                     continue
                 yield name, weight
 
@@ -378,6 +375,15 @@ class InklingMTP(nn.Module):
                 f"MTP speculative decoding layer(s) {sorted(missing)} weights "
                 f"missing from checkpoint (expected {num_mtp_layers} layers "
                 f"under model.mtp.layers.*)."
+            )
+        if (
+            self.model.backbone_embed_norm is not None
+            and "model.backbone_embed_norm.weight" not in loaded_params
+        ):
+            raise ValueError(
+                "Inkling MTP requires the backbone embed_norm "
+                f"({_BACKBONE_EMBED_NORM_NAME}) but it was not found in the "
+                "checkpoint."
             )
         logger.info_once("Inkling MTP draft model loaded: %d params", len(loaded_params))
         return loaded_params

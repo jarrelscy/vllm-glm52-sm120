@@ -3,7 +3,8 @@
 # Final speed-campaign configs (task #134, gated 2026-07-19):
 #
 #   MODE=512k-mtp (default)  524,288 ctx + MTP ns=2 (lossless spec decode)
-#                            decode ~44-53 tok/s short / 27.5-39.6 @512K depth
+#                            decode 33-42 prose / 50-53 code / 57-60 counting
+#                            tok/s (server-mode), 27.5-39.6 @512K depth
 #                            prefill ~1128 tok/s warm at 512K
 #   MODE=640k                655,360 ctx, no MTP (longest context)
 #                            decode ~40.8 short / 34.5 @640K depth

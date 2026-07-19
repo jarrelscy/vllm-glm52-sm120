@@ -1,0 +1,70 @@
+# Inkling-512k-NVFP4-AQLM-hybrid on SM120 (RTX PRO 6000 Blackwell, TP4).
+#
+# Builds THIS fork (feature/inkling) from source. Everything Inkling needs is
+# committed in-tree: the NVFP4+AQLM hybrid MoE quant + fused gemv/grouped
+# kernels, Triton split-KV decode / varlen prefill / virtual-seq verify
+# attention (rel-bias, paged, SWA), sconv/SWA conv-state cache, restored MTP
+# multi-prefill speculator, FULL_DECODE_ONLY graph support.
+#
+# Weights are NOT baked in. Mount the HF snapshot at /models/inkling:
+#
+# Build:
+#   docker build -f Dockerfile.inkling-sm120 -t inkling-sm120 .
+#
+# Run (default: 512K context + MTP ns=2 — the speed config):
+#   docker run --gpus all --ipc=host -p 8001:8001 \
+#     -v /data/huggingface/hub/models--jarrelscy--Inkling-512k-NVFP4-AQLM-hybrid/snapshots/<rev>:/models/inkling:ro \
+#     inkling-sm120
+#
+# Run (640K context, no MTP — the long-context config):
+#   docker run --gpus all --ipc=host -p 8001:8001 \
+#     -v .../snapshots/<rev>:/models/inkling:ro -e MODE=640k inkling-sm120
+
+FROM nvidia/cuda:12.9.1-devel-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        git curl ca-certificates build-essential ninja-build libsndfile1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# uv + standalone CPython 3.12 (also supplies Python.h for JIT builds)
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:${PATH}"
+
+WORKDIR /opt/vllm
+COPY . /opt/vllm
+
+# venv + vLLM from THIS fork's source
+RUN uv venv --python 3.12 .venv \
+    && . .venv/bin/activate \
+    && uv pip install vllm --torch-backend=auto \
+    && VLLM_USE_PRECOMPILED=1 uv pip install -e . --torch-backend=auto \
+    && uv pip install ninja "huggingface_hub[cli]" soundfile librosa
+
+# flashinfer git main (matches the dev venv this config was gated on)
+RUN . .venv/bin/activate \
+    && uv pip install "flashinfer-python @ git+https://github.com/flashinfer-ai/flashinfer.git"
+
+# SM120 JIT toolchain: pin nvcc/crt/nvvm/cccl to torch's CUDA minor + lib64
+# link. (nvidia is a namespace package -> use the venv path, not __file__.)
+RUN . .venv/bin/activate \
+    && TORCH_CU=$(python -c "import torch;v=torch.version.cuda.split('.');print(v[0]+'.'+v[1])") \
+    && uv pip install "nvidia-cuda-nvcc==${TORCH_CU}.*" "nvidia-cuda-crt==${TORCH_CU}.*" \
+                      "nvidia-nvvm==${TORCH_CU}.*" "nvidia-cuda-cccl==${TORCH_CU}.*" || true \
+    && NV="/opt/vllm/.venv/lib/python3.12/site-packages/nvidia" \
+    && CUX="$NV/cu13"; [ -d "$CUX" ] || CUX="$NV/cu12" \
+    && ln -sfn lib "$CUX/lib64" 2>/dev/null || true \
+    && for f in "$CUX"/lib/lib*.so.*; do [ -e "$f" ] || continue; b=$(basename "$f"); s=${b%%.so.*}; \
+         [ -e "$CUX/lib/$s.so" ] || ln -s "$b" "$CUX/lib/$s.so"; done
+
+ENV PYINC=/root/.local/share/uv/python
+ENV FLASHINFER_DISABLE_VERSION_CHECK=1
+
+# Runtime knobs (override with -e): MODEL_DIR, MODE (512k-mtp|640k), MAXLEN,
+# NUM_SPEC (512k-mtp only, default 2 = the swept optimum). See entrypoint.
+ENV MODEL_DIR=/models/inkling MODE=512k-mtp
+
+COPY docker-entrypoint.inkling.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+EXPOSE 8001
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

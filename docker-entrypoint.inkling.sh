@@ -25,6 +25,12 @@ CUX="$NV/cu13"; [ -d "$CUX" ] || CUX="$NV/cu12"
 export CUDA_HOME="$CUX" PATH="$CUX/bin:$PATH"
 export FLASHINFER_DISABLE_VERSION_CHECK=1
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+# NCCL SHM-bounces on this box (all-NODE PCIe topology, AMD-Vi); driver P2P is
+# ~55 GB/s/pair. Routing NCCL over P2P halves prefill RS/AG time (the >64-token
+# sconv fallback path): 4K prefill 1802 -> 1912 tok/s, 16K 1822 -> 1927 (+6%),
+# 120K fill A/B + coherence + unit suite gated 2026-07-19 (lane A, task #136).
+# Transport-only change: ring reduction order is unchanged (numerics-preserving).
+export NCCL_P2P_LEVEL="${NCCL_P2P_LEVEL:-SYS}"
 
 case "$MODE" in
   512k-mtp)

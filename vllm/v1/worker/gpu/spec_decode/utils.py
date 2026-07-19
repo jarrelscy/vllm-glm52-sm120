@@ -18,12 +18,20 @@ class DraftTokensHandler:
         self.req_ids: list[str] = []
         self.draft_tokens_np: np.ndarray | None = None
         self.num_draft_tokens: int = 0
+        # Optional per-request cap on the number of draft tokens exposed to
+        # the scheduler (adaptive spec policy). None = all requests get
+        # num_draft_tokens.
+        self.valid_counts: np.ndarray | None = None
 
     def set_draft_tokens(
-        self, input_batch: InputBatch, draft_tokens: torch.Tensor
+        self,
+        input_batch: InputBatch,
+        draft_tokens: torch.Tensor,
+        valid_counts: np.ndarray | None = None,
     ) -> None:
         self.req_ids = input_batch.req_ids
         self.num_draft_tokens = draft_tokens.shape[1]
+        self.valid_counts = valid_counts
         if not input_batch.has_structured_output_reqs:
             # No draft token validation needs to be performed by
             # the scheduler for this batch.
@@ -46,6 +54,17 @@ class DraftTokensHandler:
         if self.draft_tokens_np is not None:
             self.copy_event.synchronize()
             draft_token_ids = self.draft_tokens_np.tolist()
+            if self.valid_counts is not None:
+                draft_token_ids = [
+                    row[: self.valid_counts[i]]
+                    for i, row in enumerate(draft_token_ids)
+                ]
+        elif self.valid_counts is not None:
+            # Adaptive spec policy: expose only valid_counts[i] draft slots
+            # per request (0 = drafting suspended for that request).
+            draft_token_ids = [
+                [-1] * int(self.valid_counts[i]) for i in range(len(self.req_ids))
+            ]
         else:
             # This case only happens when async scheduling is disabled.
             draft_token_ids = [[-1] * self.num_draft_tokens for _ in self.req_ids]

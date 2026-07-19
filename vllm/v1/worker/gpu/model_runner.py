@@ -222,6 +222,19 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         # Draft tokens propagation - for spec-dec + struct outputs.
         self.draft_tokens_handler = DraftTokensHandler(self.device)
 
+        # Adaptive per-request speculation suspend/resume policy
+        # (INKLING_ADAPTIVE_SPEC=1, default off). Lossless: only decides
+        # whether a request drafts; outputs stay verifier-exact.
+        self.adaptive_spec_policy = None
+        if self.speculator is not None:
+            from vllm.v1.worker.gpu.spec_decode.adaptive import (
+                maybe_init_adaptive_spec_policy,
+            )
+
+            self.adaptive_spec_policy = maybe_init_adaptive_spec_policy(
+                self.vllm_config, self.device
+            )
+
         # Pooling models.
         self.is_pooling_model = self.model_config.runner_type == "pooling"
         self.pooling_runner: PoolingRunner | None = None
@@ -1851,7 +1864,19 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             input_batch.query_start_loc,
         )
 
-        if self.speculator is not None:
+        adaptive_skip_propose = False
+        adaptive_valid_counts = None
+        if self.adaptive_spec_policy is not None and self.speculator is not None:
+            # Decide (from previous rounds' acceptance) which requests draft
+            # this round, then stage this round's acceptance for the next
+            # decision. Decisions are identical on every TP rank, so the
+            # propose collective below is skipped by all ranks or none.
+            adaptive_skip_propose, adaptive_valid_counts = (
+                self.adaptive_spec_policy.decide(input_batch)
+            )
+            self.adaptive_spec_policy.observe(input_batch, num_sampled)
+
+        if self.speculator is not None and not adaptive_skip_propose:
             assert self.sampler is not None or self.draft_tp_over_pp
             # Let the target override the hidden state fed to the drafter
             # (e.g. DeepSeek V4 MTP needs the pre-hc_head residual). The
@@ -1903,9 +1928,15 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         if self.num_speculative_steps > 0:
             # Spec-decode and diffusion LLMs both use draft tokens but the latter does
             # not have a speculator (i.e. self.speculator is None)
+            draft_tokens_view = self.req_states.draft_tokens[input_batch.idx_mapping]
+            if adaptive_skip_propose:
+                # Drafter forward skipped (all requests suspended): expose
+                # zero draft slots so the scheduler runs plain decode steps.
+                draft_tokens_view = draft_tokens_view[:, :0]
             self.draft_tokens_handler.set_draft_tokens(
                 input_batch,
-                self.req_states.draft_tokens[input_batch.idx_mapping],
+                draft_tokens_view,
+                valid_counts=adaptive_valid_counts,
             )
 
         # Post-step KV connector related operations.

@@ -417,6 +417,71 @@ def test_decode_graphsafe_path_matches_eager_reference() -> None:
         )
 
 
+@pytest.mark.skipif(not current_platform.is_cuda(), reason="needs CUDA")
+def test_decode_grouped_matches_gemv_path() -> None:
+    """The graph-safe grouped decode path (_apply_decode_grouped, used for
+    multi-token decode batches like spec-decode verify) must agree with the
+    per-slot gemv path on identical inputs. Covers the MTP verify shape
+    (9 tokens), expert runs longer than one m-block (concentrated routing
+    -> multi-block runs), and all-hot / all-cold routing."""
+    torch.manual_seed(11)
+    device = "cuda"
+    num_experts, n_hot, n_cold = 8, 2, 6
+    h, i_full = 32, 32
+    g = hm._G
+
+    hot_ids = torch.tensor([0, 6], dtype=torch.int32)
+    cold_ids = torch.tensor([1, 2, 3, 4, 5, 7], dtype=torch.int32)
+    disk = {
+        "hot_ids": hot_ids,
+        "cold_ids": cold_ids,
+        "w13_hot_weight": torch.randint(0, 256, (n_hot, 2 * i_full, h // 2), dtype=torch.uint8),
+        "w13_hot_weight_scale": (torch.rand(n_hot, 2 * i_full, h // 16) * 0.1 + 0.02).to(torch.float8_e4m3fn),
+        "w13_hot_weight_scale2": torch.rand(n_hot) * 0.1 + 0.02,
+        "w2_hot_weight": torch.randint(0, 256, (n_hot, h, i_full // 2), dtype=torch.uint8),
+        "w2_hot_weight_scale": (torch.rand(n_hot, h, i_full // 16) * 0.1 + 0.02).to(torch.float8_e4m3fn),
+        "w2_hot_weight_scale2": torch.rand(n_hot) * 0.1 + 0.02,
+        "w13_cold_codes_0": torch.randint(-32768, 32767, (n_cold, 2 * i_full, h // g), dtype=torch.int16),
+        "w13_cold_codebook_0": torch.randn(65536, g, dtype=torch.float16) * 0.05,
+        "w13_cold_scales": torch.rand(n_cold, 2 * i_full).to(torch.float16) * 0.1 + 0.02,
+        "w2_cold_codes_0": torch.randint(-32768, 32767, (n_cold, h, i_full // g), dtype=torch.int16),
+        "w2_cold_codes_1": torch.randint(0, 256, (n_cold, h, i_full // g), dtype=torch.uint8),
+        "w2_cold_codebook_0": torch.randn(65536, g, dtype=torch.float16) * 0.05,
+        "w2_cold_codebook_1": torch.randn(256, g, dtype=torch.float16) * 0.05,
+        "w2_cold_scales": torch.rand(n_cold, h).to(torch.float16) * 0.1 + 0.02,
+    }
+
+    method = _make_hybrid_method(tp_size=1, tp_rank=0)
+    layer = _build_and_load(method, num_experts, h, i_full, disk, device)
+
+    # (num_tokens, top_k, id_pool_size): the last case routes 180 slots onto
+    # 2 experts so runs span many block_m=16 m-blocks.
+    for num_tokens, top_k, id_hi in [(9, 6, 8), (2, 2, 8), (5, 3, 8), (30, 6, 2)]:
+        x = torch.randn(num_tokens, h, dtype=torch.bfloat16, device=device)
+        topk_ids = torch.randint(
+            0, id_hi, (num_tokens, top_k), dtype=torch.int64, device=device
+        )
+        topk_weights = torch.rand(num_tokens, top_k, device=device)
+        out_grouped = method._apply_decode_grouped(layer, x, topk_weights, topk_ids)
+        out_gemv = method._apply_decode_fused(layer, x, topk_weights, topk_ids)
+        torch.testing.assert_close(
+            out_grouped, out_gemv, rtol=0.02, atol=0.02,
+            msg=f"grouped vs gemv mismatch at num_tokens={num_tokens} "
+                f"top_k={top_k} id_hi={id_hi}",
+        )
+
+    # All-hot and all-cold routing at the MTP verify shape: exercises both
+    # uniform branches of the grouped kernel end to end.
+    for pool_cpu in (hot_ids, cold_ids):
+        pool = pool_cpu.long().to(device)
+        topk_ids = pool[torch.randint(0, pool.numel(), (9, 6), device=device)]
+        x = torch.randn(9, h, dtype=torch.bfloat16, device=device)
+        topk_weights = torch.rand(9, 6, device=device)
+        out_grouped = method._apply_decode_grouped(layer, x, topk_weights, topk_ids)
+        out_gemv = method._apply_decode_fused(layer, x, topk_weights, topk_ids)
+        torch.testing.assert_close(out_grouped, out_gemv, rtol=0.02, atol=0.02)
+
+
 def test_ep_size_greater_than_one_not_implemented() -> None:
     info = HybridLayerInfo(n_hot=1, n_cold=1, packed=True, hot_format="nvfp4")
     try:

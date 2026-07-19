@@ -93,6 +93,14 @@ _FUSED_PREFILL_DISABLED = (
     os.environ.get("INKLING_DISABLE_FUSED_PREFILL", "0") == "1"
     or os.path.exists("/tmp/INKLING_DISABLE_FUSED_PREFILL")
 )
+# Multi-token decode batches (spec-decode verify, concurrent seqs) route to
+# the grouped kernel via a graph-safe block map instead of the per-slot gemv,
+# which pays num_tokens x the single-token MoE weight traffic. Escape hatch
+# for A/B and triage; single-token decode always keeps the gemv path.
+_DECODE_GROUPED_DISABLED = (
+    os.environ.get("INKLING_DISABLE_DECODE_GROUPED", "0") == "1"
+    or os.path.exists("/tmp/INKLING_DISABLE_DECODE_GROUPED")
+)
 
 # Empirically measured (not guessed) peak transient footprint of a single
 # _compute_expert call (xe/h13/hact/ye below) -- continuously updated to the
@@ -541,6 +549,99 @@ class InklingHybridExpertsMoEMethod(FusedMoEMethodBase):
         out.index_add_(0, sorted_tok.long(), ye)
         return out.to(x.dtype)
 
+    def _apply_decode_grouped(
+        self,
+        layer: "RoutedExperts",
+        x: torch.Tensor,
+        topk_weights: torch.Tensor,
+        topk_ids: torch.Tensor,
+    ) -> torch.Tensor:
+        """Multi-token decode-regime MoE via the grouped kernel, graph-safe.
+
+        The per-slot gemv path reads each slot's full expert weights
+        independently, so a spec-decode verify batch (num_tokens = ns+1 per
+        seq) pays num_tokens x the single-token MoE weight traffic — v36
+        profiling showed that one kernel at 78% of MTP-round GPU time.
+        Sorting slots by expert amortizes each expert's weight read across
+        every row routed to it, and the grouped kernel's tl.dot + uniform
+        hot/cold branch replace the gemv's scalar FMA chains.
+
+        Graph-safety (same contract as _apply_decode_graphsafe): grid and all
+        shapes depend only on S = num_tokens*top_k. The block map launches one
+        CANDIDATE m-block per sorted slot; only slots at a BLOCK_M boundary of
+        their expert run carry mlen > 0, the rest no-op in-kernel. Boundaries
+        are tensor VALUES, so a captured graph replays across steps.
+        """
+        from vllm.models.inkling.nvidia.hybrid_moe_kernels import (
+            fused_hybrid_grouped_gemm,
+        )
+
+        num_tokens, hidden = x.shape
+        top_k = topk_ids.shape[1]
+        S = num_tokens * top_k
+        dev = x.device
+        block_m = 16  # tl.dot minimum; decode expert runs are short
+
+        flat_ids = topk_ids.reshape(-1).long()                  # [S]
+        order = torch.argsort(flat_ids)                         # fixed shape
+        sorted_ids = flat_ids[order]
+        sorted_tok = (order // top_k).to(torch.int32)
+        sorted_w = topk_weights.reshape(-1).float()[order]
+
+        # Expert-run boundaries as values: run_start[i] is the first slot of
+        # i's run (cummax over first-of-run indices), run_len broadcast from a
+        # one-hot count at each run start. head slots every block_m within a
+        # run own a block of min(block_m, remaining) rows; all others mlen=0.
+        idx = torch.arange(S, device=dev)
+        first = torch.ones(S, dtype=torch.bool, device=dev)
+        first[1:] = sorted_ids[1:] != sorted_ids[:-1]
+        run_start = torch.cummax(
+            torch.where(first, idx, torch.zeros_like(idx)), 0
+        ).values                                                # [S]
+        within = idx - run_start
+        run_len = torch.zeros_like(idx).index_add_(
+            0, run_start, torch.ones_like(idx)
+        )[run_start]                                            # [S]
+        head = (within % block_m) == 0
+        block_mlen = torch.where(
+            head,
+            torch.clamp(run_len - within, max=block_m),
+            torch.zeros_like(run_len),
+        ).to(torch.int32)
+        block_expert = sorted_ids.to(torch.int32)
+        block_slot0 = idx.to(torch.int32)
+
+        x_bf = x.to(torch.bfloat16).contiguous()
+        ish = self._ish
+        hot_lut = layer._hybrid_hot_lookup
+        cold_lut = layer._hybrid_cold_lookup
+
+        m13, hp13, hs13, hs2_13 = self._hot_kernel_args(layer, "w13")
+        c13, cb13, cs13 = self._cold_kernel_args(layer, "w13")
+        h13 = fused_hybrid_grouped_gemm(
+            x_bf, sorted_tok, block_expert, block_slot0, block_mlen,
+            hot_lut, cold_lut,
+            m13, hp13, hs13, hs2_13, c13, cb13, cs13,
+            S=S, N=2 * ish, K=hidden, block_m=block_m,
+        )                                                       # [S, 2*ish]
+        act = _silu_and_mul(h13).to(torch.bfloat16).contiguous()
+
+        ident = torch.arange(S, dtype=torch.int32, device=dev)
+        m2, hp2, hs2a, hs2b = self._hot_kernel_args(layer, "w2")
+        c2, cb2, cs2 = self._cold_kernel_args(layer, "w2")
+        ye = fused_hybrid_grouped_gemm(
+            act, ident, block_expert, block_slot0, block_mlen,
+            hot_lut, cold_lut,
+            m2, hp2, hs2a, hs2b, c2, cb2, cs2,
+            S=S, N=hidden, K=ish, block_m=block_m,
+        )                                                       # [S, hidden]
+        ye *= sorted_w.unsqueeze(-1)
+        out = torch.zeros(
+            num_tokens, hidden, dtype=torch.float32, device=dev
+        )
+        out.index_add_(0, sorted_tok.long(), ye)
+        return out.to(x.dtype)
+
     def _apply_decode_graphsafe(
         self,
         layer: "RoutedExperts",
@@ -639,6 +740,14 @@ class InklingHybridExpertsMoEMethod(FusedMoEMethodBase):
                 and not _FUSED_DECODE_DISABLED
                 and self.info.n_cold > 0
             ):
+                # Multi-token decode (spec verify, concurrent seqs): grouped
+                # kernel amortizes expert weight reads across rows. The
+                # branch keys on num_tokens (a SHAPE, static per captured
+                # graph), never on values. Single-token keeps the gemv.
+                if num_tokens > 1 and not _DECODE_GROUPED_DISABLED:
+                    return self._apply_decode_grouped(
+                        layer, x, topk_weights, topk_ids
+                    )
                 return self._apply_decode_fused(
                     layer, x, topk_weights, topk_ids
                 )

@@ -98,92 +98,92 @@ def _hybrid_gemv_kernel(
     row_ok = rows < N
 
     ih = tl.load(is_hot_ptr + s)
-    hot = ih != 0
-    cold = ih == 0
     he = tl.load(hot_idx_ptr + s).to(tl.int64)
     ce = tl.load(cold_idx_ptr + s).to(tl.int64)
 
-    acc_hot = tl.zeros((BLOCK_N,), dtype=tl.float32)
-    acc_cold = tl.zeros((BLOCK_N,), dtype=tl.float32)
-
-    for k0 in range(0, tl.cdiv(K, BLOCK_K)):
-        k = k0 * BLOCK_K
-
-        # ---- hot side (masked off entirely when the slot is cold) ----
-        if HOT_MODE == 1:
-            # bytes j cover in-positions (k + 2j, k + 2j + 1)
-            j = tl.arange(0, BLOCK_K // 2)
-            xm = (k + 2 * j) < K
-            x_even = tl.load(
-                x_ptr + s * K + k + 2 * j, mask=xm & hot, other=0.0
-            ).to(tl.float32)
-            x_odd = tl.load(
-                x_ptr + s * K + k + 2 * j + 1, mask=xm & hot, other=0.0
-            ).to(tl.float32)
-            p_off = (he * N + rows.to(tl.int64))[:, None] * (K // 2) + (k // 2) + j[None, :]
-            pk = tl.load(
-                hot_packed_ptr + p_off,
-                mask=(row_ok[:, None] & xm[None, :]) & hot,
-                other=0,
-            )
-            lo = _nvfp4_mag(pk & 0xF) * tl.where((pk & 0x8) != 0, -1.0, 1.0)
-            hi = _nvfp4_mag((pk >> 4) & 0xF) * tl.where((pk & 0x80) != 0, -1.0, 1.0)
-            # per-16-in-element block scale; byte j sits in block (k + 2j)//16
-            s_off = (he * N + rows.to(tl.int64))[:, None] * (K // 16) \
-                + ((k + 2 * j[None, :]) // 16)
-            sc = _fp8e4m3_decode(
-                tl.load(
-                    hot_scale_ptr + s_off,
-                    mask=(row_ok[:, None] & xm[None, :]) & hot,
+    # Hot-vs-cold is a uniform runtime branch on the slot's scalar predicate:
+    # a program executes only its own format's decode ALU. The previous
+    # masked-both-paths version skipped the OTHER format's memory traffic but
+    # still paid its full dequant ALU on every slot, just to discard it in a
+    # tl.where. Arithmetic within each branch is unchanged (bit-identical).
+    if (HOT_MODE != 0) and (ih != 0):
+        acc = tl.zeros((BLOCK_N,), dtype=tl.float32)
+        for k0 in range(0, tl.cdiv(K, BLOCK_K)):
+            k = k0 * BLOCK_K
+            if HOT_MODE == 1:
+                # bytes j cover in-positions (k + 2j, k + 2j + 1)
+                j = tl.arange(0, BLOCK_K // 2)
+                xm = (k + 2 * j) < K
+                x_even = tl.load(
+                    x_ptr + s * K + k + 2 * j, mask=xm, other=0.0
+                ).to(tl.float32)
+                x_odd = tl.load(
+                    x_ptr + s * K + k + 2 * j + 1, mask=xm, other=0.0
+                ).to(tl.float32)
+                p_off = (he * N + rows.to(tl.int64))[:, None] * (K // 2) + (k // 2) + j[None, :]
+                pk = tl.load(
+                    hot_packed_ptr + p_off,
+                    mask=row_ok[:, None] & xm[None, :],
                     other=0,
                 )
-            )
-            acc_hot += tl.sum(sc * (lo * x_even[None, :] + hi * x_odd[None, :]), axis=1)
-        elif HOT_MODE == 2:
-            kk = k + tl.arange(0, BLOCK_K)
-            xm = kk < K
-            xb = tl.load(x_ptr + s * K + kk, mask=xm & hot, other=0.0).to(tl.float32)
-            w_off = (he * N + rows.to(tl.int64))[:, None] * K + kk[None, :]
-            wb = tl.load(
-                hot_packed_ptr + w_off,
-                mask=(row_ok[:, None] & xm[None, :]) & hot,
-                other=0.0,
-            ).to(tl.float32)
-            acc_hot += tl.sum(wb * xb[None, :], axis=1)
-
-        # ---- cold side (masked off entirely when the slot is hot) ----
-        g = tl.arange(0, BLOCK_K // _G)  # group index within the k block
-        gi = tl.arange(0, _G)
-        kk2 = k + g[:, None] * _G + gi[None, :]  # [BK//G, G] in-positions
-        xm2 = kk2 < K
-        x2 = tl.load(
-            x_ptr + s * K + kk2, mask=xm2 & cold, other=0.0
-        ).to(tl.float32)  # [BK//G, G]
-        c_off = (ce * N + rows.to(tl.int64))[:, None] * (K // _G) + (k // _G) + g[None, :]
-        c_mask = (row_ok[:, None] & ((k + g[None, :] * _G) < K)) & cold
-        code0 = tl.load(cold_codes0_ptr + c_off, mask=c_mask, other=0).to(tl.int32)
-        code0 = code0 & (ENTRIES0 - 1)
-        cb_off0 = code0.to(tl.int64)[:, :, None] * _G + gi[None, None, :]
-        w3 = tl.load(
-            cold_cb0_ptr + cb_off0, mask=c_mask[:, :, None], other=0.0
-        ).to(tl.float32)  # [BN, BK//G, G]
-        if NUM_BOOKS == 2:
-            code1 = tl.load(cold_codes1_ptr + c_off, mask=c_mask, other=0).to(tl.int32)
-            code1 = code1 & (ENTRIES1 - 1)
-            cb_off1 = code1.to(tl.int64)[:, :, None] * _G + gi[None, None, :]
-            w3 += tl.load(
-                cold_cb1_ptr + cb_off1, mask=c_mask[:, :, None], other=0.0
-            ).to(tl.float32)
-        acc_cold += tl.sum(tl.sum(w3 * x2[None, :, :], axis=2), axis=1)
-
-    # final per-expert / per-row scales, then select
-    if HOT_MODE == 1:
-        acc_hot *= tl.load(hot_scale2_ptr + he)
-    cold_rs = tl.load(
-        cold_scales_ptr + ce * N + rows.to(tl.int64), mask=row_ok, other=0.0
-    ).to(tl.float32)
-    result = tl.where(hot, acc_hot, acc_cold * cold_rs)
-    tl.store(out_ptr + s * N + rows, result, mask=row_ok)
+                lo = _nvfp4_mag(pk & 0xF) * tl.where((pk & 0x8) != 0, -1.0, 1.0)
+                hi = _nvfp4_mag((pk >> 4) & 0xF) * tl.where((pk & 0x80) != 0, -1.0, 1.0)
+                # per-16-in-element block scale; byte j sits in block (k + 2j)//16
+                s_off = (he * N + rows.to(tl.int64))[:, None] * (K // 16) \
+                    + ((k + 2 * j[None, :]) // 16)
+                sc = _fp8e4m3_decode(
+                    tl.load(
+                        hot_scale_ptr + s_off,
+                        mask=row_ok[:, None] & xm[None, :],
+                        other=0,
+                    )
+                )
+                acc += tl.sum(sc * (lo * x_even[None, :] + hi * x_odd[None, :]), axis=1)
+            else:  # HOT_MODE == 2
+                kk = k + tl.arange(0, BLOCK_K)
+                xm = kk < K
+                xb = tl.load(x_ptr + s * K + kk, mask=xm, other=0.0).to(tl.float32)
+                w_off = (he * N + rows.to(tl.int64))[:, None] * K + kk[None, :]
+                wb = tl.load(
+                    hot_packed_ptr + w_off,
+                    mask=row_ok[:, None] & xm[None, :],
+                    other=0.0,
+                ).to(tl.float32)
+                acc += tl.sum(wb * xb[None, :], axis=1)
+        if HOT_MODE == 1:
+            acc *= tl.load(hot_scale2_ptr + he)
+        tl.store(out_ptr + s * N + rows, acc, mask=row_ok)
+    else:
+        acc = tl.zeros((BLOCK_N,), dtype=tl.float32)
+        for k0 in range(0, tl.cdiv(K, BLOCK_K)):
+            k = k0 * BLOCK_K
+            g = tl.arange(0, BLOCK_K // _G)  # group index within the k block
+            gi = tl.arange(0, _G)
+            kk2 = k + g[:, None] * _G + gi[None, :]  # [BK//G, G] in-positions
+            xm2 = kk2 < K
+            x2 = tl.load(
+                x_ptr + s * K + kk2, mask=xm2, other=0.0
+            ).to(tl.float32)  # [BK//G, G]
+            c_off = (ce * N + rows.to(tl.int64))[:, None] * (K // _G) + (k // _G) + g[None, :]
+            c_mask = row_ok[:, None] & ((k + g[None, :] * _G) < K)
+            code0 = tl.load(cold_codes0_ptr + c_off, mask=c_mask, other=0).to(tl.int32)
+            code0 = code0 & (ENTRIES0 - 1)
+            cb_off0 = code0.to(tl.int64)[:, :, None] * _G + gi[None, None, :]
+            w3 = tl.load(
+                cold_cb0_ptr + cb_off0, mask=c_mask[:, :, None], other=0.0
+            ).to(tl.float32)  # [BN, BK//G, G]
+            if NUM_BOOKS == 2:
+                code1 = tl.load(cold_codes1_ptr + c_off, mask=c_mask, other=0).to(tl.int32)
+                code1 = code1 & (ENTRIES1 - 1)
+                cb_off1 = code1.to(tl.int64)[:, :, None] * _G + gi[None, None, :]
+                w3 += tl.load(
+                    cold_cb1_ptr + cb_off1, mask=c_mask[:, :, None], other=0.0
+                ).to(tl.float32)
+            acc += tl.sum(tl.sum(w3 * x2[None, :, :], axis=2), axis=1)
+        cold_rs = tl.load(
+            cold_scales_ptr + ce * N + rows.to(tl.int64), mask=row_ok, other=0.0
+        ).to(tl.float32)
+        tl.store(out_ptr + s * N + rows, acc * cold_rs, mask=row_ok)
 
 
 @triton.jit
@@ -324,46 +324,51 @@ def _hybrid_grouped_gemm_kernel(
     pid_m = tl.program_id(0)
     pid_n = tl.program_id(1)
 
-    e = tl.load(block_expert_ptr + pid_m).to(tl.int64)
-    slot0 = tl.load(block_slot0_ptr + pid_m)
     mlen = tl.load(block_mlen_ptr + pid_m)
-    hot_raw = tl.load(hot_lut_ptr + e)
-    he = tl.maximum(hot_raw, 0).to(tl.int64)
-    ce = tl.maximum(tl.load(cold_lut_ptr + e), 0).to(tl.int64)
+    # Graph-safe decode maps launch one candidate block per slot and mark
+    # non-head slots with mlen == 0; those programs no-op here so the grid
+    # shape stays a function of S only (values, not shapes, carry the data
+    # dependence). The eager prefill map never emits mlen == 0.
+    if mlen != 0:
+        e = tl.load(block_expert_ptr + pid_m).to(tl.int64)
+        slot0 = tl.load(block_slot0_ptr + pid_m)
+        hot_raw = tl.load(hot_lut_ptr + e)
+        he = tl.maximum(hot_raw, 0).to(tl.int64)
+        ce = tl.maximum(tl.load(cold_lut_ptr + e), 0).to(tl.int64)
 
-    ms = tl.arange(0, BLOCK_M)
-    m_ok = ms < mlen
-    xrows = tl.load(row_idx_ptr + slot0 + ms, mask=m_ok, other=0).to(tl.int64)
-    rows = pid_n * BLOCK_N + tl.arange(0, BLOCK_N)
-    row_ok = rows < N
-    rw = (rows.to(tl.int64))[:, None]
+        ms = tl.arange(0, BLOCK_M)
+        m_ok = ms < mlen
+        xrows = tl.load(row_idx_ptr + slot0 + ms, mask=m_ok, other=0).to(tl.int64)
+        rows = pid_n * BLOCK_N + tl.arange(0, BLOCK_N)
+        row_ok = rows < N
+        rw = (rows.to(tl.int64))[:, None]
 
-    if (HOT_MODE != 0) and (hot_raw >= 0):
-        acc = _grouped_hot_acc(
-            x_ptr, xrows, m_ok, rw, row_ok, he,
-            hot_packed_ptr, hot_scale_ptr,
-            N, K,
-            HOT_MODE=HOT_MODE,
-            BLOCK_M=BLOCK_M, BLOCK_N=BLOCK_N, BLOCK_K=BLOCK_K,
-        )
-        if HOT_MODE == 1:
-            result = acc * tl.load(hot_scale2_ptr + he)
+        if (HOT_MODE != 0) and (hot_raw >= 0):
+            acc = _grouped_hot_acc(
+                x_ptr, xrows, m_ok, rw, row_ok, he,
+                hot_packed_ptr, hot_scale_ptr,
+                N, K,
+                HOT_MODE=HOT_MODE,
+                BLOCK_M=BLOCK_M, BLOCK_N=BLOCK_N, BLOCK_K=BLOCK_K,
+            )
+            if HOT_MODE == 1:
+                result = acc * tl.load(hot_scale2_ptr + he)
+            else:
+                result = acc
         else:
-            result = acc
-    else:
-        acc = _grouped_cold_acc(
-            x_ptr, xrows, m_ok, rw, row_ok, ce,
-            cold_codes0_ptr, cold_cb0_ptr, cold_codes1_ptr, cold_cb1_ptr,
-            N, K,
-            ENTRIES0=ENTRIES0, ENTRIES1=ENTRIES1, NUM_BOOKS=NUM_BOOKS,
-            BLOCK_M=BLOCK_M, BLOCK_N=BLOCK_N, BLOCK_K=BLOCK_K,
-        )
-        cold_rs = tl.load(
-            cold_scales_ptr + ce * N + rows.to(tl.int64), mask=row_ok, other=0.0
-        ).to(tl.float32)
-        result = acc * cold_rs[None, :]
-    out_off = (slot0 + ms).to(tl.int64)[:, None] * N + rows[None, :]
-    tl.store(out_ptr + out_off, result, mask=m_ok[:, None] & row_ok[None, :])
+            acc = _grouped_cold_acc(
+                x_ptr, xrows, m_ok, rw, row_ok, ce,
+                cold_codes0_ptr, cold_cb0_ptr, cold_codes1_ptr, cold_cb1_ptr,
+                N, K,
+                ENTRIES0=ENTRIES0, ENTRIES1=ENTRIES1, NUM_BOOKS=NUM_BOOKS,
+                BLOCK_M=BLOCK_M, BLOCK_N=BLOCK_N, BLOCK_K=BLOCK_K,
+            )
+            cold_rs = tl.load(
+                cold_scales_ptr + ce * N + rows.to(tl.int64), mask=row_ok, other=0.0
+            ).to(tl.float32)
+            result = acc * cold_rs[None, :]
+        out_off = (slot0 + ms).to(tl.int64)[:, None] * N + rows[None, :]
+        tl.store(out_ptr + out_off, result, mask=m_ok[:, None] & row_ok[None, :])
 
 
 def fused_hybrid_grouped_gemm(

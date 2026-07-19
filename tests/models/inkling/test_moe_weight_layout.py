@@ -68,7 +68,9 @@ def test_moe_loads_calibrated_input_scale(projection: str, amax: float) -> None:
         w13_input_scale=torch.nn.Parameter(torch.empty(3, 2)),
         w2_input_scale=torch.nn.Parameter(torch.empty(3)),
     )
-    layer = SimpleNamespace(experts=SimpleNamespace(routed_experts=experts))
+    layer = SimpleNamespace(
+        experts=SimpleNamespace(routed_experts=experts), is_hybrid_layer=False
+    )
 
     loaded = moe.InklingMoE.load_expert_weight(
         layer,

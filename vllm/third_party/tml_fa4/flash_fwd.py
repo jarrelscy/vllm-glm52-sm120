@@ -19,6 +19,7 @@ from cutlass.cute.nvgpu import cpasync, warp
 import cutlass.utils as utils_basic
 from cutlass.base_dsl.arch import Arch
 from cutlass.cutlass_dsl import BaseDSL
+from cutlass.cute import FastDivmodDivisor
 
 from quack import copy_utils
 from quack import layout_utils
@@ -30,9 +31,10 @@ from vllm.third_party.tml_fa4.mask import AttentionMask
 from vllm.third_party.tml_fa4.softmax import Softmax, apply_score_mod_inner
 from vllm.third_party.tml_fa4.seqlen_info import SeqlenInfoQK
 from vllm.third_party.tml_fa4.block_info import BlockInfo
-from vllm.third_party.tml_fa4.pack_gqa import PackGQA
+from vllm.third_party.tml_fa4.pack_gqa import PackGQA, pack_gqa_layout
 from vllm.third_party.tml_fa4.named_barrier import NamedBarrierFwd
 from vllm.third_party.tml_fa4.block_sparsity import BlockSparseTensors
+from vllm.third_party.tml_fa4.paged_kv import PagedKVManager
 from vllm.third_party.tml_fa4.tile_scheduler import SingleTileScheduler, SingleTileVarlenScheduler, TileSchedulerArguments
 
 
@@ -366,11 +368,22 @@ class FlashAttentionForwardBase:
         pack_gqa = PackGQA(
             self.tile_m, self.tile_hdimv, self.check_hdim_v_oob, self.qhead_per_kvhead
         )
+        # Scoped exactly like the num_head grid-size reduction in __call__: only
+        # apply the actually-packed (pack_gqa_layout) addressing for the varlen
+        # scheduler, which is the only one whose num_m_blocks is inflated by
+        # qhead_per_kvhead to match. SingleTileScheduler (non-varlen) is untouched
+        # (no test in this repo exercises Pack-GQA + non-varlen).
+        use_pack_gqa_addr = self.pack_gqa and (seqlen.has_cu_seqlens_q or seqlen.has_seqused_q)
 
         # Write LSE from rmem -> gmem
         if const_expr(mLSE is not None):
+            if const_expr(use_pack_gqa_addr):
+                nheads_kv_lse = cute.size(mLSE.shape[1]) // self.qhead_per_kvhead
+                mLSE = pack_gqa_layout(
+                    mLSE, self.qhead_per_kvhead, nheads_kv_lse, head_idx=1, seqlen_idx=0
+                )
             mLSE_cur = seqlen.offset_batch_Q(mLSE, batch_idx, dim=2)[None, head_idx]
-            if const_expr(not self.pack_gqa):
+            if const_expr(not use_pack_gqa_addr):
                 gLSE = cute.local_tile(mLSE_cur, (self.tile_m,), (m_block,))
                 gLSE_expanded_layout = cute.append(
                     gLSE.layout, cute.make_layout((self.tile_hdimv,), stride=(0,))
@@ -393,6 +406,9 @@ class FlashAttentionForwardBase:
                 pack_gqa.store_LSE(mLSE_cur, lse, tiled_mma, tidx, m_block, seqlen.seqlen_q)
 
         ragged = self.use_tma_O and (seqlen.has_cu_seqlens_q or seqlen.has_seqused_q)
+        if const_expr(use_pack_gqa_addr):
+            nheads_kv_o = cute.size(mO.shape[2]) // self.qhead_per_kvhead
+            mO = pack_gqa_layout(mO, self.qhead_per_kvhead, nheads_kv_o, head_idx=2, seqlen_idx=0)
         mO_cur = seqlen.offset_batch_Q(mO, batch_idx, dim=3, ragged=ragged)[None, None, head_idx]
         # thr_mma = tiled_mma.get_slice(tidx)
         # taccOgO = thr_mma.partition_C(gO)
@@ -428,7 +444,7 @@ class FlashAttentionForwardBase:
             tOrO = cute.make_fragment_like(tOsO, self.dtype)
             # load acc O from smem to rmem for wider vectorization
             cute.autovec_copy(tOsO, tOrO)
-            if const_expr(not self.pack_gqa):
+            if const_expr(not use_pack_gqa_addr):
                 gO = cute.local_tile(mO_cur, (self.tile_m, self.tile_hdimv), (m_block, 0))
                 tOgO = gmem_thr_copy_O.partition_D(gO)
                 tOcO = gmem_thr_copy_O.partition_S(cO)
@@ -578,6 +594,40 @@ class FlashAttentionForwardBase:
                 pred=tVpV if const_expr(self.check_hdim_v_oob) else None,
             )
 
+    @cute.jit
+    def load_paged_K(
+        self,
+        paged_kv_manager: PagedKVManager,
+        sK: cute.Tensor,
+        block: Int32,
+        smem_pipe_write: Int32,
+        need_predicates: Optional[cutlass.Constexpr] = None,
+    ):
+        # load_KV loads its own page table internally (local rmem) so the page/
+        # offset scratch never becomes mutable manager state threaded across
+        # sibling scf regions (MLIR dominance fix).
+        paged_kv_manager.load_KV(
+            block,
+            sK[None, None, smem_pipe_write if const_expr(self.num_stages > 1) else 0],
+            "K",
+        )
+
+    @cute.jit
+    def load_paged_V(
+        self,
+        paged_kv_manager: PagedKVManager,
+        sV: cute.Tensor,
+        block: Int32,
+        smem_pipe_write: Int32,
+        need_predicates: Optional[cutlass.Constexpr] = None,
+    ):
+        # See load_paged_K: page table loaded inside load_KV (local rmem).
+        paged_kv_manager.load_KV(
+            block,
+            sV[None, None, smem_pipe_write if const_expr(self.num_stages > 1) else 0],
+            "V",
+        )
+
 
 class FlashAttentionForwardSm80(FlashAttentionForwardBase):
     # SM80-era cp.async __call__ (shared verbatim by the Sm120 subclass) uses the
@@ -667,14 +717,14 @@ class FlashAttentionForwardSm80(FlashAttentionForwardBase):
         self.num_producer_threads = self.num_threads
         self.num_Q_load_threads = self.num_threads
         self.num_epilogue_threads = self.num_threads
-        # self.use_tma_O = self.arch >= 90 and mCuSeqlensQ is None
-        # This SM80-era cp.async __call__/kernel (shared verbatim by the Sm120
-        # subclass) has NO TMA-O descriptor setup (tma_atom_O is None), so TMA-O
-        # must always be off here. self.arch is the REAL device arch, so
-        # `self.arch >= Arch.sm_90` wrongly evaluates True on sm_120 (major=12)
-        # and routes the epilogue into the TMA store path -> None atom crash.
-        # SM90/SM100 have their own __call__ (flash_fwd_sm90/sm100.py) and never
-        # reach this. Same self.arch pitfall as the store-atom fix above.
+        # This __call__/kernel() is the SM80-era cp.async implementation, shared
+        # verbatim by FlashAttentionForwardSm120 (subclass, flash_fwd_sm120.py).
+        # It has no TMA descriptor setup for O anywhere in it, so TMA-O must
+        # always be off here regardless of self.arch (self.arch is the real
+        # detected GPU arch enum, e.g. sm_120 has major=12 >= 9, which would
+        # wrongly evaluate True below despite this code path predating TMA).
+        # SM90/SM100 have their own separate __call__/kernel() (flash_fwd_sm90.py,
+        # flash_fwd_sm100.py) and never reach this method, so this cannot affect them.
         self.use_tma_O = False
         self._setup_attributes()
         SharedStorage = self._get_shared_storage_cls()
@@ -694,7 +744,8 @@ class FlashAttentionForwardSm80(FlashAttentionForwardBase):
             LSE_layout_transpose = [2, 1, 0] if const_expr(mCuSeqlensQ is None) else [1, 0]
             mLSE = cute.make_tensor(mLSE.iterator, cute.select(mLSE.layout, mode=LSE_layout_transpose))
         # TileScheduler for varlen, simple grid for non-varlen
-        if const_expr(mCuSeqlensQ is not None or mSeqUsedQ is not None):
+        is_varlen = mCuSeqlensQ is not None or mSeqUsedQ is not None
+        if const_expr(is_varlen):
             TileScheduler = SingleTileVarlenScheduler
         else:
             TileScheduler = SingleTileScheduler
@@ -703,9 +754,27 @@ class FlashAttentionForwardSm80(FlashAttentionForwardBase):
             if const_expr(mCuSeqlensQ is not None)
             else mQ.shape[3]
         )
+        # SingleTileVarlenScheduler._get_num_m_blocks() inflates its own num_m_blocks
+        # by qhead_per_kvhead_packgqa when Pack-GQA is active (folding the
+        # qhead_per_kvhead real Q heads into the seqlen/m_block grid), so the grid's
+        # head axis must be reduced to the KV-head-group count here to match -- else
+        # the grid launches num_head (real heads) x num_m_blocks (already inflated by
+        # qhead_per_kvhead) tiles, qhead_per_kvhead-times too many, each operating on
+        # a plain per-real-head Q/O slice while PackGQA's store guards check against
+        # the inflated (seqlen * qhead_per_kvhead) bound -- the root cause of the
+        # PackGQA OOB-store crash (qhead_per_kvhead=8) / silent corruption
+        # (qhead_per_kvhead=4). SingleTileScheduler (non-varlen) does its own
+        # separate, unrelated thing (no num_m_blocks inflation at all) and is never
+        # exercised with Pack-GQA by any test in this repo, so this fix is scoped to
+        # the varlen scheduler only to avoid touching that untested combination.
+        num_head_for_sched = (
+            cute.size(mQ.shape[2]) // self.qhead_per_kvhead
+            if const_expr(self.pack_gqa and is_varlen)
+            else cute.size(mQ.shape[2])
+        )
         tile_sched_args = TileSchedulerArguments(
             num_block=cute.ceil_div(mQ.shape[0], self.tile_m),
-            num_head=cute.size(mQ.shape[2]),
+            num_head=num_head_for_sched,
             num_batch=num_batch,
             num_splits=1,
             seqlen_k=0,
@@ -722,7 +791,20 @@ class FlashAttentionForwardSm80(FlashAttentionForwardBase):
         tile_sched_params = TileScheduler.to_underlying_arguments(tile_sched_args)
         grid_dim = TileScheduler.get_grid_shape(tile_sched_params)
         softmax_scale_log2, softmax_scale = utils.compute_softmax_scale_log2(softmax_scale, self.score_mod)
-        fastdiv_mods = utils.compute_fastdiv_mods(mQ, mK, self.qhead_per_kvhead, self.pack_gqa, aux_tensors)
+        # mPageTable must be forwarded here: for paged KV, mK has already been
+        # KV_layout_transpose'd to (page_size, head_dim, num_head_kv, num_pages),
+        # so mK.shape[0] is page_size, NOT the true seqlen_k. Without mPageTable,
+        # compute_fastdiv_mods's own paged/non-paged ternary silently takes the
+        # non-paged branch and builds seqlen_k_divmod = FastDivmodDivisor(page_size)
+        # (e.g. 16 == BLOCK_SIZE) instead of page_size * max_pages_per_seq. Any
+        # score_mod that sets aux_tensors (e.g. Inkling's rel_bias) then has its
+        # kv_idx wrapped modulo page_size in apply_score_mod_inner's aux-tensor
+        # branch, aliasing every page_size-th kv row onto the same label -- this
+        # was the root cause of the paged+rel_bias kv_idx skew (dom_key =
+        # 8*floor(i/16) at m16n8 granularity; page_size=16 in the repro).
+        fastdiv_mods = utils.compute_fastdiv_mods(
+            mQ, mK, self.qhead_per_kvhead, self.pack_gqa, aux_tensors, mPageTable
+        )
 
         self.kernel(
             mQ,
@@ -734,6 +816,7 @@ class FlashAttentionForwardSm80(FlashAttentionForwardBase):
             mCuSeqlensK,
             mSeqUsedQ,
             mSeqUsedK,
+            mPageTable,
             softmax_scale_log2,
             softmax_scale,
             window_size_left,
@@ -773,6 +856,7 @@ class FlashAttentionForwardSm80(FlashAttentionForwardBase):
         mCuSeqlensK: Optional[cute.Tensor],
         mSeqUsedQ: Optional[cute.Tensor],
         mSeqUsedK: Optional[cute.Tensor],
+        mPageTable: Optional[cute.Tensor],
         softmax_scale_log2: Float32,
         softmax_scale: Optional[Float32],
         window_size_left: Optional[Int32],
@@ -800,6 +884,25 @@ class FlashAttentionForwardSm80(FlashAttentionForwardBase):
         tile_scheduler = TileScheduler.create(tile_sched_params)
         work_tile = tile_scheduler.initial_work_tile_info()
         m_block, num_head, batch_size, _ = work_tile.tile_idx
+        # For varlen scheduling (SingleTileVarlenScheduler), a "wasted" grid
+        # tile -- launched but with no real work -- carries batch_size equal
+        # to the scheduler's out-of-work sentinel value, num_batch (one past
+        # the last valid batch index). is_valid_tile is False for such tiles.
+        # Below, SeqlenInfoQK.create() does `mSeqUsedK[batch_idx]`: a raw,
+        # unconditional gmem read with no bounds check (unlike the
+        # cu_seqlens-arithmetic seqlen path, which safely evaluates to 0 via
+        # padded/duplicated cu_seqlens entries). mSeqUsedK is allocated with
+        # exactly num_batch elements (interface.py), so batch_idx==num_batch
+        # is an off-the-end read into whatever memory follows the tensor --
+        # confirmed via device printf: seqlen_k read back as e.g. 1093000237
+        # (garbage) for such a tile, which then makes is_valid wrongly True
+        # deeper in PagedKVManager.load_page_table and produces a wild
+        # mK_paged/mV_paged pointer (cudaErrorIllegalAddress, compute-
+        # sanitizer: ~17.9TB past a 512-byte allocation). Clamp batch_size
+        # itself here so a wasted tile reads batch 0's real (in-bounds)
+        # seqlen instead; which real batch it borrows doesn't matter since a
+        # wasted tile's output writes are separately masked elsewhere.
+        batch_size = batch_size if work_tile.is_valid_tile else Int32(0)
 
         block_info = BlockInfo(
             self.tile_m,
@@ -833,20 +936,42 @@ class FlashAttentionForwardSm80(FlashAttentionForwardBase):
         blkQ_shape = (self.tile_m, self.tile_hdim)
         blkK_shape = (self.tile_n, self.tile_hdim)
         blkV_shape = (self.tile_n, self.tile_hdimv)
-        num_head_kv = num_head // self.qhead_per_kvhead
-        if const_expr(not seqlen.has_cu_seqlens_q):
-            mQ_cur = mQ[None, None, num_head, batch_size]
+        # Same scoping as __call__'s num_head_for_sched / epilogue's use_pack_gqa_addr:
+        # the tile scheduler's `num_head` field (hence work_tile.tile_idx's num_head
+        # component read above) is already the KV-head-GROUP index -- not divided
+        # again here -- exactly when Pack-GQA's varlen-only grid reduction was
+        # applied in __call__. Otherwise num_head is still the full real-head range
+        # and must be divided down to the KV group as before.
+        use_pack_gqa_addr = self.pack_gqa and (mCuSeqlensQ is not None or mSeqUsedQ is not None)
+        num_head_kv = num_head if const_expr(use_pack_gqa_addr) else num_head // self.qhead_per_kvhead
+        if const_expr(use_pack_gqa_addr):
+            # Fold the qhead_per_kvhead real Q heads sharing this KV group into the
+            # seqlen mode (pack_gqa_layout, previously defined but never actually
+            # called anywhere in this file -- the root cause of the PackGQA
+            # out-of-bounds store below: without this, mQ_cur/mO_cur/mLSE_cur were
+            # plain single-real-head slices while PackGQA.store_O/store_LSE's bound
+            # checks assumed an inflated qhead_per_kvhead*seqlen extent).
+            nheads_kv_q = cute.size(mQ.shape[2]) // self.qhead_per_kvhead
+            mQ_packed = pack_gqa_layout(mQ, self.qhead_per_kvhead, nheads_kv_q, head_idx=2, seqlen_idx=0)
         else:
-            mQ_cur = cute.domain_offset((seqlen.offset_q, 0), mQ[None, None, num_head])
-        if const_expr(not seqlen.has_cu_seqlens_k):
-            mK_cur = mK[None, None, num_head_kv, batch_size]
-            mV_cur = mV[None, None, num_head_kv, batch_size]
-        else:
-            mK_cur = cute.domain_offset((seqlen.offset_k, 0), mK[None, None, num_head_kv])
-            mV_cur = cute.domain_offset((seqlen.offset_k, 0), mV[None, None, num_head_kv])
-        gQ = cute.local_tile(mQ_cur, blkQ_shape, (m_block, 0))
-        gK = cute.local_tile(mK_cur, blkK_shape, (None, 0))
-        gV = cute.local_tile(mV_cur, blkV_shape, (None, 0))
+            mQ_packed = mQ
+        # offset_batch_Q already handles both the packed (mode-0 is a nested
+        # (qhead_per_kvhead, seqlen) tuple) and unpacked case generically via its
+        # own cute.rank(mQ.shape[0]) check, and both the varlen (cu_seqlens_q) and
+        # non-varlen (dim=3 batch slice) case -- this mirrors exactly how mO_cur /
+        # mLSE_cur are built in epilogue() below.
+        mQ_cur = seqlen.offset_batch_Q(mQ_packed, batch_size, dim=3)[None, None, num_head]
+        if const_expr(not use_pack_gqa_addr):
+            gQ = cute.local_tile(mQ_cur, blkQ_shape, (m_block, 0))
+        if const_expr(mPageTable is None):
+            if const_expr(not seqlen.has_cu_seqlens_k):
+                mK_cur = mK[None, None, num_head_kv, batch_size]
+                mV_cur = mV[None, None, num_head_kv, batch_size]
+            else:
+                mK_cur = cute.domain_offset((seqlen.offset_k, 0), mK[None, None, num_head_kv])
+                mV_cur = cute.domain_offset((seqlen.offset_k, 0), mV[None, None, num_head_kv])
+            gK = cute.local_tile(mK_cur, blkK_shape, (None, 0))
+            gV = cute.local_tile(mV_cur, blkV_shape, (None, 0))
 
         # ///////////////////////////////////////////////////////////////////////////////
         # Get shared memory buffer
@@ -862,12 +987,13 @@ class FlashAttentionForwardSm80(FlashAttentionForwardBase):
         # Transpose view of V to tensor with layout (head_dim_v, tile_n) for tiled mma
         sVt = layout_utils.transpose_view(sV)
 
-        gmem_thr_copy_K = gmem_tiled_copy_K.get_slice(tidx)
-        gmem_thr_copy_V = gmem_tiled_copy_V.get_slice(tidx)
-        # (CPY_Atom, CPY_N, CPY_K, n_block)
-        tKsK, tKgK = gmem_thr_copy_K.partition_D(sK), gmem_thr_copy_K.partition_S(gK)
-        # (CPY_Atom, CPY_N, CPY_K, n_block)
-        tVsV, tVgV = gmem_thr_copy_V.partition_D(sV), gmem_thr_copy_V.partition_S(gV)
+        if const_expr(mPageTable is None):
+            gmem_thr_copy_K = gmem_tiled_copy_K.get_slice(tidx)
+            gmem_thr_copy_V = gmem_tiled_copy_V.get_slice(tidx)
+            # (CPY_Atom, CPY_N, CPY_K, n_block)
+            tKsK, tKgK = gmem_thr_copy_K.partition_D(sK), gmem_thr_copy_K.partition_S(gK)
+            # (CPY_Atom, CPY_N, CPY_K, n_block)
+            tVsV, tVgV = gmem_thr_copy_V.partition_D(sV), gmem_thr_copy_V.partition_S(gV)
 
         # ///////////////////////////////////////////////////////////////////////////////
         # Tile MMA compute thread partitions and allocate accumulators
@@ -905,24 +1031,50 @@ class FlashAttentionForwardSm80(FlashAttentionForwardBase):
         # of tile_shape
         # ///////////////////////////////////////////////////////////////////////////////
         # Construct identity layout for KV
-        cK = cute.make_identity_tensor((self.tile_n, self.tile_hdim))
-        tKcK = gmem_thr_copy_K.partition_S(cK)
-        t0KcK = gmem_thr_copy_K.get_slice(0).partition_S(cK)
-        if const_expr(self.tile_hdim == self.tile_hdimv):
-            tVcV = tKcK
-            t0VcV = t0KcK
+        paged_kv_manager = None
+        if const_expr(mPageTable is None):
+            cK = cute.make_identity_tensor((self.tile_n, self.tile_hdim))
+            tKcK = gmem_thr_copy_K.partition_S(cK)
+            t0KcK = gmem_thr_copy_K.get_slice(0).partition_S(cK)
+            if const_expr(self.tile_hdim == self.tile_hdimv):
+                tVcV = tKcK
+                t0VcV = t0KcK
+            else:
+                cV = cute.make_identity_tensor((self.tile_n, self.tile_hdimv))
+                tVcV = gmem_thr_copy_V.partition_S(cV)
+                t0VcV = gmem_thr_copy_V.get_slice(0).partition_S(cV)
+            # Allocate predicate tensors for m and n, here we only allocate the tile of k, and
+            # use "if" on the mn dimension.
+            # This is to reduce register pressure and gets 2-3% performance gain.
+            tKpK = utils.predicate_k(tKcK, limit=mK.shape[1])
+            if const_expr(self.same_hdim_kv):
+                tVpV = tKpK
+            else:
+                tVpV = utils.predicate_k(tVcV, limit=mV.shape[1])
         else:
-            cV = cute.make_identity_tensor((self.tile_n, self.tile_hdimv))
-            tVcV = gmem_thr_copy_V.partition_S(cV)
-            t0VcV = gmem_thr_copy_V.get_slice(0).partition_S(cV)
-        # Allocate predicate tensors for m and n, here we only allocate the tile of k, and
-        # use "if" on the mn dimension.
-        # This is to reduce register pressure and gets 2-3% performance gain.
-        tKpK = utils.predicate_k(tKcK, limit=mK.shape[1])
-        if const_expr(self.same_hdim_kv):
-            tVpV = tKpK
-        else:
-            tVpV = utils.predicate_k(tVcV, limit=mV.shape[1])
+            # Paged KV: mK/mV are (page_size, head_dim, num_head_kv, num_pages) after
+            # the KV_layout_transpose in __call__. PagedKVManager does its own
+            # per-head slicing (mK_paged[None, None, bidh, None]); do NOT index by
+            # batch_size here -- the 4th dim is a global page pool, not a batch dim.
+            paged_kv_manager = PagedKVManager.create(
+                mPageTable,
+                mK,
+                mV,
+                FastDivmodDivisor(mK.shape[0]),
+                batch_size,
+                num_head_kv,
+                tidx,
+                seqlen.seqlen_k,
+                0,  # leftpad_k
+                self.tile_n,
+                self.tile_hdim,
+                self.tile_hdimv,
+                self.num_threads,
+                self.dtype,
+                arch=90,  # sentinel: selects PagedKVManager's flat/group_modes
+                # smem-flattening path (Ampere-style composed smem), which is what
+                # both Sm80 and Sm120 use here -- NOT the real device arch.
+            )
 
         # shape: (atom_v_m * rest_m)
         softmax = Softmax.create(
@@ -949,12 +1101,27 @@ class FlashAttentionForwardSm80(FlashAttentionForwardBase):
             tSsK=tSsK,
             tOsVt=tOsVt,
         )
-        load_K = partial(
-            self.load_K, gmem_tiled_copy_K, tKgK, tKsK, tKcK, t0KcK, tKpK, seqlen=seqlen.seqlen_k
-        )
-        load_V = partial(
-            self.load_V, gmem_tiled_copy_V, tVgV, tVsV, tVcV, t0VcV, tVpV, seqlen=seqlen.seqlen_k
-        )
+        if const_expr(mPageTable is None):
+            load_K = partial(
+                self.load_K, gmem_tiled_copy_K, tKgK, tKsK, tKcK, t0KcK, tKpK, seqlen=seqlen.seqlen_k
+            )
+            load_V = partial(
+                self.load_V, gmem_tiled_copy_V, tVgV, tVsV, tVcV, t0VcV, tVpV, seqlen=seqlen.seqlen_k
+            )
+        else:
+            # Paged KV cp.async loads. Every call site below already wraps its
+            # load_K(...)/load_V(...) call with its own cp_async_commit_group(),
+            # so these wrappers must NOT also call it themselves (unlike SM90's
+            # own load_KV, whose call sites don't already wrap every call) --
+            # doing so would double-commit the cp.async group and desync the
+            # cp_async_wait_group counts used throughout the pipeline.
+            #
+            # load_K/load_V must be bound via partial (explicit args), not local
+            # closures capturing paged_kv_manager/sK/sV -- the CUTLASS DSL
+            # disallows closures that capture nonlocals under dynamic control
+            # flow (the `if` guards at call sites below).
+            load_K = partial(self.load_paged_K, paged_kv_manager, sK)
+            load_V = partial(self.load_paged_V, paged_kv_manager, sV)
 
         compute_one_n_block = partial(
             self.compute_one_n_block,
@@ -965,7 +1132,28 @@ class FlashAttentionForwardSm80(FlashAttentionForwardBase):
             load_V=load_V,
             score_mod=self.score_mod,
             batch_idx=batch_size,
-            head_idx=num_head,
+            # score_mod (apply_score_mod_inner in softmax.py) documents its own
+            # contract: when qhead_per_kvhead > 1 (Pack-GQA), the head_idx it
+            # receives must be the KV-head-GROUP index, and it reconstructs the
+            # real logical head per-element as
+            # `head_idx * qhead_per_kvhead + head_offset` (head_offset comes
+            # from unpacking the per-element packed q_idx). num_head here is
+            # the FULL real Q head (0..num_head-1, e.g. 0..7 for
+            # num_heads=8/num_kv_heads=2) -- passing it directly double-counts
+            # the qhead_per_kvhead factor once score_mod re-multiplies,
+            # producing head indices up to (num_head-1)*qhead_per_kvhead +
+            # (qhead_per_kvhead-1) instead of num_head-1 (confirmed via
+            # cute.printf instrumentation: observed hv up to 31 instead of the
+            # valid [0, 8) range) -- an out-of-bounds gather into
+            # rel_bias_fn's rel_logits tensor (utils.py elem_pointer), matching
+            # a134's real-checkpoint cudaErrorIllegalAddress crash
+            # (tml_fa4/utils.py:216 via softmax.py's apply_score_mod_inner).
+            # num_head_kv (= num_head // qhead_per_kvhead, already computed
+            # above for K/V head selection) is the correct KV-group index to
+            # pass here when Pack-GQA is active; when Pack-GQA is off,
+            # qhead_per_kvhead_packgqa==1 downstream so no reconstruction
+            # happens and the full real head must be passed unchanged.
+            head_idx=num_head_kv if const_expr(self.pack_gqa) else num_head,
             m_block=m_block,
             aux_tensors=aux_tensors,
             fastdiv_mods=fastdiv_mods,
@@ -975,8 +1163,17 @@ class FlashAttentionForwardSm80(FlashAttentionForwardBase):
         # Prologue
         # ///////////////////////////////////////////////////////////////////////////////
         # Start async loads of the last mn-tile, where we take care of the mn residue
-        gmem_thr_copy_Q = gmem_tiled_copy_Q.get_slice(tidx)
-        self.load_Q(gmem_thr_copy_Q, gQ, sQ, m_block, seqlen=seqlen.seqlen_q, headdim=mQ.shape[1])
+        if const_expr(use_pack_gqa_addr):
+            # self.load_Q only ever loads ONE real head's plain Q per CTA -- it has
+            # no notion of bundling qhead_per_kvhead real heads together, unlike
+            # PackGQA.load_Q (which operates on the already-packed mQ_cur built
+            # above and is what the packed store_O/store_LSE side expects to be
+            # paired with).
+            pack_gqa_q = PackGQA(self.tile_m, self.tile_hdim, self.check_hdim_oob, self.qhead_per_kvhead)
+            pack_gqa_q.load_Q(mQ_cur, sQ, gmem_tiled_copy_Q, tidx, m_block, seqlen.seqlen_q)
+        else:
+            gmem_thr_copy_Q = gmem_tiled_copy_Q.get_slice(tidx)
+            self.load_Q(gmem_thr_copy_Q, gQ, sQ, m_block, seqlen=seqlen.seqlen_q, headdim=mQ.shape[1])
         cute.arch.cp_async_commit_group()
 
         def preprocess_Q():
@@ -1026,7 +1223,12 @@ class FlashAttentionForwardSm80(FlashAttentionForwardBase):
         mask_fn = partial(
             mask.apply_mask,
             batch_idx=batch_size,
-            head_idx=num_head,
+            # Same head_idx contract fix as the score_mod call above (see the
+            # detailed comment there): apply_mask forwards head_idx into any
+            # custom mask_mod via the same fastdiv_mods/apply_score_mod_inner-
+            # style machinery, so it must receive the KV-head-group index when
+            # Pack-GQA is active, not the full real Q head.
+            head_idx=num_head_kv if const_expr(self.pack_gqa) else num_head,
             m_block=m_block,
             thr_mma=thr_mma_qk,
             mask_causal=self.is_causal,
@@ -1096,7 +1298,10 @@ class FlashAttentionForwardSm80(FlashAttentionForwardBase):
             tiled_mma_pv,
             tidx,
             m_block,
-            num_head,
+            # Same head_idx contract as the score_mod/mask_fn calls above: epilogue's
+            # mO/mLSE packing (use_pack_gqa_addr) indexes the KV-head-GROUP axis, not
+            # the full real head, whenever Pack-GQA is active.
+            num_head_kv if const_expr(self.pack_gqa) else num_head,
             batch_size,
         )
 

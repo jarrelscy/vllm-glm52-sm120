@@ -49,8 +49,16 @@ class InklingSconvMetadata(AttentionMetadata):
 
 
 class InklingSconvMetadataBuilder(AttentionMetadataBuilder[InklingSconvMetadata]):
+    # UNIFORM_BATCH (not just single-token decode): everything this builder
+    # produces is per-token and derived from query_start_loc, with no qlen==1
+    # assumption, so uniform spec-verify batches (qlen = 1 + num_spec_tokens)
+    # capture the same way plain decode does. The attention layers' forward is
+    # also uniform-qlen-safe under capture: at max_query_len > 1 it takes the
+    # varlen Triton prefill kernel, whose launch shape depends only on the
+    # (static) padded token count and max_seqlen_q. Without this, spec-decode
+    # + FULL_DECODE_ONLY silently downgrades cudagraph_mode to NONE.
     _cudagraph_support: ClassVar[AttentionCGSupport] = (
-        AttentionCGSupport.UNIFORM_SINGLE_TOKEN_DECODE
+        AttentionCGSupport.UNIFORM_BATCH
     )
 
     def __init__(

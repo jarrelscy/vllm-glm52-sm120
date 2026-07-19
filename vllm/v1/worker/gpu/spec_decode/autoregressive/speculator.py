@@ -341,6 +341,7 @@ class AutoRegressiveSpeculator(DraftModelSpeculator):
         num_tokens_across_dp: torch.Tensor | None,
         cudagraph_runtime_mode: CUDAGraphMode = CUDAGraphMode.NONE,
         mm_inputs: tuple[list[torch.Tensor], torch.Tensor] | None = None,
+        spec_step_idx: int = 0,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         batch_descriptor = BatchDescriptor(num_tokens=num_tokens)
         with set_forward_context(
@@ -372,6 +373,11 @@ class AutoRegressiveSpeculator(DraftModelSpeculator):
                 hidden_states=self.hidden_states[:num_tokens],
                 inputs_embeds=inputs_embeds,
             )
+            # Select the per-step MTP layer for models that have more than
+            # one (e.g. Inkling's 8). Only attached when nonzero so step-0 /
+            # single-layer paths (and their captured graphs) stay identical.
+            if spec_step_idx and self._model_takes_spec_step:
+                model_inputs["spec_step_idx"] = spec_step_idx
             if cudagraph_runtime_mode == CUDAGraphMode.PIECEWISE:
                 # Draft prefill with PIECEWISE cudagraph (compiled PW or breakable),
                 # chosen inside run_pw_graph.
@@ -389,6 +395,7 @@ class AutoRegressiveSpeculator(DraftModelSpeculator):
         else:
             last_hidden_states = ret_hidden_states
             hidden_states = ret_hidden_states
+
         return last_hidden_states, hidden_states
 
     def _prefill(
@@ -467,6 +474,15 @@ class AutoRegressiveSpeculator(DraftModelSpeculator):
 
             # Generate draft tokens for the current step.
             if batch_desc.cg_mode == CUDAGraphMode.FULL:
+                # NOTE: a single captured graph is replayed for every step,
+                # so multi-layer MTP models run layer 0 at all steps here.
+                # Per-step layers require the eager/piecewise path.
+                if self._model_takes_spec_step and step == 1:
+                    logger.warning_once(
+                        "Multi-layer MTP draft under FULL cudagraphs replays "
+                        "layer 0 for every draft step; run the draft model "
+                        "eagerly to use per-step MTP layers."
+                    )
                 assert self.decode_cudagraph_manager is not None
                 self.decode_cudagraph_manager.run_fullgraph(batch_desc)
             else:
@@ -477,6 +493,7 @@ class AutoRegressiveSpeculator(DraftModelSpeculator):
                     slot_mappings_by_layer,
                     num_tokens_across_dp=num_tokens_across_dp,
                     cudagraph_runtime_mode=batch_desc.cg_mode,
+                    spec_step_idx=step,
                 )
 
     def _generate_draft(
@@ -487,6 +504,7 @@ class AutoRegressiveSpeculator(DraftModelSpeculator):
         slot_mappings: dict[str, torch.Tensor] | None,
         num_tokens_across_dp: torch.Tensor | None,
         cudagraph_runtime_mode: CUDAGraphMode = CUDAGraphMode.NONE,
+        spec_step_idx: int = 0,
     ) -> None:
         self._prepare_eplb_forward(num_reqs)
 
@@ -499,6 +517,7 @@ class AutoRegressiveSpeculator(DraftModelSpeculator):
             slot_mappings,
             num_tokens_across_dp,
             cudagraph_runtime_mode,
+            spec_step_idx=spec_step_idx,
         )
         last_hidden_states = last_hidden_states[:num_reqs]
 
@@ -511,6 +530,7 @@ class AutoRegressiveSpeculator(DraftModelSpeculator):
             self.seeds,
             self.current_draft_step,
             self.draft_logits,
+            spec_step_idx=spec_step_idx,
         )
 
         # Update the inputs for the next step.
@@ -647,6 +667,7 @@ def prepare_prefill_inputs(
         max_num_reqs,
         BLOCK_SIZE=1024,
     )
+
     return last_token_indices
 
 

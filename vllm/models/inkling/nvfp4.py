@@ -28,6 +28,13 @@ class InklingNvfp4Config:
 
     @staticmethod
     def _is_nvfp4(quant_cfg: dict) -> bool:
+        if "modelopt_quant_config" not in quant_cfg:
+            # NVFP4+AQLM hybrid checkpoints (quant_method
+            # "inkling_nvfp4_aqlm_hybrid") carry a minimal quantization_config
+            # with no ModelOpt-format weight-quantizer block at all -- their
+            # base-NVFP4 detection is handled separately per-layer via
+            # InklingAqlmHybridConfig, not this class.
+            return False
         wq = quant_cfg["modelopt_quant_config"]["quant_cfg"]["*weight_quantizer"]
         return tuple(wq["num_bits"]) == (2, 1) and tuple(
             wq["block_sizes"].get("scale_bits", [])

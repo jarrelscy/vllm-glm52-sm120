@@ -177,20 +177,17 @@ def create_rel_bias_scoremod(rel_extent):
     """Inkling relative-attention-bias score-mod for the SM80/SM120 forward.
 
     The SM100 forward applies the relative bias natively via a TMA-loaded,
-    pre-sheared `mBias` tile; the SM80/SM120 cp.async forward has no such
-    per-tile bias machinery, so instead we apply the bias through the existing
-    per-tile ``apply_score_mod`` hook by gathering from the RAW rel_logits.
+    pre-sheared mBias tile; the SM80/SM120 cp.async forward has no such per-tile
+    bias machinery, so we apply the bias through the existing per-tile
+    apply_score_mod hook by gathering from the RAW rel_logits (aux_tensors[0]).
 
-    ``aux_tensors[0]`` is rel_logits with shape ``(total_q, num_head, rel_extent)``
-    (varlen: one row per global query token). For each element we add
-
-        rel_logits[offset_q + q_idx, head, q_idx - kv_idx]
-
-    to the (already softmax-scaled) score when ``0 <= q_idx - kv_idx < rel_extent``,
-    else 0 -- exactly the reference ``bias(i, j, h) = rel_logits[i, h, i - j]``
-    semantics (see tests/models/inkling/test_fa4_rel_attention._ref_rel_attn).
-    Bias is added AFTER the softmax_scale multiply (apply_score_mod_inner scales
-    the raw QK before calling this), matching logit = qk*scale + rel_bias.
+    aux_tensors[0] is rel_logits, (b, s_q, h, rel_extent) batched or
+    (total_q, h, rel_extent) varlen. For each element we add
+        rel_logits[.., offset_q + q_idx, head, q_idx - kv_idx]
+    to the (already softmax-scaled) score when 0 <= q_idx - kv_idx < rel_extent,
+    else 0 -- exactly bias(i, j, h) = rel_logits[i, h, i - j] (see the reference
+    _ref_rel_attn). Bias is added AFTER softmax_scale (apply_score_mod_inner
+    scales raw QK before calling this), matching logit = qk*scale + rel_bias.
     """
     rel_extent_c = int(rel_extent)
 
@@ -209,23 +206,65 @@ def create_rel_bias_scoremod(rel_extent):
         bv = cute.make_fragment(batch_idx.shape, Int32)
         bv.store(batch_idx)
         offset_q = seqlen_info.offset_q
-        # rel_logits is (b, s_q, h, rel_extent) for the batched path and
-        # (total_q, h, rel_extent) for the varlen path.
+        # q_idx (qv[j]) is the request-LOCAL query row (0-based within this
+        # request's own seqlen_q; for decode with seqlen_q=1 it is always 0),
+        # while kv_idx (kvv[j]) is the request-local KV position within the
+        # (paged) cache capacity. The reference implementation
+        # (_ref_rel_attn in test_fa4_rel_attention.py) computes the causal
+        # relative distance as qpos = arange(seqlen_q) + (seqlen_k -
+        # seqlen_q), i.e. it shifts the local query row into the SAME
+        # coordinate space as kv_idx before subtracting -- this accounts for
+        # the fact that in decode/append (seqlen_q < seqlen_k), the query
+        # token sits at the END of the KV timeline, not at local position 0.
+        # That shift was entirely missing here: diff was computed as
+        # qv[j] - kvv[j] with no adjustment, so it only ever landed in
+        # [0, rel_extent) when kvv[j] happened to be near 0 -- discarding the
+        # correct rel_bias contribution for nearly every valid (row, col)
+        # pair whenever seqlen_q != seqlen_k (confirmed via printf: qv[j]==0
+        # constant while kvv[j] correctly ranged over real kv positions).
+        seqlen_shift = seqlen_info.seqlen_k - seqlen_info.seqlen_q
         rel_rank = const_expr(cute.rank(rel))
         for j in cutlass.range_constexpr(n):
-            diff = qv[j] - kvv[j]
+            diff = (qv[j] + seqlen_shift) - kvv[j]
             if diff >= 0:
                 if diff < rel_extent_c:
-                    # Gather rel_logits[..., gq, head, diff] via pointer arithmetic
-                    # (crd2idx handles dynamic coords; direct t[i,j,k]/slice ops
-                    # fail to build against the aux layout here).
                     gq = offset_q + qv[j]
                     if const_expr(rel_rank == 4):
-                        ptr = elem_pointer(rel, (bv[j], gq, hv[j], diff))
+                        rel_dim_q = cute.size(rel.shape[1])
+                        rel_dim_h = cute.size(rel.shape[2])
                     else:
-                        ptr = elem_pointer(rel, (gq, hv[j], diff))
-                    bias_t = cute.make_tensor(ptr, cute.make_layout((1,)))
-                    s[j] = s[j] + bias_t[0].to(Float32)
+                        rel_dim_q = cute.size(rel.shape[0])
+                        rel_dim_h = cute.size(rel.shape[1])
+                    # Bug #7 (root-caused via device printf): qv[j] is
+                    # documented above as the request-LOCAL query row, but
+                    # the CTA's Q-tile has a fixed row count, so for a
+                    # request whose seqlen_q isn't a multiple of the tile
+                    # size (or is smaller than one tile, e.g. decode with
+                    # seqlen_q=1), the tile still runs padding rows past
+                    # the request's real length through score_mod *before*
+                    # downstream OOB/causal masking discards them. qv[j]
+                    # for those padding rows is a tile-local index that can
+                    # exceed the request's true seqlen_q by an arbitrary
+                    # amount, so gq = offset_q + qv[j] can walk past this
+                    # request's slice of rel_logits -- into the next
+                    # request's rows, or off the end of the tensor
+                    # entirely. Confirmed via printf: offset_q=250, qv=23
+                    # (request has seqlen_q=1, so any qv!=0 is a padding
+                    # row) -> gq=273 > total_q=251 -> illegal read
+                    # (compute-sanitizer: "Invalid __global__ read of size
+                    # 2 bytes ... out of bounds"). hv[j] was never observed
+                    # out of range in this trace but is guarded defensively
+                    # for the same reason. Since padding rows are discarded
+                    # by masking regardless of what score_mod returns for
+                    # them, we simply skip the (out-of-bounds, semantically
+                    # irrelevant) bias contribution instead of reading OOB.
+                    if gq >= 0 and gq < rel_dim_q and hv[j] >= 0 and hv[j] < rel_dim_h:
+                        if const_expr(rel_rank == 4):
+                            ptr = elem_pointer(rel, (bv[j], gq, hv[j], diff))
+                        else:
+                            ptr = elem_pointer(rel, (gq, hv[j], diff))
+                        bias_t = cute.make_tensor(ptr, cute.make_layout((1,)))
+                        s[j] = s[j] + bias_t[0].to(Float32)
         return s.load()
 
     rel_bias_fn.__vec_size__ = 1
@@ -257,12 +296,63 @@ def compute_fastdiv_mods(mQ, mK, qhead_per_kvhead, pack_gqa, aux_tensors, mPageT
     """
     if const_expr(aux_tensors is None):
         return None
-    seqlen_q = cute.size(mQ.shape[0]) // (qhead_per_kvhead if const_expr(pack_gqa) else 1)
+    # mQ.shape[0] is ALREADY the real, unpacked total_q (see note below) --
+    # Pack-GQA folds qhead_per_kvhead into the seqlen dimension only inside
+    # the kernel body's per-thread tile partitioning (pack_gqa_layout()); it
+    # never changes what mQ.shape[0] reports at this host-side call site (c.f.
+    # flash_fwd.py's own num_head_for_sched, which likewise treats mQ.shape[2]
+    # as the full unreduced head count and explicitly divides by
+    # qhead_per_kvhead itself only for the *scheduler* arg, not by mutating
+    # mQ's shape). Previously this line ALSO divided by qhead_per_kvhead when
+    # pack_gqa was set, double-unpacking a value that was never packed in the
+    # first place -- e.g. total_q=2, qhead_per_kvhead=8 produced
+    # seqlen_q_before_clamp=0 (silently clamped to 1 below by the pre-existing
+    # SIGFPE guard). With seqlen_q_divmod effectively == 1, every q_idx in
+    # apply_score_mod_inner's aux-tensor branch (softmax.py) collapsed to
+    # `q_idx_floored % 1 == 0` for EVERY row, so the rel_bias gather
+    # (utils.create_rel_bias_scoremod's `gq = offset_q + qv[j]`) always read
+    # the row-0 bias slice: row 0 (q_idx_floored==0) came out correct by
+    # coincidence, and every row with real_seq >= 1 got row 0's bias instead
+    # of its own -- reproduced and confirmed via direct printf instrumentation
+    # (fa_printf in this function and in softmax.py's apply_score_mod_inner)
+    # on a qlen=2, num_heads=(16,2) [qhead_per_kvhead=8] single-block repro:
+    # raw_total_q=2, qhead_per_kvhead=8, pack_gqa=1 => seqlen_q_before_clamp=0;
+    # for every thread with q_idx_packed in [8,16) (q_idx_floored=1, i.e. the
+    # real_seq=1 row), q_idx_wrapped was observed to be 0 in 100% of records
+    # (should be 1). This exactly matches the reported bug signature (s=0
+    # always correct, every s>=1 wrong) and is the actual root cause -- NOT a
+    # PackGQA shuffle/broadcast addressing bug (that hypothesis was checked
+    # and refuted separately via direct byte-offset instrumentation of
+    # pack_gqa.py's compute_ptr/load_Q/store_O and mask.py's causal row_idx,
+    # both of which were independently proven correct).
+    seqlen_q = cute.size(mQ.shape[0])
     seqlen_k = (
         cute.size(mK.shape[0])
         if const_expr(mPageTable is None)
         else mK.shape[0] * mPageTable.shape[1]
     )
+    # Clamp both divisors to >= 1 before constructing FastDivmodDivisor.
+    #
+    # mQ.shape[0] is the real aggregate total_q (unpacked -- NOT multiplied by
+    # qhead_per_kvhead), so for GQA decode with a small batch-aggregate total_q
+    # (e.g. total_q=1, qhead_per_kvhead=4 for a single-token decode step),
+    # integer division truncates seqlen_q to 0. FastDivmodDivisor(0)'s native
+    # construction (_cute_ir.fast_divmod_create_divisor) computes a reciprocal
+    # from the divisor itself and SIGFPEs (host CPU integer div-by-zero) --
+    # reproduced deterministically and unconditionally for every rel_extent
+    # value tested (128..1024), confirming this is independent of rel_extent
+    # and gated purely on total_q // qhead_per_kvhead == 0.
+    #
+    # These divisors exist only to bounds-clamp indices before loading from
+    # aux_tensors/rel_bias ("if we will do loads we mod, in order to not read
+    # OOB" -- see softmax.py's use of fastdiv_mods), not for exact-value
+    # correctness, so clamping to 1 is safe: with a real seqlen of 1, index % 1
+    # == 0 always, which correctly wraps every access onto the single valid
+    # row/col instead of dividing by zero. mK.shape[0] (or page_size *
+    # max_pages_per_seq) is clamped defensively for the same reason, though no
+    # concrete repro of a zero seqlen_k has been observed.
+    seqlen_q = cutlass.max(seqlen_q, Int32(1))
+    seqlen_k = cutlass.max(seqlen_k, Int32(1))
     return (FastDivmodDivisor(seqlen_q), FastDivmodDivisor(seqlen_k))
 
 

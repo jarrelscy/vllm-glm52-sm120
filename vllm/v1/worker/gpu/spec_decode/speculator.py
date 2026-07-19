@@ -153,6 +153,19 @@ class DraftModelSpeculator(BaseSpeculator):
         )
 
         self.model = self.load_draft_model(target_model, target_attn_layer_names)
+        # MTP models with multiple next-N prediction layers (e.g. Inkling's 8)
+        # select the layer via spec_step_idx in forward()/compute_logits().
+        # Without threading it, every draft step silently runs layer 0
+        # (upstream even warns about this in config/speculative.py).
+        import inspect
+
+        self._model_takes_spec_step = (
+            "spec_step_idx" in inspect.signature(self.model.forward).parameters
+        )
+        self._logits_take_spec_step = (
+            "spec_step_idx"
+            in inspect.signature(self.model.compute_logits).parameters
+        )
         self._validate_local_argmax_reduction()
 
         all_attn_layers = set[str](
@@ -261,10 +274,21 @@ class DraftModelSpeculator(BaseSpeculator):
             "(communication: O(2*tp_size) vs O(vocab_size))."
         )
 
-    def _greedy_sample_draft(self, hidden_states: torch.Tensor) -> torch.Tensor:
+    def _compute_draft_logits(
+        self, hidden_states: torch.Tensor, spec_step_idx: int
+    ) -> torch.Tensor:
+        if self._logits_take_spec_step:
+            return self.model.compute_logits(
+                hidden_states, spec_step_idx=spec_step_idx
+            )
+        return self.model.compute_logits(hidden_states)
+
+    def _greedy_sample_draft(
+        self, hidden_states: torch.Tensor, spec_step_idx: int = 0
+    ) -> torch.Tensor:
         if self.use_local_argmax_reduction:
             return self.model.get_top_tokens(hidden_states)
-        logits = self.model.compute_logits(hidden_states)
+        logits = self._compute_draft_logits(hidden_states, spec_step_idx)
         return logits.argmax(dim=-1)
 
     def sample_draft(
@@ -276,9 +300,10 @@ class DraftModelSpeculator(BaseSpeculator):
         seeds: torch.Tensor,
         draft_step: torch.Tensor,
         draft_logits: torch.Tensor | None,
+        spec_step_idx: int = 0,
     ) -> torch.Tensor:
         if draft_logits is not None:
-            logits = self.model.compute_logits(hidden_states)
+            logits = self._compute_draft_logits(hidden_states, spec_step_idx)
             # NOTE(woosuk): We must add 1 to the positions to match the Gumbel noise
             # used for draft and target sampling.
             return gumbel_sample(
@@ -292,7 +317,7 @@ class DraftModelSpeculator(BaseSpeculator):
                 output_processed_logits_col=draft_step,
                 use_fp64=self.use_fp64_gumbel,
             )
-        return self._greedy_sample_draft(hidden_states)
+        return self._greedy_sample_draft(hidden_states, spec_step_idx)
 
     def _copy_request_inputs(
         self,

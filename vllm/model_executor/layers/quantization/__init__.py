@@ -20,6 +20,7 @@ QuantizationMethods = Literal[
     "modelopt_mxfp8",
     "modelopt_mixed",
     "nvfp4_aqlm_hybrid",
+    "inkling_nvfp4_aqlm_hybrid",
     "auto_gptq",
     "gptq",
     "gptq_marlin",
@@ -114,6 +115,9 @@ def get_quantization_config(quantization: str) -> type[QuantizationConfig]:
     from vllm.config.quantization import _ONLINE_SHORTHANDS
     from vllm.model_executor.layers.quantization.quark.quark import QuarkConfig
     from vllm.models.deepseek_v4 import DeepseekV4FP8Config
+    from vllm.models.inkling.nvidia.hybrid_moe import (
+        InklingHybridTopLevelQuantConfig,
+    )
 
     from .auto_awq import AutoAWQConfig
     from .auto_gptq import AutoGPTQConfig
@@ -151,6 +155,7 @@ def get_quantization_config(quantization: str) -> type[QuantizationConfig]:
         "modelopt_mxfp8": ModelOptMxFp8Config,
         "modelopt_mixed": ModelOptMixedPrecisionConfig,
         "nvfp4_aqlm_hybrid": NvFp4AqlmHybridConfig,
+        "inkling_nvfp4_aqlm_hybrid": InklingHybridTopLevelQuantConfig,
         "auto_gptq": AutoGPTQConfig,
         "gptq": AutoGPTQConfig,
         "gptq_marlin": AutoGPTQConfig,

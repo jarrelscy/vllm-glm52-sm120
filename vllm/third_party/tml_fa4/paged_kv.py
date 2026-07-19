@@ -32,6 +32,7 @@ class PagedKVManager(ParamsBase):
 
     arch: cutlass.Constexpr[Int32]
     v_gmem_transposed: cutlass.Constexpr[bool]
+    hierarchical_smem: cutlass.Constexpr[bool]
 
     gmem_threads_per_row: cutlass.Constexpr[Int32]
     page_entry_per_thread: Int32
@@ -41,10 +42,21 @@ class PagedKVManager(ParamsBase):
     gmem_thr_copy_KV: cute.TiledCopy
     gmem_tiled_copy_sf_KV: Optional[cute.TiledCopy]
     gmem_thr_copy_sf_KV: Optional[cute.TiledCopy]
-    tPrPage: cute.Tensor
-    tPrPageOffset: cute.Tensor
+    # tPrPage/tPrPageOffset are NOT manager fields: they are mutable rmem written
+    # by load_page_table and read by compute_X_ptr. As persistent dataclass fields
+    # the DSL threads the *mutated* manager as loop-carried state across the sibling
+    # K/V and mask/no-mask scf regions -> MLIR 'operand does not dominate this use'.
+    # Allocated locally in load_page_table instead (keeps writes+reads straight-line).
     tKpK: cute.Tensor
     tVpV: cute.Tensor
+    # Number of block-table entries allocated for THIS request (mPageTable's
+    # size along its block-index axis, captured before the [bidb, None]
+    # per-batch slice in create()). Used in load_page_table to clamp page_idx
+    # -- see comment there for why an unclamped page_idx can go wildly OOB.
+    # Deliberately placed LAST in the field list (append-only) rather than
+    # inserted in the middle, to test/avoid any positional-offset assumption
+    # in the params marshalling.
+    page_table_len: Int32
 
     @staticmethod
     def create(
@@ -67,8 +79,15 @@ class PagedKVManager(ParamsBase):
         arch: cutlass.Constexpr[int] = 100,
     ):
         # SM100 transposes V in gmem to (dv, page_size, num_pages);
-        # SM90 keeps V as (page_size, dv, num_pages), same layout as K.
+        # SM90/SM80/SM120 keep V as (page_size, dv, num_pages), same layout as K.
         v_gmem_transposed = arch != 90
+        # SM100's tcgen05 smem tile shape is hierarchical ((a,b), cta_split, k);
+        # SM90/SM80/SM120 use a flat, Ampere-style composed smem layout. `arch`
+        # is a caller-chosen sentinel (not necessarily the real device arch --
+        # SM80/SM120 both pass 90 here to select this same flat path), so key
+        # the smem-flattening dispatch off an explicit flag instead of reusing
+        # `arch` a second time for an unrelated purpose.
+        hierarchical_smem = arch == 100
         universal_copy_bits = 128
         async_copy_elems = universal_copy_bits // dtype.width
         dtype_bytes = dtype.width // 8
@@ -115,9 +134,19 @@ class PagedKVManager(ParamsBase):
             gmem_tiled_copy_sf_KV = None
             gmem_thr_copy_sf_KV = None
 
-        tPrPage = cute.make_rmem_tensor((page_entry_per_thread,), Int32)
-        tPrPageOffset = cute.make_rmem_tensor((page_entry_per_thread,), Int32)
-
+        # Capture the per-batch block-table row length BEFORE slicing away
+        # the batch axis below. This is the valid range for page_idx in
+        # load_page_table; without clamping to it, a ragged batch (where
+        # n_block iteration is sized for the longest sequence in the batch)
+        # can drive page_idx for a shorter request's "invalid" rows far past
+        # this request's own allocated block-table entries. The DSL's
+        # dynamic 'if is_valid else 0' select still computes the
+        # mPageTable[page_idx] read unconditionally (both select operands are
+        # evaluated), so an unclamped page_idx there goes wildly OOB --
+        # confirmed via compute-sanitizer: "Invalid __global__ read of size
+        # 16 bytes ... 17924159004257 bytes after the nearest allocation of
+        # size 512 bytes" inside _copy_row_async's cute.copy (paged_kv.py).
+        page_table_len = mPageTable.shape[1]
         mPageTable = mPageTable[bidb, None]
         mK_paged = mK_paged[None, None, bidh, None]
         mV_paged = mV_paged[None, None, bidh, None]
@@ -155,6 +184,7 @@ class PagedKVManager(ParamsBase):
             head_dim_v_padded,
             arch,
             v_gmem_transposed,
+            hierarchical_smem,
             gmem_threads_per_row,
             page_entry_per_thread,
             async_copy_elems,
@@ -162,14 +192,15 @@ class PagedKVManager(ParamsBase):
             gmem_thr_copy_KV,
             gmem_tiled_copy_sf_KV,
             gmem_thr_copy_sf_KV,
-            tPrPage,
-            tPrPageOffset,
             tKpK,
             tVpV,
+            page_table_len,
         )
 
     @cute.jit
     def load_page_table(self, n_block: Int32):
+        tPrPage = cute.make_rmem_tensor((self.page_entry_per_thread,), Int32)
+        tPrPageOffset = cute.make_rmem_tensor((self.page_entry_per_thread,), Int32)
         for i in cutlass.range(self.page_entry_per_thread, unroll=1):
             row = (
                 i * self.num_threads
@@ -184,21 +215,33 @@ class PagedKVManager(ParamsBase):
             is_valid = (
                 (i + 1) * self.num_threads <= self.n_block_size or row < self.n_block_size
             ) and row_idx < self.seqlen_k
-            page = self.mPageTable[page_idx] if is_valid else 0
+            # Clamp page_idx into this request's own valid block-table range
+            # regardless of is_valid. For a ragged batch, n_block iterates up
+            # to the batch's longest sequence, so "invalid" rows belonging to
+            # a shorter request can have page_idx far past that request's
+            # own page_table_len entries. Python's dynamic-condition
+            # 'if is_valid else 0' compiles to an unconditional select (both
+            # operands computed), so the mPageTable[page_idx] read below
+            # still executes even when is_valid is False -- an unclamped
+            # page_idx there was reading ~17.9TB out of bounds (see
+            # compute-sanitizer evidence noted in create()).
+            page_idx_safe = cutlass.max(cutlass.min(page_idx, self.page_table_len - 1), 0)
+            page = self.mPageTable[page_idx_safe] if is_valid else 0
 
-            self.tPrPage[i] = page
-            self.tPrPageOffset[i] = page_offset
+            tPrPage[i] = page
+            tPrPageOffset[i] = page_offset
+        return tPrPage, tPrPageOffset
 
     @cute.jit
-    def compute_X_ptr(self, K_or_V: str):
+    def compute_X_ptr(self, tPrPage: cute.Tensor, tPrPageOffset: cute.Tensor, K_or_V: str):
         tPrXPtr = cute.make_rmem_tensor((self.page_entry_per_thread,), cutlass.Int64)
         mX = self.mK_paged if const_expr(K_or_V == "K") else self.mV_paged
         # K is always (page_size, d, num_pages). V matches K when not transposed,
         # but is (dv, page_size, num_pages) when transposed (SM100).
         transposed = const_expr(K_or_V == "V" and self.v_gmem_transposed)
         for i in cutlass.range(self.page_entry_per_thread, unroll=1):
-            page = self.tPrPage[i]
-            page_offset = self.tPrPageOffset[i]
+            page = tPrPage[i]
+            page_offset = tPrPageOffset[i]
             if const_expr(transposed):
                 tPrXPtr[i] = utils.elem_pointer(mX, (0, page_offset, page)).toint()
             else:
@@ -242,11 +285,11 @@ class PagedKVManager(ParamsBase):
             )
 
     @cute.jit
-    def compute_sf_X_ptr(self, K_or_V: str):
+    def compute_sf_X_ptr(self, tPrPage: cute.Tensor, tPrPageOffset: cute.Tensor, K_or_V: str):
         tPrXPtr = cute.make_rmem_tensor((self.page_entry_per_thread,), cutlass.Int64)
         for i in cutlass.range(self.page_entry_per_thread, unroll=1):
-            page = self.tPrPage[i]
-            page_offset = self.tPrPageOffset[i]
+            page = tPrPage[i]
+            page_offset = tPrPageOffset[i]
             if const_expr(K_or_V == "K"):
                 tPrXPtr[i] = utils.elem_pointer(self.mSFK_paged, (page_offset, 0, page)).toint()
             else:
@@ -257,13 +300,15 @@ class PagedKVManager(ParamsBase):
     def load_KV(self, n_block: Int32, sX: cute.Tensor, K_or_V: str):
         assert K_or_V in ("K", "V")
 
-        tPrXPtr = self.compute_X_ptr(K_or_V)
+        tPrPage, tPrPageOffset = self.load_page_table(n_block)
+        tPrXPtr = self.compute_X_ptr(tPrPage, tPrPageOffset, K_or_V)
 
-        if const_expr(self.arch == 90):
-            # SM90: sX is already stage-sliced by caller (sK[None, None, stage]).
-            # Flatten hierarchical modes to get (n_block_size, head_dim).
+        if const_expr(not self.hierarchical_smem):
+            # SM90/SM80/SM120: sX is already stage-sliced by caller
+            # (sK[None, None, stage]). Flatten hierarchical modes to get
+            # (n_block_size, head_dim). V is not transposed here (it's
+            # transposed via utils.transpose_view before MMA instead).
             sX_pi = cute.group_modes(sX, 0, 1)
-            # SM90 does NOT transpose V here (it's transposed via utils.transpose_view before MMA)
         else:
             sX_pi = self._flatten_smem_sm100(sX, K_or_V)
 
@@ -327,7 +372,8 @@ class PagedKVManager(ParamsBase):
             self.seqlen_k - n_block * self.n_block_size - tXcX[0][0] if n_block >= 0 else 0
         )
 
-        tPrSFXPtr = self.compute_sf_X_ptr(K_or_V)
+        tPrPage, tPrPageOffset = self.load_page_table(n_block)
+        tPrSFXPtr = self.compute_sf_X_ptr(tPrPage, tPrPageOffset, K_or_V)
         assert cute.size(tPrSFXPtr) == cute.size(tXsX, mode=[1]), "SFX pointer size mismatch"
 
         # loop over rows

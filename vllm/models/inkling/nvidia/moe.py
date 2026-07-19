@@ -42,6 +42,7 @@ from vllm.triton_utils import tl, tldevice, triton
 from vllm.utils.multi_stream_utils import maybe_execute_in_parallel
 from vllm.utils.torch_utils import aux_stream
 
+from ..aqlm_hybrid import InklingAqlmHybridConfig
 from ..configs import InklingModelConfig
 from ..nvfp4 import FLOAT4_E2M1_MAX, FLOAT8_E4M3_MAX
 
@@ -351,6 +352,7 @@ class InklingMoE(nn.Module):
         *,
         prefix: str = "",
         nvfp4_config: InklingNvfp4Config | None = None,
+        aqlm_hybrid_config: InklingAqlmHybridConfig | None = None,
     ) -> None:
         super().__init__()
         # Overfit to the served checkpoint: sigmoid gate renormalized after
@@ -372,7 +374,22 @@ class InklingMoE(nn.Module):
         )
 
         moe_quant_config = None
-        if nvfp4_config is not None and nvfp4_config.experts_quantized(layer_id):
+        self.is_hybrid_layer = (
+            aqlm_hybrid_config is not None
+            and aqlm_hybrid_config.is_hybrid(layer_id)
+        )
+        if self.is_hybrid_layer:
+            from .hybrid_moe import InklingHybridQuantConfig
+
+            moe_quant_config = InklingHybridQuantConfig(
+                layer_id,
+                aqlm_hybrid_config.layer_info(layer_id),
+                aqlm_hybrid_config.w13_book_entries,
+                aqlm_hybrid_config.w2_book_entries,
+                aqlm_hybrid_config.w13_code_dtypes,
+                aqlm_hybrid_config.w2_code_dtypes,
+            )
+        elif nvfp4_config is not None and nvfp4_config.experts_quantized(layer_id):
             from vllm.model_executor.layers.quantization.modelopt import (
                 ModelOptNvFp4Config,
             )
@@ -509,10 +526,32 @@ class InklingMoE(nn.Module):
         experts: RoutedExperts = self.experts.routed_experts
         key = name.split(".", 1)[1]
 
+        if self.is_hybrid_layer and (
+            key in ("hot_ids", "cold_ids")
+            or key.startswith(("w13_hot", "w2_hot", "w13_cold", "w2_cold"))
+        ):
+            # Hybrid NVFP4+AQLM tensors: no EP expert-dim split (hybrid MoE is
+            # TP-only, one rank owns all local hot/cold slabs), so the
+            # weight_loader registered in InklingHybridExpertsMoEMethod.
+            # create_weights handles the whole tensor (TP-shard/de-interleave
+            # or replicate) directly -- no per-expert slot loop needed.
+            # Checkpoint keys use a dotted suffix for per-tensor metadata and
+            # book index (``w13_hot_weight.scale``, ``w13_cold_codes.0``); the
+            # registered parameter names use underscores throughout.
+            param_name = key.replace(".", "_")
+            param = getattr(experts, param_name)
+            param.weight_loader(param, weight)
+            return [f"experts.routed_experts.{param_name}"]
+
         # original_shape is unused by the vLLM serving layout.
         if key.endswith(".original_shape"):
             return []
         if key.endswith(".input_amax"):
+            if self.is_hybrid_layer:
+                # Vestigial base-NVFP4 calibration data: hybrid layers carry
+                # no static per-tensor input scale (InklingHybridExpertsMoEMethod
+                # allocates no {w13,w2}_input_scale param -- see hybrid_moe.py).
+                return []
             projection = "w13" if key.startswith("w13") else "w2"
             amax = float(weight.max())
             assert math.isfinite(amax) and amax > 0, (

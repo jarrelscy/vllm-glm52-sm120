@@ -1008,10 +1008,16 @@ class SpecDecodeBaseProposer:
         if self.method == "mtp":
             # DeepSeek-family MTP (deepseek_mtp.py) recycles the post-final-
             # norm hidden, so its forward returns (logit_hidden,
-            # recycle_hidden). Other MTP families return a single tensor.
-            return "DeepSeekMTPModel" in (
-                self.draft_model_config.hf_config.architectures or []
-            )
+            # recycle_hidden). Inkling's MTP (mtp.py) mirrors this exact
+            # convention (see InklingMTPLayer.forward() /
+            # InklingMTPPredictor.compute_logits()): compute_logits expects
+            # the pre-norm element and applies shared_head's norm itself,
+            # while the hidden recycled into the next draft step must
+            # already be normed. A single shared tensor cannot satisfy both
+            # roles at once, so both families need the tuple-returning path.
+            # Other MTP families return a single tensor.
+            archs = self.draft_model_config.hf_config.architectures or []
+            return any(a in ("DeepSeekMTPModel", "InklingMTPModel") for a in archs)
         return self.method not in ("mtp", "draft_model", "dflash")
 
     def prepare_next_token_ids_cpu(

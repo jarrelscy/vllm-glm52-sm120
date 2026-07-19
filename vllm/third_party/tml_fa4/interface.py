@@ -476,6 +476,25 @@ def _flash_attn_fwd(
     causal, local, window_size_left, window_size_right = _resolve_causal_local_window(
         causal, window_size_left, window_size_right, mask_mod
     )
+    # Callers (e.g. plain-int sliding-window kwargs) may hand these in as
+    # raw Python ints, but every cute.compile(...)/compiled-kernel
+    # invocation below passes window_size_left/right straight through to a
+    # @cute.jit-traced function boundary, which does strict argument-type
+    # validation (generate_mlir_function_types) against the declared
+    # Optional[Int32] parameter type before the function body ever runs --
+    # a raw int fails there with "expects argument #N (window_size_left)
+    # to be one of (Int32, NoneType), but got <class 'int'>".
+    # Deliberately kept as SEPARATE _dsl variables rather than overwriting
+    # window_size_left/window_size_right in place: this file also uses the
+    # plain-int values in host-side Python arithmetic below (e.g. the
+    # seqlen_k_loaded computation's `... or max_seqlen_k) + ...`, which
+    # relies on ordinary int truthiness/arithmetic), in compile_key cache
+    # tuples, and in _pack_gqa_heuristic -- an Int32 wrapper object is not
+    # guaranteed to behave identically to a plain int in all of those
+    # (falsy-zero, hashing/equality as a dict-key element, etc.), so only
+    # the actual DSL call-boundary sites should see the coerced type.
+    window_size_left_dsl = Int32(window_size_left) if window_size_left is not None else None
+    window_size_right_dsl = Int32(window_size_right) if window_size_right is not None else None
 
     qhead_per_kvhead = num_head // num_head_kv
     if pack_gqa is None:
@@ -524,6 +543,12 @@ def _flash_attn_fwd(
     else:
         fwd_cfg = FwdConfig(tile_mn[0], tile_mn[1], fwd_cfg.mma_pv_is_rs, fwd_cfg.intra_wg_overlap)
     tile_m, tile_n = fwd_cfg.m_block_size, fwd_cfg.n_block_size
+    if rel_bias is not None:
+        # The sheared relative-bias path below requires 128x128 tiles
+        # unconditionally (see the tile_m/tile_n asserts ahead); none of the
+        # per-arch/per-headdim heuristics above account for rel_bias, so they
+        # can pick e.g. 64-wide tiles on SM120 for head_dim>64 and crash there.
+        tile_m, tile_n = 128, 128
     if mma_pv_is_rs is None:
         mma_pv_is_rs = fwd_cfg.mma_pv_is_rs
     if intra_wg_overlap is None:
@@ -609,16 +634,13 @@ def _flash_attn_fwd(
     # SM120 (cp.async forward) has no native/TMA relative-bias path like SM100.
     # Apply the Inkling relative bias via a score_mod that gathers the raw
     # rel_logits (passed as aux_tensors[0]); set this BEFORE score_mod_hash and
-    # the compile_key are computed, and skip the SM100-only sheared-bias build
-    # below (gated on arch // 10 != 12).
+    # the compile_key, and skip the SM100-only sheared-bias build below
+    # (gated on arch // 10 != 12).
     if rel_bias is not None and arch // 10 == 12:
         assert score_mod is None, "rel_bias + explicit score_mod unsupported on SM120"
         assert aux_tensors is None, "rel_bias uses aux_tensors[0] on SM120"
         score_mod = utils.create_rel_bias_scoremod(rel_bias.shape[-1])
         _rb = rel_bias.contiguous()
-        # Mark the contiguous (last) dim as leading so to_cute_aux_tensor builds a
-        # NON-fully-dynamic layout; the score_mod's per-element crd2idx/pointer
-        # gather fails to build against a fully-dynamic aux layout.
         _rb.__leading_dim__ = _rb.ndim - 1
         _rb.__assumed_align__ = 16
         aux_tensors = [_rb]
@@ -852,8 +874,8 @@ def _flash_attn_fwd(
                 seqused_k_tensor,
                 cu_total_m_blocks_bias_tensor,
                 blocks_to_batch_idx_tensor,
-                window_size_left,
-                window_size_right,
+                window_size_left_dsl,
+                window_size_right_dsl,
                 current_stream,
                 options="--enable-tvm-ffi",
             )
@@ -870,8 +892,8 @@ def _flash_attn_fwd(
                 seqused_k,
                 cu_total_m_blocks_bias,
                 blocks_to_batch_idx,
-                window_size_left,
-                window_size_right,
+                window_size_left_dsl,
+                window_size_right_dsl,
             )
     else:
         rel_extent = 0
@@ -1264,8 +1286,15 @@ def _flash_attn_fwd(
         elif arch // 10 == 12:
             # SM120 (Blackwell GeForce / DGX Spark): uses SM80 MMA with SM120 SMEM capacity
             assert not use_block_sparsity, "Block sparsity not supported on SM 12.0"
-            assert page_table is None, "Paged KV not supported on SM 12.0 in this PR"
             assert not is_split_kv, "SplitKV not supported on SM 12.0 in this PR"
+            if page_table is not None:
+                # PagedKVManager.load_page_table divides tile_n rows across
+                # num_threads threads; if tile_n < num_threads this loop is a
+                # zero-trip no-op (silently wrong output, no crash).
+                assert tile_n >= num_threads and tile_n % num_threads == 0, (
+                    f"Paged KV on SM 12.0 requires tile_n ({tile_n}) to be a "
+                    f"multiple of num_threads ({num_threads}) and >= num_threads"
+                )
             fa_fwd = FlashAttentionForwardSm120(
                 dtype,
                 head_dim,
@@ -1304,8 +1333,8 @@ def _flash_attn_fwd(
                 seqused_k_tensor,
                 gather_kv_indices_tensor,
                 page_table_tensor,
-                window_size_left,
-                window_size_right,
+                window_size_left_dsl,
+                window_size_right_dsl,
                 current_stream,
                 options="--enable-tvm-ffi",
             )
@@ -1329,8 +1358,8 @@ def _flash_attn_fwd(
                 seqused_q_tensor,
                 seqused_k_tensor,
                 page_table_tensor,
-                window_size_left,
-                window_size_right,
+                window_size_left_dsl,
+                window_size_right_dsl,
                 learnable_sink_tensor,
                 sparse_tensors,
                 cute_aux_tensors,
@@ -1355,8 +1384,8 @@ def _flash_attn_fwd(
                 seqused_q_tensor,
                 seqused_k_tensor,
                 page_table_tensor,
-                window_size_left,
-                window_size_right,
+                window_size_left_dsl,
+                window_size_right_dsl,
                 learnable_sink_tensor,
                 sparse_tensors,
                 cute_aux_tensors,
@@ -1381,8 +1410,8 @@ def _flash_attn_fwd(
                 seqused_k,
                 gather_kv_indices,
                 page_table,
-                window_size_left,
-                window_size_right,
+                window_size_left_dsl,
+                window_size_right_dsl,
             )
         elif arch // 10 in [10, 11]:
             exec_args = [
@@ -1405,8 +1434,8 @@ def _flash_attn_fwd(
                 seqused_q,
                 seqused_k,
                 page_table,
-                window_size_left,
-                window_size_right,
+                window_size_left_dsl,
+                window_size_right_dsl,
                 learnable_sink,
                 normalized_block_sparse_tensors[:4]
                 if normalized_block_sparse_tensors is not None
@@ -1431,8 +1460,8 @@ def _flash_attn_fwd(
                 seqused_q,
                 seqused_k,
                 page_table,
-                window_size_left,
-                window_size_right,
+                window_size_left_dsl,
+                window_size_right_dsl,
                 learnable_sink,
                 normalized_block_sparse_tensors[:4]
                 if normalized_block_sparse_tensors is not None

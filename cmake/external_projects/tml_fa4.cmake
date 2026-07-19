@@ -2,6 +2,17 @@ include(FetchContent)
 
 if(DEFINED ENV{TML_FA4_SRC_DIR})
   set(TML_FA4_SRC_DIR $ENV{TML_FA4_SRC_DIR})
+elseif(EXISTS /home/jarrelscy/tml-fa4-fork/flash_attn/cute)
+  # Local dev default: jarrelscy's fork (branch sm120-paged-kv) carrying the
+  # SM80/SM120 paged-KV support added on top of upstream commit
+  # 13374f0c855acc1add1bf30444bd67aebbc24a8e. This is a machine-specific
+  # stopgap -- the fork has not been pushed to a remote yet, so we can't
+  # point GIT_REPOSITORY/GIT_TAG at it. Once it's pushed, replace this whole
+  # branch with an updated GIT_REPOSITORY/GIT_TAG below. Override with
+  # TML_FA4_SRC_DIR for any other machine/CI (falls back to the pinned
+  # upstream git checkout, which does NOT have paged KV on SM120, if this
+  # path doesn't exist).
+  set(TML_FA4_SRC_DIR /home/jarrelscy/tml-fa4-fork)
 endif()
 
 if(TML_FA4_SRC_DIR)

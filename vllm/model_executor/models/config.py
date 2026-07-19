@@ -843,6 +843,12 @@ MODELS_CONFIG_MAP: dict[str, type[VerifyAndUpdateConfig]] = {
     "GteModel": SnowflakeGteNewModelConfig,
     "GteNewForSequenceClassification": GteNewModelConfig,
     "GteNewModel": GteNewModelConfig,
+    # InklingConvState (sconv short-conv state) is a fixed-size-per-sequence
+    # cache, architecturally the same admission problem as Mamba/SSM conv
+    # state -- reuses MambaModelConfig so mamba_block_size/mamba_cache_mode
+    # resolve the same way real Mamba layers do (see sconv_swa_attn.py).
+    "InklingForCausalLM": MambaModelConfig,
+    "InklingForConditionalGeneration": MambaModelConfig,
     "JambaForSequenceClassification": JambaForSequenceClassificationConfig,
     "JinaForRanking": JinaForRankingConfig,
     "JinaVLForRanking": JinaVLForSequenceClassificationConfig,

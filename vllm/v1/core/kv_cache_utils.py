@@ -652,9 +652,14 @@ def resolve_kv_cache_block_sizes(
         return bs, bs
 
     group_block_sizes = [
-        g.kv_cache_spec.block_size * dcp * pcp
-        if isinstance(g.kv_cache_spec, AttentionSpec)
-        else g.kv_cache_spec.block_size
+        g.kv_cache_spec.block_size
+        if isinstance(g.kv_cache_spec, (MambaSpec, SlidingWindowSpec))
+        # Sliding-window groups keep their full local window per rank
+        # (like Mamba conv/ssm state) rather than being CP-sharded: at any
+        # dcp_size sane enough that a rank's local KV shard still covers the
+        # whole window, there's nothing to combine across ranks, so scaling
+        # their block size by dcp/pcp here would just be wasted allocation.
+        else g.kv_cache_spec.block_size * dcp * pcp
         for g in groups
     ]
     scheduler_block_size = math.lcm(*group_block_sizes)
@@ -2150,6 +2155,35 @@ def get_kv_cache_configs(
     for groups, avail_mem in zip(projected_groups_per_worker, available_memory):
         if not groups:
             continue
+        if os.getenv("VLLM_KVSPEC_DEBUG"):  # TEMP diagnostic (task #112), remove after use
+            for gi, group in enumerate(groups):
+                spec = group.kv_cache_spec
+                logger.info(
+                    "KVSPEC_DEBUG group=%d n_layers=%d spec=%s page_size=%d "
+                    "per_layer_max_mem=%.1f MiB layers[:3]=%s",
+                    gi,
+                    len(group.layer_names),
+                    type(spec).__name__
+                    + (
+                        f"(window={spec.sliding_window},heads={spec.num_kv_heads},"
+                        f"hs={spec.head_size},hsv={getattr(spec, 'head_size_v', '?')},"
+                        f"dtype={spec.dtype})"
+                        if hasattr(spec, "num_kv_heads")
+                        and hasattr(spec, "sliding_window")
+                        else f"(dtype={getattr(spec, 'dtype', '?')})"
+                    ),
+                    spec.page_size_bytes,
+                    spec.max_memory_usage_bytes(vllm_config) / 2**20,
+                    group.layer_names[:3],
+                )
+            logger.info(
+                "KVSPEC_DEBUG total_needed=%.2f GiB avail=%.2f GiB "
+                "group_size=%d max_in_flight_tokens=%d",
+                _max_memory_usage_bytes_from_groups(vllm_config, groups) / 2**30,
+                avail_mem / 2**30,
+                max(len(g.layer_names) for g in groups),
+                vllm_config.max_in_flight_tokens,
+            )
         _check_enough_kv_cache_memory(
             avail_mem,
             partial(_max_memory_usage_bytes_from_groups, vllm_config, groups),

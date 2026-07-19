@@ -54,6 +54,7 @@ MTPModelTypes = Literal[
     "step3p5_mtp",
     "hy_v3_mtp",
     "gemma4_mtp",
+    "inkling_mtp",
 ]
 NgramGPUTypes = Literal["ngram_gpu"]
 DFlashModelTypes = Literal["dflash"]
@@ -603,6 +604,23 @@ class SpeculativeConfig:
             n_predict = getattr(hf_config, "num_mtp_modules", 1)
             hf_config.update(
                 {"n_predict": n_predict, "architectures": ["MiniMaxM3MTP"]}
+            )
+
+        if (
+            hf_config.model_type == "inkling_mm_model"
+            or initial_architecture == "InklingForConditionalGeneration"
+        ):
+            # mtp_config is a plain dict, a sibling of text_config (NOT
+            # nested inside it) on the real release -- verified directly
+            # against the checkpoint's config.json. Keep hf_config as the
+            # multimodal wrapper (unlike the step3p5/minimax_m3_vl
+            # text_config-promotion pattern above) since InklingMTP reads
+            # both hf_config.text_config and hf_config.mtp_config directly.
+            hf_config.model_type = "inkling_mtp"
+            mtp_config = getattr(hf_config, "mtp_config", {}) or {}
+            n_predict = mtp_config.get("num_nextn_predict_layers", 1)
+            hf_config.update(
+                {"n_predict": n_predict, "architectures": ["InklingMTPModel"]}
             )
 
         return hf_config

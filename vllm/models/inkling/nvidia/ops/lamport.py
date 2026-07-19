@@ -56,6 +56,15 @@ from vllm.triton_utils import HAS_TRITON, tl, triton
 logger = init_logger(__name__)
 
 _MAX_TOKENS = 16384
+# Above this many tokens the NCCL fallback wins: the Lamport phases publish
+# via scalar u32 peer stores, which are latency-optimal for decode but far
+# below bulk-copy bandwidth for prefill-sized batches. Measured on 4x RTX PRO
+# 6000 TP4: cutoff 64 leaves decode (batch 1-8) unchanged and nearly doubles
+# 4K prefill (719 -> ~1378 tok/s) by routing prefill chunks to NCCL RS/AG.
+_DEFAULT_CUTOFF = 64
+_LAMPORT_CUTOFF = int(
+    os.environ.get("INKLING_LAMPORT_MAX_TOKENS", str(_DEFAULT_CUTOFF))
+)
 _EMPTY_PAIR = tl.constexpr(0x80008000) if HAS_TRITON else 0x80008000
 
 
@@ -578,7 +587,7 @@ class LamportRSConv:
         self.generation = 0
 
     def usable(self, num_tokens: int) -> bool:
-        return 0 < num_tokens <= self.max_tokens
+        return 0 < num_tokens <= min(self.max_tokens, _LAMPORT_CUTOFF)
 
     def rs_sconv_ag_add_norm(
         self,

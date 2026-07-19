@@ -45,6 +45,7 @@ from vllm.models.inkling.common.towers import InklingAudio, InklingVision
 from vllm.multimodal import MULTIMODAL_REGISTRY
 from vllm.sequence import IntermediateTensors
 
+from ..aqlm_hybrid import InklingAqlmHybridConfig
 from ..configs import InklingMMConfig, InklingModelConfig
 from ..nvfp4 import InklingNvfp4Config
 from .attention import InklingAttention, compute_log_scaling_tau
@@ -123,6 +124,7 @@ class InklingDecoderLayer(nn.Module):
         quant_config: QuantizationConfig | None,
         prefix: str,
         nvfp4_config: InklingNvfp4Config | None = None,
+        aqlm_hybrid_config: InklingAqlmHybridConfig | None = None,
     ) -> None:
         super().__init__()
         # Per-layer owner of the conv state as a paged SWA cache. The 4 sconv
@@ -178,6 +180,7 @@ class InklingDecoderLayer(nn.Module):
                 layer_id,
                 prefix=f"{prefix}.mlp",
                 nvfp4_config=nvfp4_config,
+                aqlm_hybrid_config=aqlm_hybrid_config,
             )
 
         # Short convolution on the attention-output and MLP-output residual
@@ -253,6 +256,7 @@ class InklingModel(nn.Module):
         quant_config: QuantizationConfig | None,
         prefix: str,
         nvfp4_config: InklingNvfp4Config | None = None,
+        aqlm_hybrid_config: InklingAqlmHybridConfig | None = None,
     ) -> None:
         super().__init__()
         self.config = config
@@ -269,7 +273,13 @@ class InklingModel(nn.Module):
         def get_layer(prefix: str) -> InklingDecoderLayer:
             idx = _layer_id(prefix + ".") or int(prefix.split(".")[-1])
             return InklingDecoderLayer(
-                config, idx, idx in local_ids, quant_config, prefix, nvfp4_config
+                config,
+                idx,
+                idx in local_ids,
+                quant_config,
+                prefix,
+                nvfp4_config,
+                aqlm_hybrid_config,
             )
 
         self.start_layer, self.end_layer, self.layers = make_layers(
@@ -378,6 +388,18 @@ class _TmlForCausalLMBase(nn.Module, SupportsPP):
             ".w13_weight.scale2": ".w13_weight_scale_2",
             ".w2_weight.scale": ".w2_weight_scale",
             ".w2_weight.scale2": ".w2_weight_scale_2",
+            # NVFP4+AQLM hybrid: hot-expert NVFP4 scales (book indices below
+            # are checkpoint-wide constants: w13 has exactly 1 book, w2 has 2).
+            ".w13_hot_weight.scale": ".w13_hot_weight_scale",
+            ".w13_hot_weight.scale2": ".w13_hot_weight_scale2",
+            ".w2_hot_weight.scale": ".w2_hot_weight_scale",
+            ".w2_hot_weight.scale2": ".w2_hot_weight_scale2",
+            ".w13_cold_codes.0": ".w13_cold_codes_0",
+            ".w13_cold_codebook.0": ".w13_cold_codebook_0",
+            ".w2_cold_codes.0": ".w2_cold_codes_0",
+            ".w2_cold_codes.1": ".w2_cold_codes_1",
+            ".w2_cold_codebook.0": ".w2_cold_codebook_0",
+            ".w2_cold_codebook.1": ".w2_cold_codebook_1",
         },
     )
 
@@ -394,6 +416,13 @@ class _TmlForCausalLMBase(nn.Module, SupportsPP):
         self.nvfp4_config = InklingNvfp4Config.from_hf_config(
             vllm_config.model_config.hf_config
         )
+        # The NVFP4+AQLM hybrid variant's per-layer hot/cold split lives only
+        # in hf_quant_config.json (not config.json's quantization_config, which
+        # this HF loader prioritizes) -- fetched directly, None for plain
+        # NVFP4/bf16 checkpoints.
+        self.aqlm_hybrid_config = InklingAqlmHybridConfig.from_model(
+            vllm_config.model_config.model, vllm_config.model_config.revision
+        )
         # Read by the MRV2 runner to publish per-request short-conv metadata.
         # Short convolution is intrinsic to Inkling, so this is always set.
         self.uses_sconv = True
@@ -402,6 +431,7 @@ class _TmlForCausalLMBase(nn.Module, SupportsPP):
             quant_config=quant_config,
             prefix=maybe_prefix(prefix, "model"),
             nvfp4_config=self.nvfp4_config,
+            aqlm_hybrid_config=self.aqlm_hybrid_config,
         )
         initialize_lamport_rs_conv(
             text_config.hidden_size,

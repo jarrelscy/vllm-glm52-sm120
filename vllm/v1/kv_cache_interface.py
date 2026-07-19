@@ -596,14 +596,26 @@ class SlidingWindowSpec(AttentionSpec):
         return cdiv(num_tokens, self.block_size) + 1
 
     def max_memory_usage_bytes(self, vllm_config: VllmConfig) -> int:
-        assert vllm_config.parallel_config.decode_context_parallel_size == 1, (
-            "DCP not support sliding window."
-        )
+        # Sliding-window blocks are never dcp/pcp-sharded (see the matching
+        # exemptions in resolve_kv_cache_block_sizes,
+        # check_attention_cp_compatibility, and max_num_blocks_per_req
+        # below): each rank holds a full, independent copy of the window, so
+        # max_admission_blocks_per_request is already dcp/pcp-independent by
+        # construction and needs no adjustment when
+        # decode_context_parallel_size > 1.
         max_blocks = self.max_admission_blocks_per_request(
             max_in_flight_tokens=vllm_config.max_in_flight_tokens,
             max_model_len=vllm_config.model_config.max_model_len,
         )
         return max_blocks * self.page_size_bytes
+
+    def max_num_blocks_per_req(self, vllm_config: VllmConfig, max_len: int) -> int:
+        # Unlike AttentionSpec.max_num_blocks_per_req, do not divide by
+        # dcp*pcp: sliding-window state is replicated across DCP/PCP ranks,
+        # never token-interleave-sharded (mirrors MambaSpec.
+        # max_num_blocks_per_req above), so the block-table row length must
+        # still cover the full window range a single rank can see.
+        return cdiv(max_len, self.block_size)
 
     def is_uniform_with_collection(
         self, kv_cache_specs: dict[str, KVCacheSpec]

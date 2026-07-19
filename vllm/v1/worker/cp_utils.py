@@ -10,6 +10,7 @@ from vllm.distributed import get_dcp_group, get_pcp_group
 from vllm.logger import init_logger
 from vllm.v1.attention.backend import CommonAttentionMetadata
 from vllm.v1.attention.backends.utils import split_decodes_prefills_and_extends
+from vllm.v1.kv_cache_interface import SlidingWindowSpec
 
 if TYPE_CHECKING:
     from vllm.model_executor.layers.attention_layer_base import AttentionLayerBase
@@ -36,13 +37,27 @@ def check_attention_cp_compatibility(vllm_config: VllmConfig) -> None:
                     f"supported in {layer_impl.__class__.__name__}."
                 )
             if dcp_size > 1:
-                assert layer_impl.need_to_return_lse_for_decode, (
-                    "Decode Context Parallelism (DCP) requires attention "
-                    "implementations to return the softmax LSE during decode, "
-                    f"but {layer_impl.__class__.__name__} does not. "
-                    "Try a different backend by setting "
-                    "--attention-backend or disable DCP."
-                )
+                # Sliding-window layers are exempt from the DCP LSE-return
+                # requirement, mirroring the existing MambaSpec exemption in
+                # resolve_kv_cache_block_sizes(): both are excluded from
+                # dcp/pcp block-size scaling, so their KV blocks are never
+                # interleave-striped across ranks in the first place (each
+                # rank holds its own complete, unsharded window/state) --
+                # there is no partial per-rank result to combine, so nothing
+                # needs an LSE to combine with. This is unconditional full
+                # per-rank replication, not a "window fits in one rank's
+                # shard" size heuristic, so there is no dcp_size large enough
+                # to invalidate it -- growing dcp_size only ever adds more
+                # full replicas, never splits the window across ranks.
+                kv_cache_spec = layer.get_kv_cache_spec(vllm_config)
+                if not isinstance(kv_cache_spec, SlidingWindowSpec):
+                    assert layer_impl.need_to_return_lse_for_decode, (
+                        "Decode Context Parallelism (DCP) requires attention "
+                        "implementations to return the softmax LSE during "
+                        f"decode, but {layer_impl.__class__.__name__} does "
+                        "not. Try a different backend by setting "
+                        "--attention-backend or disable DCP."
+                    )
 
             if pcp_size > 1:
                 assert layer_impl.supports_pcp, (

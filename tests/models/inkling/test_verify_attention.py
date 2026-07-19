@@ -151,3 +151,82 @@ def test_verify_kv_shorter_than_window_and_qlen_edge():
     # of a tiny prompt) and kv shorter than the window.
     _run_verify_case([9, 12], 8, 16, 2, 128, window_left=None)
     _run_verify_case([9, 12], 8, 16, 4, 128, window_left=512)
+
+
+@pytest.mark.skipif(not current_platform.is_cuda(), reason="requires CUDA")
+@torch.inference_mode()
+def test_fused_combine_matches_torch_epilogue():
+    """INKLING_ATTN_FUSED_COMBINE replaces the torch split-merge epilogue
+    with one Triton kernel. Kernel partials are identical between runs, so
+    fp32 outputs may differ only by fp32 reduction-order rounding: gate at
+    a tolerance orders of magnitude tighter than the reference tests'
+    2e-2 (a masking/indexing bug would blow straight past it). Includes a
+    kv_len < num_splits case so EMPTY splits exercise the -inf guard, and
+    both bf16 and fp32 out dtypes."""
+    from vllm.models.inkling.nvidia.ops import (
+        triton_decode_attention as tda,
+    )
+
+    torch.manual_seed(5)
+    device = "cuda"
+    cases = [
+        # (num_heads, num_kv_heads, kv_lens, window_left, out_dtype)
+        (16, 2, [515, 67], None, torch.float32),
+        (16, 4, [2049, 131, 515], 128, torch.float32),
+        (16, 2, [7, 9], None, torch.bfloat16),  # kv < num_splits: empty splits
+        (16, 2, [515], None, torch.bfloat16),
+    ]
+    for num_heads, num_kv_heads, kv_lens, window_left, out_dtype in cases:
+        num_seqs = len(kv_lens)
+        scale = 1.0 / HEAD_DIM
+        q = torch.randn(
+            num_seqs, num_heads, HEAD_DIM, device=device, dtype=DTYPE
+        )
+        key_cache, value_cache, block_table = _make_paged_kv(
+            num_seqs, max(kv_lens), num_kv_heads, device, strided=True
+        )
+        rel_logits = torch.randn(
+            num_seqs, num_heads, 128, device=device, dtype=DTYPE
+        )
+        seq_lens = torch.tensor(kv_lens, dtype=torch.int32, device=device)
+
+        outs = {}
+        orig = tda._FUSED_COMBINE
+        try:
+            for fused in (False, True):
+                tda._FUSED_COMBINE = fused
+                torch.manual_seed(7)  # identical everything
+                out = torch.empty(
+                    num_seqs, num_heads, HEAD_DIM,
+                    device=device, dtype=out_dtype,
+                )
+                triton_rel_decode_attention(
+                    q,
+                    key_cache,
+                    value_cache,
+                    block_table=block_table,
+                    cache_seqlens=seq_lens,
+                    rel_logits=rel_logits,
+                    softmax_scale=scale,
+                    rel_extent=128,
+                    window_left=-1 if window_left is None else window_left,
+                    num_splits=8 if window_left is not None else 64,
+                    out=out,
+                )
+                outs[fused] = out
+        finally:
+            tda._FUSED_COMBINE = orig
+
+        if out_dtype == torch.float32:
+            torch.testing.assert_close(
+                outs[True], outs[False], rtol=1e-5, atol=1e-6,
+                msg=f"fused combine fp32 mismatch (kv={kv_lens})",
+            )
+        else:
+            # bf16 store: fp32 rounding differences may flip the last bf16
+            # ulp; anything larger is a real bug.
+            torch.testing.assert_close(
+                outs[True].float(), outs[False].float(),
+                rtol=1e-2, atol=1e-2,
+                msg=f"fused combine bf16 mismatch (kv={kv_lens})",
+            )

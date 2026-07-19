@@ -29,9 +29,20 @@ splits. No host syncs and fixed shapes for a fixed T -> FULL cudagraph safe.
 """
 from __future__ import annotations
 
+import os
+
 import torch
 import triton
 import triton.language as tl
+
+# INKLING_ATTN_FUSED_COMBINE=1 (default off): replace the torch epilogue
+# that merges the split-KV partials (max/exp/isnan/sum/div -- ~8 small
+# kernels serialized per layer per decode pass) with one Triton kernel.
+# Same streaming-softmax merge math; the -inf/empty-split guard is expressed
+# as a mask instead of an isnan() fixup (identical values, no NaNs formed);
+# split partials are accumulated in fp32 chunks so results differ from the
+# torch reduction only by fp32 rounding.
+_FUSED_COMBINE = os.environ.get("INKLING_ATTN_FUSED_COMBINE", "0") == "1"
 
 
 @triton.jit
@@ -135,6 +146,48 @@ def _rel_decode_attn_kernel(
              mask=rmask[:, None])
 
 
+@triton.jit
+def _combine_splits_kernel(
+    om_ptr,  # [NSPLITS, T, H] fp32
+    ol_ptr,  # [NSPLITS, T, H] fp32
+    oa_ptr,  # [NSPLITS, T, H, D] fp32
+    out_ptr,  # [T*H, D] target dtype rows (contiguous)
+    TH,  # T * H
+    NSPLITS: tl.constexpr,
+    D: tl.constexpr,
+    BLOCK_S: tl.constexpr,
+    OUT_BF16: tl.constexpr,
+):
+    th = tl.program_id(0).to(tl.int64)
+    s = tl.arange(0, NSPLITS)
+    m_part = tl.load(om_ptr + s * TH + th)  # [NSPLITS]
+    m = tl.max(m_part, axis=0)
+    # exp(-inf - -inf) would be NaN only when EVERY split is empty (m ==
+    # -inf); masking om == -inf to weight 0 reproduces the torch epilogue's
+    # isnan()->0 fixup and the exp(-inf)=0 case in one expression.
+    w_all = tl.where(
+        m_part == float("-inf"), 0.0, tl.exp(m_part - m)
+    )  # [NSPLITS]
+    l_part = tl.load(ol_ptr + s * TH + th)
+    l_tot = tl.maximum(tl.sum(l_part * w_all, axis=0), 1e-38)
+
+    d = tl.arange(0, D)
+    o = tl.zeros((D,), dtype=tl.float32)
+    for s0 in range(0, NSPLITS, BLOCK_S):
+        sb = s0 + tl.arange(0, BLOCK_S)
+        mb = tl.load(om_ptr + sb * TH + th)
+        wb = tl.where(mb == float("-inf"), 0.0, tl.exp(mb - m))
+        ab = tl.load(
+            oa_ptr + (sb * TH + th)[:, None] * D + d[None, :]
+        )  # [BLOCK_S, D]
+        o += tl.sum(ab * wb[:, None], axis=0)
+    o = o / l_tot
+    if OUT_BF16:
+        tl.store(out_ptr + th * D + d, o.to(tl.bfloat16))
+    else:
+        tl.store(out_ptr + th * D + d, o)
+
+
 def triton_rel_decode_attention(
     q: torch.Tensor,  # [T, H, D] bf16
     key_cache: torch.Tensor,  # [NB, BLOCK, HKV, D] bf16
@@ -183,7 +236,26 @@ def triton_rel_decode_attention(
         num_warps=4,
     )
 
-    # combine splits: standard streaming-softmax merge, all fixed-shape ops
+    # combine splits: standard streaming-softmax merge.
+    if _FUSED_COMBINE and out is not None and out.dtype in (
+        torch.bfloat16, torch.float32
+    ):
+        out_rows = out.view(T * H, D)
+        if out_rows.is_contiguous():
+            block_s = min(16, num_splits)
+            assert num_splits % block_s == 0
+            _combine_splits_kernel[(T * H,)](
+                om, ol, oa, out_rows,
+                T * H,
+                NSPLITS=num_splits,
+                D=D,
+                BLOCK_S=block_s,
+                OUT_BF16=out.dtype == torch.bfloat16,
+                num_warps=4,
+            )
+            return out
+
+    # Torch fallback: all fixed-shape ops.
     m = om.max(dim=0).values  # [T, H]
     w = torch.exp(om - m.unsqueeze(0))  # -inf partials -> exp(-inf)=0
     w = torch.where(torch.isnan(w), torch.zeros_like(w), w)  # all-empty guard

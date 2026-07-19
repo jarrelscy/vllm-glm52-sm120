@@ -616,6 +616,10 @@ class InklingHybridExpertsMoEMethod(FusedMoEMethodBase):
         hot_lut = layer._hybrid_hot_lookup
         cold_lut = layer._hybrid_cold_lookup
 
+        from vllm.models.inkling.nvidia.hybrid_moe_kernels import (
+            _GROUPED_SPLITK,
+        )
+
         m13, hp13, hs13, hs2_13 = self._hot_kernel_args(layer, "w13")
         c13, cb13, cs13 = self._cold_kernel_args(layer, "w13")
         h13 = fused_hybrid_grouped_gemm(
@@ -623,6 +627,7 @@ class InklingHybridExpertsMoEMethod(FusedMoEMethodBase):
             hot_lut, cold_lut,
             m13, hp13, hs13, hs2_13, c13, cb13, cs13,
             S=S, N=2 * ish, K=hidden, block_m=block_m,
+            split_k=_GROUPED_SPLITK,
         )                                                       # [S, 2*ish]
         act = _silu_and_mul(h13).to(torch.bfloat16).contiguous()
 
@@ -634,6 +639,7 @@ class InklingHybridExpertsMoEMethod(FusedMoEMethodBase):
             hot_lut, cold_lut,
             m2, hp2, hs2a, hs2b, c2, cb2, cs2,
             S=S, N=hidden, K=ish, block_m=block_m,
+            split_k=_GROUPED_SPLITK,
         )                                                       # [S, hidden]
         ye *= sorted_w.unsqueeze(-1)
         out = torch.zeros(

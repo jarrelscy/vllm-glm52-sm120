@@ -30,11 +30,45 @@ Layout facts (must match hybrid_moe.py create_weights / dequant reference):
   scales[n_cold, N] (per out-row). All book sizes are powers of two.
 """
 
+import os
+
 import torch
 import triton
 import triton.language as tl
 
 _G = tl.constexpr(8)  # AQLM group size along the in (K) dim
+
+# INKLING_GEMV_V2=1 (default off): hot-NVFP4 gemv load-issue variant. The
+# baseline gathers the per-16-element fp8 block scale once PER PACKED BYTE
+# (BLOCK_K//2 gathers per row per k-chunk, 8x redundant) and the activations
+# as two stride-2 gathers; V2 loads the BLOCK_K//16 distinct scale bytes and
+# expands in-register via tl.interleave (the _grouped_hot_acc pattern), and
+# loads the activation chunk contiguously, splitting even/odd in-register.
+# Decoded values, products and the tl.sum reduction shape are IDENTICAL to
+# the baseline, so results are bit-identical (gated by the equivalence test
+# in tests/models/inkling/test_hybrid_moe.py).
+_GEMV_V2 = os.environ.get("INKLING_GEMV_V2", "0") == "1"
+
+# INKLING_GEMV_SPLITK=<k> (default 1 = off): split the gemv K-loop across k
+# programs (each owns every k-th BLOCK_K chunk), writing fp32 partials to a
+# [S, k, N] buffer reduced by _splitk_reduce_kernel. Rationale: at decode
+# S = num_tokens*top_k is tiny, the grid is ~1-2k programs on 188 SMs and
+# each program serially walks K/BLOCK_K dependent DRAM reads, so the kernel
+# runs memory-LATENCY-bound far below peak bandwidth; split-K multiplies the
+# in-flight parallelism without changing per-element math. Accumulation
+# order changes (chunk partials summed in a fixed deterministic order), so
+# results differ from the baseline only by fp32 rounding (see the
+# equivalence test's tight tolerance). Graph-safe: shapes depend only on
+# (S, N, K, k).
+_GEMV_SPLITK = max(1, int(os.environ.get("INKLING_GEMV_SPLITK", "1")))
+
+# INKLING_GROUPED_SPLITK=<k> (default 1 = off): same split-K treatment for
+# the graph-safe grouped decode path (_apply_decode_grouped -- the MTP
+# verify batch). The decode grouped grid is also tiny (S candidate m-blocks
+# x N/BLOCK_N), so the same latency-bound argument applies. Decode-regime
+# only: the prefill caller keeps split_k=1 (partials would be [S, k, N] at
+# prefill S). Rounding-only numerics, same reduce kernel.
+_GROUPED_SPLITK = max(1, int(os.environ.get("INKLING_GROUPED_SPLITK", "1")))
 
 # NVFP4 magnitude table for code&7: 0, .5, 1, 1.5, 2, 3, 4, 6
 
@@ -88,14 +122,25 @@ def _hybrid_gemv_kernel(
     HOT_MODE: tl.constexpr,  # 0 = none, 1 = nvfp4, 2 = bf16
     BLOCK_N: tl.constexpr,
     BLOCK_K: tl.constexpr,
+    SCALE_EXPAND: tl.constexpr = False,  # INKLING_GEMV_V2 (see module docs)
+    SPLIT_K: tl.constexpr = 1,  # INKLING_GEMV_SPLITK (see module docs)
 ):
     pid = tl.program_id(0)
     n_blocks = tl.cdiv(N, BLOCK_N)
-    s = pid // n_blocks
-    nb = pid % n_blocks
+    if SPLIT_K == 1:
+        sk = 0
+        s = pid // n_blocks
+        nb = pid % n_blocks
+    else:
+        sk = pid % SPLIT_K
+        pid2 = pid // SPLIT_K
+        s = pid2 // n_blocks
+        nb = pid2 % n_blocks
 
     rows = nb * BLOCK_N + tl.arange(0, BLOCK_N)  # [BN]
     row_ok = rows < N
+    # SPLIT_K == 1 writes out[s, n]; SPLIT_K > 1 writes partials[s, sk, n].
+    out_base = out_ptr + (s * SPLIT_K + sk) * N
 
     ih = tl.load(is_hot_ptr + s)
     he = tl.load(hot_idx_ptr + s).to(tl.int64)
@@ -108,18 +153,28 @@ def _hybrid_gemv_kernel(
     # tl.where. Arithmetic within each branch is unchanged (bit-identical).
     if (HOT_MODE != 0) and (ih != 0):
         acc = tl.zeros((BLOCK_N,), dtype=tl.float32)
-        for k0 in range(0, tl.cdiv(K, BLOCK_K)):
+        for k0 in range(sk, tl.cdiv(K, BLOCK_K), SPLIT_K):
             k = k0 * BLOCK_K
             if HOT_MODE == 1:
                 # bytes j cover in-positions (k + 2j, k + 2j + 1)
                 j = tl.arange(0, BLOCK_K // 2)
                 xm = (k + 2 * j) < K
-                x_even = tl.load(
-                    x_ptr + s * K + k + 2 * j, mask=xm, other=0.0
-                ).to(tl.float32)
-                x_odd = tl.load(
-                    x_ptr + s * K + k + 2 * j + 1, mask=xm, other=0.0
-                ).to(tl.float32)
+                if SCALE_EXPAND:
+                    # One contiguous activation load; even/odd split in-register.
+                    kk = k + tl.arange(0, BLOCK_K)
+                    xb = tl.load(
+                        x_ptr + s * K + kk, mask=kk < K, other=0.0
+                    ).to(tl.float32)
+                    x_even, x_odd = tl.split(
+                        tl.reshape(xb, (BLOCK_K // 2, 2))
+                    )
+                else:
+                    x_even = tl.load(
+                        x_ptr + s * K + k + 2 * j, mask=xm, other=0.0
+                    ).to(tl.float32)
+                    x_odd = tl.load(
+                        x_ptr + s * K + k + 2 * j + 1, mask=xm, other=0.0
+                    ).to(tl.float32)
                 p_off = (he * N + rows.to(tl.int64))[:, None] * (K // 2) + (k // 2) + j[None, :]
                 pk = tl.load(
                     hot_packed_ptr + p_off,
@@ -129,15 +184,34 @@ def _hybrid_gemv_kernel(
                 lo = _nvfp4_mag(pk & 0xF) * tl.where((pk & 0x8) != 0, -1.0, 1.0)
                 hi = _nvfp4_mag((pk >> 4) & 0xF) * tl.where((pk & 0x80) != 0, -1.0, 1.0)
                 # per-16-in-element block scale; byte j sits in block (k + 2j)//16
-                s_off = (he * N + rows.to(tl.int64))[:, None] * (K // 16) \
-                    + ((k + 2 * j[None, :]) // 16)
-                sc = _fp8e4m3_decode(
-                    tl.load(
-                        hot_scale_ptr + s_off,
-                        mask=row_ok[:, None] & xm[None, :],
-                        other=0,
+                if SCALE_EXPAND:
+                    # Load each distinct scale byte once, expand 8x along j
+                    # (each 16-in-element block covers 8 packed bytes).
+                    sb = tl.arange(0, BLOCK_K // 16)
+                    sbm = (k + 16 * sb) < K
+                    sc8 = _fp8e4m3_decode(
+                        tl.load(
+                            hot_scale_ptr
+                            + (he * N + rows.to(tl.int64))[:, None] * (K // 16)
+                            + (k // 16)
+                            + sb[None, :],
+                            mask=row_ok[:, None] & sbm[None, :],
+                            other=0,
+                        )
                     )
-                )
+                    sc = tl.interleave(sc8, sc8)
+                    sc = tl.interleave(sc, sc)
+                    sc = tl.interleave(sc, sc)
+                else:
+                    s_off = (he * N + rows.to(tl.int64))[:, None] * (K // 16) \
+                        + ((k + 2 * j[None, :]) // 16)
+                    sc = _fp8e4m3_decode(
+                        tl.load(
+                            hot_scale_ptr + s_off,
+                            mask=row_ok[:, None] & xm[None, :],
+                            other=0,
+                        )
+                    )
                 acc += tl.sum(sc * (lo * x_even[None, :] + hi * x_odd[None, :]), axis=1)
             else:  # HOT_MODE == 2
                 kk = k + tl.arange(0, BLOCK_K)
@@ -152,10 +226,10 @@ def _hybrid_gemv_kernel(
                 acc += tl.sum(wb * xb[None, :], axis=1)
         if HOT_MODE == 1:
             acc *= tl.load(hot_scale2_ptr + he)
-        tl.store(out_ptr + s * N + rows, acc, mask=row_ok)
+        tl.store(out_base + rows, acc, mask=row_ok)
     else:
         acc = tl.zeros((BLOCK_N,), dtype=tl.float32)
-        for k0 in range(0, tl.cdiv(K, BLOCK_K)):
+        for k0 in range(sk, tl.cdiv(K, BLOCK_K), SPLIT_K):
             k = k0 * BLOCK_K
             g = tl.arange(0, BLOCK_K // _G)  # group index within the k block
             gi = tl.arange(0, _G)
@@ -183,22 +257,42 @@ def _hybrid_gemv_kernel(
         cold_rs = tl.load(
             cold_scales_ptr + ce * N + rows.to(tl.int64), mask=row_ok, other=0.0
         ).to(tl.float32)
-        tl.store(out_ptr + s * N + rows, acc * cold_rs, mask=row_ok)
+        tl.store(out_base + rows, acc * cold_rs, mask=row_ok)
+
+
+@triton.jit
+def _splitk_reduce_kernel(
+    parts_ptr,  # [S, SPLIT_K, N] fp32 partials
+    out_ptr,  # [S, N] fp32
+    N,
+    SPLIT_K: tl.constexpr,
+    BLOCK: tl.constexpr,
+):
+    pid = tl.program_id(0)
+    nb = tl.cdiv(N, BLOCK)
+    s = pid // nb
+    off = (pid % nb) * BLOCK + tl.arange(0, BLOCK)
+    m = off < N
+    acc = tl.zeros((BLOCK,), dtype=tl.float32)
+    for i in range(SPLIT_K):
+        acc += tl.load(parts_ptr + (s * SPLIT_K + i) * N + off, mask=m, other=0.0)
+    tl.store(out_ptr + s * N + off, acc, mask=m)
 
 
 @triton.jit
 def _grouped_hot_acc(
     x_ptr, xrows, m_ok, rw, row_ok, he,
     hot_packed_ptr, hot_scale_ptr,
-    N, K,
+    N, K, sk,
     HOT_MODE: tl.constexpr,
     BLOCK_M: tl.constexpr,
     BLOCK_N: tl.constexpr,
     BLOCK_K: tl.constexpr,
+    SPLIT_K: tl.constexpr = 1,
 ):
     """K-loop accumulator for a hot-expert m-block (NVFP4 or bf16 decode)."""
     acc = tl.zeros((BLOCK_M, BLOCK_N), dtype=tl.float32)
-    for k0 in range(0, tl.cdiv(K, BLOCK_K)):
+    for k0 in range(sk, tl.cdiv(K, BLOCK_K), SPLIT_K):
         k = k0 * BLOCK_K
         kk = k + tl.arange(0, BLOCK_K)
         k_ok = kk < K
@@ -245,18 +339,19 @@ def _grouped_hot_acc(
 def _grouped_cold_acc(
     x_ptr, xrows, m_ok, rw, row_ok, ce,
     cold_codes0_ptr, cold_cb0_ptr, cold_codes1_ptr, cold_cb1_ptr,
-    N, K,
+    N, K, sk,
     ENTRIES0: tl.constexpr,
     ENTRIES1: tl.constexpr,
     NUM_BOOKS: tl.constexpr,
     BLOCK_M: tl.constexpr,
     BLOCK_N: tl.constexpr,
     BLOCK_K: tl.constexpr,
+    SPLIT_K: tl.constexpr = 1,
 ):
     """K-loop accumulator for a cold-expert m-block (AQLM codebook decode)."""
     acc = tl.zeros((BLOCK_M, BLOCK_N), dtype=tl.float32)
     gi = tl.arange(0, _G)
-    for k0 in range(0, tl.cdiv(K, BLOCK_K)):
+    for k0 in range(sk, tl.cdiv(K, BLOCK_K), SPLIT_K):
         k = k0 * BLOCK_K
         kk = k + tl.arange(0, BLOCK_K)
         k_ok = kk < K
@@ -310,6 +405,7 @@ def _hybrid_grouped_gemm_kernel(
     BLOCK_M: tl.constexpr,
     BLOCK_N: tl.constexpr,
     BLOCK_K: tl.constexpr,
+    SPLIT_K: tl.constexpr = 1,  # INKLING_GROUPED_SPLITK (see module docs)
 ):
     """Grouped GEMM over expert-sorted slots: out[slot] = x[row(slot)] @ W_e^T
     for the expert e owning the slot's m-block. Same in-register NVFP4/AQLM
@@ -323,6 +419,7 @@ def _hybrid_grouped_gemm_kernel(
     gather ALU on every hot block) just to discard it in a tl.where."""
     pid_m = tl.program_id(0)
     pid_n = tl.program_id(1)
+    sk = tl.program_id(2)  # always 0 when SPLIT_K == 1
 
     mlen = tl.load(block_mlen_ptr + pid_m)
     # Graph-safe decode maps launch one candidate block per slot and mark
@@ -347,9 +444,10 @@ def _hybrid_grouped_gemm_kernel(
             acc = _grouped_hot_acc(
                 x_ptr, xrows, m_ok, rw, row_ok, he,
                 hot_packed_ptr, hot_scale_ptr,
-                N, K,
+                N, K, sk,
                 HOT_MODE=HOT_MODE,
                 BLOCK_M=BLOCK_M, BLOCK_N=BLOCK_N, BLOCK_K=BLOCK_K,
+                SPLIT_K=SPLIT_K,
             )
             if HOT_MODE == 1:
                 result = acc * tl.load(hot_scale2_ptr + he)
@@ -359,15 +457,19 @@ def _hybrid_grouped_gemm_kernel(
             acc = _grouped_cold_acc(
                 x_ptr, xrows, m_ok, rw, row_ok, ce,
                 cold_codes0_ptr, cold_cb0_ptr, cold_codes1_ptr, cold_cb1_ptr,
-                N, K,
+                N, K, sk,
                 ENTRIES0=ENTRIES0, ENTRIES1=ENTRIES1, NUM_BOOKS=NUM_BOOKS,
                 BLOCK_M=BLOCK_M, BLOCK_N=BLOCK_N, BLOCK_K=BLOCK_K,
+                SPLIT_K=SPLIT_K,
             )
             cold_rs = tl.load(
                 cold_scales_ptr + ce * N + rows.to(tl.int64), mask=row_ok, other=0.0
             ).to(tl.float32)
             result = acc * cold_rs[None, :]
-        out_off = (slot0 + ms).to(tl.int64)[:, None] * N + rows[None, :]
+        # SPLIT_K == 1 writes out[slot, n]; SPLIT_K > 1 writes fp32 partials
+        # at parts[slot, sk, n], reduced by _splitk_reduce_kernel.
+        out_off = ((slot0 + ms).to(tl.int64) * SPLIT_K + sk)[:, None] * N \
+            + rows[None, :]
         tl.store(out_ptr + out_off, result, mask=m_ok[:, None] & row_ok[None, :])
 
 
@@ -393,8 +495,15 @@ def fused_hybrid_grouped_gemm(
     block_n: int = 32,
     block_k: int = 32,
     num_warps: int = 8,
+    split_k: int = 1,
 ) -> torch.Tensor:
-    """out[slot] = x[row_idx[slot]] @ W_expert(slot)^T -> fp32 [S, N]."""
+    """out[slot] = x[row_idx[slot]] @ W_expert(slot)^T -> fp32 [S, N].
+
+    split_k > 1 (decode-regime callers only: the partials buffer is [S,
+    split_k, N] fp32, prohibitive at prefill S) partitions each m-block's
+    K-loop across grid axis 2 and reduces with _splitk_reduce_kernel; same
+    latency-bound rationale and rounding-only numerics as the gemv split-K.
+    """
     n_mblocks = block_expert.shape[0]
     out = torch.empty(S, N, dtype=torch.float32, device=x.device)
     num_books = len(cold_codes)
@@ -407,13 +516,17 @@ def fused_hybrid_grouped_gemm(
         hp, hs, hs2 = hot_packed, cold_scales, cold_scales  # scale ptrs unused
     else:
         hp, hs, hs2 = cold_scales, cold_scales, cold_scales  # all unused
-    grid = (n_mblocks, triton.cdiv(N, block_n))
+    split_k = min(split_k, triton.cdiv(K, block_k))
+    kern_out = out
+    if split_k > 1:
+        kern_out = torch.empty(S, split_k, N, dtype=torch.float32, device=x.device)
+    grid = (n_mblocks, triton.cdiv(N, block_n), split_k)
     _hybrid_grouped_gemm_kernel[grid](
         x, row_idx, block_expert, block_slot0, block_mlen,
         hot_lut, cold_lut,
         hp, hs, hs2,
         cold_codes[0], cold_codebooks[0], c1, b1, cold_scales,
-        out,
+        kern_out,
         N, K,
         ENTRIES0=cold_codebooks[0].shape[0],
         ENTRIES1=b1.shape[0],
@@ -422,8 +535,14 @@ def fused_hybrid_grouped_gemm(
         BLOCK_M=block_m,
         BLOCK_N=block_n,
         BLOCK_K=block_k,
+        SPLIT_K=split_k,
         num_warps=num_warps,
     )
+    if split_k > 1:
+        red_block = 256
+        _splitk_reduce_kernel[(S * triton.cdiv(N, red_block),)](
+            kern_out, out, N, SPLIT_K=split_k, BLOCK=red_block, num_warps=4
+        )
     return out
 
 
@@ -459,12 +578,19 @@ def fused_hybrid_gemv(
         hp, hs, hs2 = hot_packed, cold_scales, cold_scales  # scale ptrs unused
     else:
         hp, hs, hs2 = cold_scales, cold_scales, cold_scales  # all unused
-    grid = (S * triton.cdiv(N, block_n),)
+    # Split-K: never more ways than K-chunks (empty partials are legal but
+    # pure overhead). SPLIT_K is a constexpr keyed on (K, env), so the graph
+    # per shape family is stable.
+    split_k = min(_GEMV_SPLITK, triton.cdiv(K, block_k))
+    kern_out = out
+    if split_k > 1:
+        kern_out = torch.empty(S, split_k, N, dtype=torch.float32, device=x.device)
+    grid = (S * triton.cdiv(N, block_n) * split_k,)
     _hybrid_gemv_kernel[grid](
         x, is_hot, hot_idx, cold_idx,
         hp, hs, hs2,
         cold_codes[0], cold_codebooks[0], c1, b1, cold_scales,
-        out,
+        kern_out,
         N, K,
         ENTRIES0=cold_codebooks[0].shape[0],
         ENTRIES1=b1.shape[0],
@@ -472,6 +598,13 @@ def fused_hybrid_gemv(
         HOT_MODE=hot_mode,
         BLOCK_N=block_n,
         BLOCK_K=block_k,
+        SCALE_EXPAND=_GEMV_V2,
+        SPLIT_K=split_k,
         num_warps=num_warps,
     )
+    if split_k > 1:
+        red_block = 256
+        _splitk_reduce_kernel[(S * triton.cdiv(N, red_block),)](
+            kern_out, out, N, SPLIT_K=split_k, BLOCK=red_block, num_warps=4
+        )
     return out

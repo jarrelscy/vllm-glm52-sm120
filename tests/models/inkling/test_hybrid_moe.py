@@ -482,6 +482,202 @@ def test_decode_grouped_matches_gemv_path() -> None:
         torch.testing.assert_close(out_grouped, out_gemv, rtol=0.02, atol=0.02)
 
 
+@pytest.mark.skipif(not current_platform.is_cuda(), reason="needs CUDA")
+def test_gemv_v2_scale_expand_bit_identical() -> None:
+    """INKLING_GEMV_V2 (SCALE_EXPAND) must be BIT-identical to the baseline
+    gemv: it only changes HOW the fp8 block scales and activations are
+    loaded (one load per distinct value + in-register interleave/split vs
+    redundant per-byte gathers), never the decoded values, products, or the
+    tl.sum reduction shape. Exact equality (torch.equal), not allclose --
+    per the lane rules a tolerance here could mask a real numerics change.
+    Covers hot-NVFP4 + cold-AQLM mixed routing and a ragged tail is not
+    possible (K % BLOCK_K == 0 for all served shapes), but both masked and
+    unmasked chunks execute at these test sizes anyway.
+    """
+    from vllm.models.inkling.nvidia import hybrid_moe_kernels as hmk
+
+    torch.manual_seed(13)
+    device = "cuda"
+    num_experts, n_hot, n_cold = 8, 2, 6
+    h, i_full = 32, 32
+    g = hm._G
+
+    hot_ids = torch.tensor([0, 6], dtype=torch.int32)
+    cold_ids = torch.tensor([1, 2, 3, 4, 5, 7], dtype=torch.int32)
+    disk = {
+        "hot_ids": hot_ids,
+        "cold_ids": cold_ids,
+        "w13_hot_weight": torch.randint(0, 256, (n_hot, 2 * i_full, h // 2), dtype=torch.uint8),
+        "w13_hot_weight_scale": (torch.rand(n_hot, 2 * i_full, h // 16) * 0.1 + 0.02).to(torch.float8_e4m3fn),
+        "w13_hot_weight_scale2": torch.rand(n_hot) * 0.1 + 0.02,
+        "w2_hot_weight": torch.randint(0, 256, (n_hot, h, i_full // 2), dtype=torch.uint8),
+        "w2_hot_weight_scale": (torch.rand(n_hot, h, i_full // 16) * 0.1 + 0.02).to(torch.float8_e4m3fn),
+        "w2_hot_weight_scale2": torch.rand(n_hot) * 0.1 + 0.02,
+        "w13_cold_codes_0": torch.randint(-32768, 32767, (n_cold, 2 * i_full, h // g), dtype=torch.int16),
+        "w13_cold_codebook_0": torch.randn(65536, g, dtype=torch.float16) * 0.05,
+        "w13_cold_scales": torch.rand(n_cold, 2 * i_full).to(torch.float16) * 0.1 + 0.02,
+        "w2_cold_codes_0": torch.randint(-32768, 32767, (n_cold, h, i_full // g), dtype=torch.int16),
+        "w2_cold_codes_1": torch.randint(0, 256, (n_cold, h, i_full // g), dtype=torch.uint8),
+        "w2_cold_codebook_0": torch.randn(65536, g, dtype=torch.float16) * 0.05,
+        "w2_cold_codebook_1": torch.randn(256, g, dtype=torch.float16) * 0.05,
+        "w2_cold_scales": torch.rand(n_cold, h).to(torch.float16) * 0.1 + 0.02,
+    }
+
+    method = _make_hybrid_method(tp_size=1, tp_rank=0)
+    layer = _build_and_load(method, num_experts, h, i_full, disk, device)
+
+    for num_tokens, top_k in [(1, 6), (3, 6), (8, 4)]:
+        x = torch.randn(num_tokens, h, dtype=torch.bfloat16, device=device)
+        topk_ids = torch.randint(
+            0, num_experts, (num_tokens, top_k), dtype=torch.int64, device=device
+        )
+        topk_weights = torch.rand(num_tokens, top_k, device=device)
+
+        orig = hmk._GEMV_V2
+        try:
+            hmk._GEMV_V2 = False
+            out_base = method._apply_decode_fused(layer, x, topk_weights, topk_ids)
+            hmk._GEMV_V2 = True
+            out_v2 = method._apply_decode_fused(layer, x, topk_weights, topk_ids)
+        finally:
+            hmk._GEMV_V2 = orig
+
+        assert torch.equal(out_base, out_v2), (
+            f"GEMV_V2 not bit-identical at num_tokens={num_tokens} top_k={top_k}: "
+            f"max abs diff {(out_base - out_v2).abs().max().item()}"
+        )
+
+
+@pytest.mark.skipif(not current_platform.is_cuda(), reason="needs CUDA")
+def test_gemv_splitk_matches_baseline() -> None:
+    """INKLING_GEMV_SPLITK partitions the K-loop across programs and sums the
+    fp32 partials in a deterministic reduce kernel. Per-element products are
+    unchanged; only the fp32 accumulation ORDER differs from the baseline, so
+    outputs must agree to a few ulp (tolerance far tighter than the 0.02 used
+    for cross-path tests -- a layout/indexing bug would blow way past it).
+    Covers split factors that divide, exceed, and straddle the number of
+    K-chunks (K=32, BLOCK_K=128 -> 1 chunk; served shapes have 6-48 chunks,
+    exercised via block_k override)."""
+    from vllm.models.inkling.nvidia import hybrid_moe_kernels as hmk
+
+    torch.manual_seed(17)
+    device = "cuda"
+    num_experts, n_hot, n_cold = 8, 2, 6
+    h, i_full = 256, 256  # multiple K-chunks at block_k=32
+    g = hm._G
+
+    hot_ids = torch.tensor([0, 6], dtype=torch.int32)
+    cold_ids = torch.tensor([1, 2, 3, 4, 5, 7], dtype=torch.int32)
+    disk = {
+        "hot_ids": hot_ids,
+        "cold_ids": cold_ids,
+        "w13_hot_weight": torch.randint(0, 256, (n_hot, 2 * i_full, h // 2), dtype=torch.uint8),
+        "w13_hot_weight_scale": (torch.rand(n_hot, 2 * i_full, h // 16) * 0.1 + 0.02).to(torch.float8_e4m3fn),
+        "w13_hot_weight_scale2": torch.rand(n_hot) * 0.1 + 0.02,
+        "w2_hot_weight": torch.randint(0, 256, (n_hot, h, i_full // 2), dtype=torch.uint8),
+        "w2_hot_weight_scale": (torch.rand(n_hot, h, i_full // 16) * 0.1 + 0.02).to(torch.float8_e4m3fn),
+        "w2_hot_weight_scale2": torch.rand(n_hot) * 0.1 + 0.02,
+        "w13_cold_codes_0": torch.randint(-32768, 32767, (n_cold, 2 * i_full, h // g), dtype=torch.int16),
+        "w13_cold_codebook_0": torch.randn(65536, g, dtype=torch.float16) * 0.05,
+        "w13_cold_scales": torch.rand(n_cold, 2 * i_full).to(torch.float16) * 0.1 + 0.02,
+        "w2_cold_codes_0": torch.randint(-32768, 32767, (n_cold, h, i_full // g), dtype=torch.int16),
+        "w2_cold_codes_1": torch.randint(0, 256, (n_cold, h, i_full // g), dtype=torch.uint8),
+        "w2_cold_codebook_0": torch.randn(65536, g, dtype=torch.float16) * 0.05,
+        "w2_cold_codebook_1": torch.randn(256, g, dtype=torch.float16) * 0.05,
+        "w2_cold_scales": torch.rand(n_cold, h).to(torch.float16) * 0.1 + 0.02,
+    }
+
+    method = _make_hybrid_method(tp_size=1, tp_rank=0)
+    layer = _build_and_load(method, num_experts, h, i_full, disk, device)
+
+    # End-to-end through _apply_decode_fused (K=256 at block_k=128: split
+    # capped at 2), then kernel-level at block_k=32 (8 chunks: real splits).
+    for num_tokens, top_k in [(1, 6), (3, 6)]:
+        x = torch.randn(num_tokens, h, dtype=torch.bfloat16, device=device)
+        topk_ids = torch.randint(
+            0, num_experts, (num_tokens, top_k), dtype=torch.int64, device=device
+        )
+        topk_weights = torch.rand(num_tokens, top_k, device=device)
+
+        orig = hmk._GEMV_SPLITK
+        try:
+            hmk._GEMV_SPLITK = 1
+            out_base = method._apply_decode_fused(layer, x, topk_weights, topk_ids)
+            outs = {}
+            for sk in (2, 4, 64):  # 64 > n_chunks: exercises the cap
+                hmk._GEMV_SPLITK = sk
+                outs[sk] = method._apply_decode_fused(
+                    layer, x, topk_weights, topk_ids
+                )
+        finally:
+            hmk._GEMV_SPLITK = orig
+
+        for sk, out_sk in outs.items():
+            torch.testing.assert_close(
+                out_sk, out_base, rtol=1e-4, atol=1e-4,
+                msg=f"SPLITK={sk} mismatch at num_tokens={num_tokens} "
+                    f"top_k={top_k}",
+            )
+
+    # Kernel-level: block_k=32 -> 8 K-chunks, split factors 2/4/8 all real.
+    S = 12
+    x_slots = torch.randn(S, h, dtype=torch.bfloat16, device=device)
+    flat_ids = torch.randint(0, num_experts, (S,), dtype=torch.int64, device=device)
+    hot_raw = layer._hybrid_hot_lookup[flat_ids]
+    is_hot = (hot_raw >= 0).to(torch.int32)
+    hot_idx = hot_raw.clamp_min(0)
+    cold_idx = layer._hybrid_cold_lookup[flat_ids].clamp_min(0)
+    m13, hp13, hs13, hs2_13 = method._hot_kernel_args(layer, "w13")
+    c13, cb13, cs13 = method._cold_kernel_args(layer, "w13")
+
+    orig = hmk._GEMV_SPLITK
+    try:
+        hmk._GEMV_SPLITK = 1
+        ref = hmk.fused_hybrid_gemv(
+            x_slots, is_hot, hot_idx, cold_idx,
+            m13, hp13, hs13, hs2_13, c13, cb13, cs13,
+            N=2 * i_full, K=h, block_k=32,
+        )
+        for sk in (2, 4, 8):
+            hmk._GEMV_SPLITK = sk
+            got = hmk.fused_hybrid_gemv(
+                x_slots, is_hot, hot_idx, cold_idx,
+                m13, hp13, hs13, hs2_13, c13, cb13, cs13,
+                N=2 * i_full, K=h, block_k=32,
+            )
+            torch.testing.assert_close(
+                got, ref, rtol=1e-4, atol=1e-4,
+                msg=f"kernel-level SPLITK={sk} mismatch",
+            )
+    finally:
+        hmk._GEMV_SPLITK = orig
+
+    # Grouped decode path (MTP verify shape): INKLING_GROUPED_SPLITK. The
+    # grouped kernel's default block_k=32 gives 8 real K-chunks at K=256.
+    for num_tokens, top_k in [(3, 6), (9, 6)]:
+        x = torch.randn(num_tokens, h, dtype=torch.bfloat16, device=device)
+        topk_ids = torch.randint(
+            0, num_experts, (num_tokens, top_k), dtype=torch.int64, device=device
+        )
+        topk_weights = torch.rand(num_tokens, top_k, device=device)
+        orig = hmk._GROUPED_SPLITK
+        try:
+            hmk._GROUPED_SPLITK = 1
+            ref = method._apply_decode_grouped(layer, x, topk_weights, topk_ids)
+            for sk in (2, 4, 8):
+                hmk._GROUPED_SPLITK = sk
+                got = method._apply_decode_grouped(
+                    layer, x, topk_weights, topk_ids
+                )
+                torch.testing.assert_close(
+                    got, ref, rtol=1e-4, atol=1e-4,
+                    msg=f"grouped SPLITK={sk} mismatch at "
+                        f"num_tokens={num_tokens}",
+                )
+        finally:
+            hmk._GROUPED_SPLITK = orig
+
+
 def test_ep_size_greater_than_one_not_implemented() -> None:
     info = HybridLayerInfo(n_hot=1, n_cold=1, packed=True, hot_format="nvfp4")
     try:

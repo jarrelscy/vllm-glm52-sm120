@@ -68,6 +68,9 @@ def test_split_packed_kv_cache():
     attention = InklingAttention.__new__(InklingAttention)
     torch.nn.Module.__init__(attention)
     attention.head_dim = 8
+    # Real __init__ always sets this (dc608e56c added the fp8 KV view branch
+    # to _split_kv_cache); this synthetic object models the bf16-KV case.
+    attention.kv_cache_is_fp8blockscaled = False
     attention.kv_cache = torch.arange(2 * 3 * 4 * 16).reshape(2, 3, 4, 16)
 
     key_cache, value_cache = attention._split_kv_cache()

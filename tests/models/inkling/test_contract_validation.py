@@ -35,8 +35,12 @@ def test_inkling_raw_2d_audio_is_rejected_as_ambiguous():
 
 
 def test_inkling_supports_full_decode_only_cudagraphs():
+    # UNIFORM_BATCH since dc608e56c: uniform spec-verify batches (qlen =
+    # 1 + num_spec_tokens) must capture like plain decode, else spec-decode
+    # + FULL_DECODE_ONLY silently downgrades to NONE (see the builder's
+    # comment). FULL must still resolve to FULL_DECODE_ONLY.
     support = InklingSconvMetadataBuilder.get_cudagraph_support
-    assert support(None, None) == AttentionCGSupport.UNIFORM_SINGLE_TOKEN_DECODE
+    assert support(None, None) == AttentionCGSupport.UNIFORM_BATCH
 
     compilation_config = CompilationConfig(
         cudagraph_mode=CUDAGraphMode.FULL,

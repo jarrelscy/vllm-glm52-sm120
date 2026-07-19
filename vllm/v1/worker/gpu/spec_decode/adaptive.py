@@ -11,9 +11,9 @@ costs ~2x a plain decode step (~50ms vs ~24.5ms), so it only pays off
 when the mean accepted-per-round (incl. the bonus token, out of ns+1)
 exceeds ~2.05. Draft-friendly content (counting ~3.0, code ~2.6-2.7)
 wins; draft-hostile prose (~1.7-2.1) decodes SLOWER than the no-MTP
-baseline (~33-42 vs ~40.8 tok/s). This policy tracks a rolling window
-of per-request acceptance and suspends drafting for requests that do
-not pay for their drafts. Suspended requests take plain 1-token decode
+baseline (~33-42 vs ~40.8 tok/s). This policy tracks a per-request EMA
+of acceptance and suspends drafting for requests that do not pay for
+their drafts. Suspended requests take plain 1-token decode
 steps -- still within the FULL_DECODE_ONLY captured batch shapes.
 
 Mechanics:
@@ -46,9 +46,18 @@ sampler outputs that are identical on every TP rank, so ranks stay in
 lockstep (propose is a TP collective and must be skipped by all ranks
 or none).
 
+Trigger statistic: an exponential moving average of accepted-per-round
+rather than a short rolling-window mean. Measured on the 3-workload gate
+(2026-07-19), a 10-round window mean spuriously dips below threshold on
+code (locally draft-hostile docstring stretches inside globally friendly
+content) in 3 of 5 passes; the EMA (halflife ~32 rounds) tracks the
+long-run rate (code ~2.66) and only crosses the threshold for content
+that is hostile for ~1.5x the halflife or longer.
+
 Enable with INKLING_ADAPTIVE_SPEC=1 (default OFF). Tunables (env):
-  INKLING_ADAPTIVE_SPEC_WINDOW=10        rolling window W (rounds)
-  INKLING_ADAPTIVE_SPEC_THRESHOLD=2.1    suspend when mean accepted/round < T
+  INKLING_ADAPTIVE_SPEC_MIN_ROUNDS=10    drafted rounds before any decision
+  INKLING_ADAPTIVE_SPEC_EMA_HALFLIFE=32  EMA halflife (drafted rounds)
+  INKLING_ADAPTIVE_SPEC_THRESHOLD=2.05   suspend when EMA accepted/round < T
   INKLING_ADAPTIVE_SPEC_RESUME_THRESHOLD=2.25  probe pass bar (hysteresis)
   INKLING_ADAPTIVE_SPEC_SUSPEND=1024     initial suspension length S0 (rounds)
   INKLING_ADAPTIVE_SPEC_SUSPEND_MAX=16384  suspension length cap
@@ -74,7 +83,8 @@ _PROBING = 2
 class _ReqPolicyState:
     __slots__ = (
         "mode",
-        "window",
+        "ema",
+        "rounds_observed",
         "probe_window",
         "rounds_suspended",
         "suspend_len",
@@ -82,9 +92,10 @@ class _ReqPolicyState:
         "last_seen_step",
     )
 
-    def __init__(self, window_size: int, suspend_len: int):
+    def __init__(self, suspend_len: int):
         self.mode = _ACTIVE
-        self.window: deque[int] = deque(maxlen=window_size)
+        self.ema: float | None = None
+        self.rounds_observed = 0
         self.probe_window: deque[int] = deque()
         self.rounds_suspended = 0
         self.suspend_len = suspend_len
@@ -119,8 +130,13 @@ class AdaptiveSpecPolicy:
         def _env_int(name: str, default: int) -> int:
             return int(os.getenv(name, str(default)))
 
-        self.window_size = max(1, _env_int("INKLING_ADAPTIVE_SPEC_WINDOW", 10))
-        self.threshold = _env_float("INKLING_ADAPTIVE_SPEC_THRESHOLD", 2.1)
+        self.min_rounds = max(1, _env_int("INKLING_ADAPTIVE_SPEC_MIN_ROUNDS", 10))
+        self.ema_halflife = max(
+            1.0, _env_float("INKLING_ADAPTIVE_SPEC_EMA_HALFLIFE", 32.0)
+        )
+        # Per-round decay factor for the acceptance EMA.
+        self.ema_decay = 0.5 ** (1.0 / self.ema_halflife)
+        self.threshold = _env_float("INKLING_ADAPTIVE_SPEC_THRESHOLD", 2.05)
         self.resume_threshold = _env_float(
             "INKLING_ADAPTIVE_SPEC_RESUME_THRESHOLD", 2.25
         )
@@ -145,10 +161,12 @@ class AdaptiveSpecPolicy:
         self._transitions_logged = 0
 
         logger.info(
-            "Adaptive speculative decoding enabled: window=%d threshold=%.2f "
-            "resume_threshold=%.2f suspend=%d suspend_max=%d backoff=%.1f "
-            "probe=%d (num_spec_tokens=%d)",
-            self.window_size,
+            "Adaptive speculative decoding enabled: min_rounds=%d "
+            "ema_halflife=%.0f threshold=%.2f resume_threshold=%.2f "
+            "suspend=%d suspend_max=%d backoff=%.1f probe=%d "
+            "(num_spec_tokens=%d)",
+            self.min_rounds,
+            self.ema_halflife,
             self.threshold,
             self.resume_threshold,
             self.suspend_len0,
@@ -213,8 +231,8 @@ class AdaptiveSpecPolicy:
                     )
                     if probe_mean >= self.resume_threshold:
                         state.mode = _ACTIVE
-                        state.window.clear()
-                        state.window.extend(state.probe_window)
+                        state.ema = probe_mean
+                        state.rounds_observed = len(state.probe_window)
                         state.suspend_len = self.suspend_len0
                         self._log_transition(
                             req_id, "probe PASS -> resume drafting", probe_mean
@@ -233,21 +251,27 @@ class AdaptiveSpecPolicy:
                         )
                     state.probe_window.clear()
             else:
-                state.window.append(accepted)
+                if state.ema is None:
+                    state.ema = float(accepted)
+                else:
+                    state.ema = (
+                        state.ema * self.ema_decay
+                        + float(accepted) * (1.0 - self.ema_decay)
+                    )
+                state.rounds_observed += 1
                 if (
                     state.mode == _ACTIVE
-                    and len(state.window) == self.window_size
-                    and (sum(state.window) / self.window_size) < self.threshold
+                    and state.rounds_observed >= self.min_rounds
+                    and state.ema < self.threshold
                 ):
-                    mean = sum(state.window) / self.window_size
+                    ema = state.ema
                     state.mode = _SUSPENDED
                     state.rounds_suspended = 0
                     state.suspend_len = self.suspend_len0
-                    state.window.clear()
                     self._log_transition(
                         req_id,
                         f"suspend drafting {state.suspend_len} rounds",
-                        mean,
+                        ema,
                     )
 
     def _log_transition(self, req_id: str, event: str, mean: float) -> None:
@@ -297,7 +321,7 @@ class AdaptiveSpecPolicy:
         for i in range(num_reqs):
             state = self._states.get(req_ids[i])
             if state is None:
-                state = _ReqPolicyState(self.window_size, self.suspend_len0)
+                state = _ReqPolicyState(self.suspend_len0)
                 self._states[req_ids[i]] = state
             state.last_seen_step = self._step
 

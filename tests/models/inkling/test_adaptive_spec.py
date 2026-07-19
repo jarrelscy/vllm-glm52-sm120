@@ -42,8 +42,9 @@ def make_batch(
 
 def make_policy(monkeypatch, **env):
     defaults = {
-        "INKLING_ADAPTIVE_SPEC_WINDOW": "4",
-        "INKLING_ADAPTIVE_SPEC_THRESHOLD": "2.1",
+        "INKLING_ADAPTIVE_SPEC_MIN_ROUNDS": "4",
+        "INKLING_ADAPTIVE_SPEC_EMA_HALFLIFE": "8",
+        "INKLING_ADAPTIVE_SPEC_THRESHOLD": "2.05",
         "INKLING_ADAPTIVE_SPEC_RESUME_THRESHOLD": "2.25",
         "INKLING_ADAPTIVE_SPEC_SUSPEND": "6",
         "INKLING_ADAPTIVE_SPEC_SUSPEND_MAX": "24",

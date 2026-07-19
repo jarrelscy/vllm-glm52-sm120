@@ -749,12 +749,22 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             kv_cache_config=self.kv_cache_config,
             max_num_reqs=self.max_num_reqs,
         )
+        # Adaptive spec suspension turns some decode steps into plain
+        # (1-token-per-request) batches while speculation keeps
+        # decode_query_len = 1 + num_spec_tokens; capture FULL decode graphs
+        # for the plain shape too, or suspended requests decode eagerly.
+        extra_decode_query_lens = None
+        if self.adaptive_spec_policy is not None:
+            plain_qlen = self.decode_query_len - self.num_speculative_steps
+            if plain_qlen >= 1:
+                extra_decode_query_lens = [plain_qlen]
         self.cudagraph_manager = ModelCudaGraphManager(
             self.vllm_config,
             self.device,
             cudagraph_mode,
             decode_query_len=self.decode_query_len,
             lora_capture_cases=self.lora_capture_cases,
+            extra_decode_query_lens=extra_decode_query_lens,
         )
         check_attention_cp_compatibility(self.vllm_config)
         if isinstance(self.speculator, DraftModelSpeculator):

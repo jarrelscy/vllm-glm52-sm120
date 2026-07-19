@@ -112,6 +112,7 @@ class CudaGraphManager:
         cudagraph_mode: CUDAGraphMode,
         decode_query_len: int,
         lora_capture_cases: list[int] | None = None,
+        extra_decode_query_lens: list[int] | None = None,
     ):
         self.vllm_config = vllm_config
         self.device = device
@@ -120,6 +121,11 @@ class CudaGraphManager:
         assert self.compilation_config is not None
         self.cudagraph_mode = cudagraph_mode
         self.decode_query_len = decode_query_len
+        # Additional uniform decode query lengths to capture FULL decode
+        # graphs for (e.g. plain 1-token decode batches that occur when the
+        # adaptive spec policy suspends drafting while speculation is
+        # configured with decode_query_len = 1 + num_spec_tokens).
+        self.extra_decode_query_lens = extra_decode_query_lens
 
         self.dp_size = vllm_config.parallel_config.data_parallel_size
         self.tp_size = vllm_config.parallel_config.tensor_parallel_size
@@ -218,6 +224,11 @@ class CudaGraphManager:
             ]
         else:
             decode_query_lens = [self.decode_query_len]
+
+        if self.extra_decode_query_lens:
+            for extra_qlen in self.extra_decode_query_lens:
+                if extra_qlen >= 1 and extra_qlen not in decode_query_lens:
+                    decode_query_lens.append(extra_qlen)
 
         for num_tokens, num_active_loras in product(
             capture_sizes, self.lora_capture_cases
@@ -420,6 +431,7 @@ class ModelCudaGraphManager(CudaGraphManager):
         cudagraph_mode: CUDAGraphMode,
         decode_query_len: int,
         lora_capture_cases: list[int] | None = None,
+        extra_decode_query_lens: list[int] | None = None,
     ):
         super().__init__(
             vllm_config,
@@ -427,6 +439,7 @@ class ModelCudaGraphManager(CudaGraphManager):
             cudagraph_mode,
             decode_query_len,
             lora_capture_cases=lora_capture_cases,
+            extra_decode_query_lens=extra_decode_query_lens,
         )
         self.hidden_states: torch.Tensor | None = None
         self.aux_hidden_states: list[torch.Tensor] = []

@@ -69,6 +69,13 @@ _TRITON_PREFILL_ATTN = (
     os.environ.get("INKLING_DISABLE_TRITON_PREFILL_ATTN", "0") != "1"
     and not os.path.exists("/tmp/INKLING_DISABLE_TRITON_PREFILL_ATTN")
 )
+# Uniform small-query batches (spec-decode verify / MTP draft passes) routed
+# to the split-KV decode kernel via staggered virtual sequences (task #111).
+# Escape hatch mirrors the two above.
+_TRITON_VERIFY_ATTN = (
+    os.environ.get("INKLING_DISABLE_TRITON_VERIFY_ATTN", "0") != "1"
+    and not os.path.exists("/tmp/INKLING_DISABLE_TRITON_VERIFY_ATTN")
+)
 # Task #125 diagnostic: when /tmp/INKLING_ATTN_XCHECK exists, every Triton
 # prefill-attention call is cross-checked against the FA4 reference on the
 # same live inputs; the first divergent call's inputs are dumped to
@@ -383,6 +390,46 @@ class InklingAttention(nn.Module, AttentionLayerBase):
                 value_cache,
                 block_table=md.block_table,
                 cache_seqlens=md.seq_lens,
+                rel_logits=rel_logits[:nt],
+                softmax_scale=self.scaling,
+                rel_extent=self.rel_extent,
+                window_left=self.window_size[0] if self.is_local else -1,
+                num_splits=8 if self.is_local else 64,
+                out=output[:nt],
+            )
+            return
+
+        # Uniform small-query batches (spec-decode verify at qlen=ns+1, MTP
+        # draft window passes, tiny final prefill chunks): the varlen prefill
+        # kernel below scans the WHOLE context with one CTA per (m-block,
+        # head) -- ~35ms/full-layer at 512K, which made MTP decode
+        # depth-linear (task #111: 466ms/round at 512K vs 52ms short-ctx).
+        # Reuse the split-KV decode kernel instead, treating each query row
+        # as its own virtual sequence over the shared block table: row j of
+        # request i gets kv_len = seq_len_i - (qlen-1) + j, so the kernel's
+        # dist = (kv_len-1) - js and window lo = kv_len-1-window_left equal
+        # the row's true position math. Exact for ANY uniform batch (K/V for
+        # all nt tokens are published to the cache before attention).
+        if (
+            _TRITON_VERIFY_ATTN
+            and 1 < md.max_query_len <= 8
+            and nt == md.max_query_len * md.seq_lens.shape[0]
+            and not self.kv_cache_is_fp8blockscaled
+        ):
+            qlen = md.max_query_len
+            sk = (
+                md.seq_lens[:, None]
+                - (qlen - 1)
+                + torch.arange(
+                    qlen, device=md.seq_lens.device, dtype=md.seq_lens.dtype
+                )[None, :]
+            ).view(-1)
+            triton_rel_decode_attention(
+                q[:nt],
+                key_cache,
+                value_cache,
+                block_table=md.block_table.repeat_interleave(qlen, dim=0),
+                cache_seqlens=sk,
                 rel_logits=rel_logits[:nt],
                 softmax_scale=self.scaling,
                 rel_extent=self.rel_extent,

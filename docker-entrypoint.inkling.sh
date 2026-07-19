@@ -3,9 +3,12 @@
 # Final speed-campaign configs (task #134, gated 2026-07-19):
 #
 #   MODE=512k-mtp (default)  524,288 ctx + MTP ns=2 (lossless spec decode)
-#                            decode 33-42 prose / 50-53 code / 57-60 counting
-#                            tok/s (server-mode), 27.5-39.6 @512K depth
-#                            prefill ~1128 tok/s warm at 512K
+#                            + adaptive per-request draft suspension
+#                            (INKLING_ADAPTIVE_SPEC=1 default, task #138
+#                            laneC; set 0 to disable). Gated 2026-07-19:
+#                            decode ~40 prose (worst-pass 39.7 vs 37.7
+#                            static) / 52-54 code / 58-62 counting tok/s
+#                            (server-mode), prefill ~1128 tok/s warm @512K
 #   MODE=640k                655,360 ctx, no MTP (longest context)
 #                            decode ~40.8 short / 34.5 @640K depth
 #                            prefill ~1075 tok/s warm at 640K
@@ -37,6 +40,12 @@ case "$MODE" in
     MAXLEN="${MAXLEN:-524288}"
     SPEC_FLAGS=(--speculative-config
       '{"method": "mtp", "num_speculative_tokens": '"${NUM_SPEC:-2}"'}')
+    # Adaptive draft suspension (lossless): suspend MTP drafting for
+    # requests whose acceptance EMA does not pay for the draft cost
+    # (draft-hostile prose), keeping counting/code wins. Default ON for
+    # this mode (gated 2026-07-19); export INKLING_ADAPTIVE_SPEC=0 to
+    # get static ns=2 behavior.
+    export INKLING_ADAPTIVE_SPEC="${INKLING_ADAPTIVE_SPEC:-1}"
     ;;
   640k)
     MAXLEN="${MAXLEN:-655360}"

@@ -83,6 +83,35 @@ def plain_round(policy, req_ids):
     return skip, counts
 
 
+def test_threshold_scales_with_ns(monkeypatch):
+    # No absolute THRESHOLD override: default = MARGIN * (1 + RATIO * ns).
+    for var in (
+        "INKLING_ADAPTIVE_SPEC_THRESHOLD",
+        "INKLING_ADAPTIVE_SPEC_RESUME_THRESHOLD",
+        "INKLING_ADAPTIVE_SPEC_DRAFT_COST_RATIO",
+        "INKLING_ADAPTIVE_SPEC_MARGIN",
+    ):
+        monkeypatch.delenv(var, raising=False)
+    for ns, expected in ((2, 1.05 * 1.96), (3, 1.05 * 2.44), (4, 1.05 * 2.92)):
+        policy = AdaptiveSpecPolicy(
+            num_spec_tokens=ns,
+            max_num_reqs=2,
+            device=torch.device("cpu"),
+            use_cuda_staging=False,
+        )
+        assert abs(policy.threshold - expected) < 1e-9
+        assert abs(policy.resume_threshold - expected * 1.1) < 1e-9
+    # Absolute override wins.
+    monkeypatch.setenv("INKLING_ADAPTIVE_SPEC_THRESHOLD", "2.5")
+    policy = AdaptiveSpecPolicy(
+        num_spec_tokens=4,
+        max_num_reqs=2,
+        device=torch.device("cpu"),
+        use_cuda_staging=False,
+    )
+    assert policy.threshold == 2.5
+
+
 def test_new_request_drafts_by_default(monkeypatch):
     policy = make_policy(monkeypatch)
     skip, counts = policy.decide(make_batch(["a"], drafted=[NS]))

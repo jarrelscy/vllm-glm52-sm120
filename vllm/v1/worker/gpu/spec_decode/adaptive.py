@@ -57,8 +57,12 @@ that is hostile for ~1.5x the halflife or longer.
 Enable with INKLING_ADAPTIVE_SPEC=1 (default OFF). Tunables (env):
   INKLING_ADAPTIVE_SPEC_MIN_ROUNDS=10    drafted rounds before any decision
   INKLING_ADAPTIVE_SPEC_EMA_HALFLIFE=32  EMA halflife (drafted rounds)
-  INKLING_ADAPTIVE_SPEC_THRESHOLD=2.05   suspend when EMA accepted/round < T
-  INKLING_ADAPTIVE_SPEC_RESUME_THRESHOLD=2.25  probe pass bar (hysteresis)
+  INKLING_ADAPTIVE_SPEC_THRESHOLD        suspend when EMA accepted/round < T;
+                                         default MARGIN*(1 + RATIO*ns)
+                                         (~2.06 at ns=2)
+  INKLING_ADAPTIVE_SPEC_DRAFT_COST_RATIO=0.48  per-draft-pass cost / plain step
+  INKLING_ADAPTIVE_SPEC_MARGIN=1.05      threshold safety margin
+  INKLING_ADAPTIVE_SPEC_RESUME_THRESHOLD  probe pass bar; default T*1.1
   INKLING_ADAPTIVE_SPEC_SUSPEND=1024     initial suspension length S0 (rounds)
   INKLING_ADAPTIVE_SPEC_SUSPEND_MAX=16384  suspension length cap
   INKLING_ADAPTIVE_SPEC_BACKOFF=2.0      suspension backoff multiplier
@@ -136,9 +140,27 @@ class AdaptiveSpecPolicy:
         )
         # Per-round decay factor for the acceptance EMA.
         self.ema_decay = 0.5 ** (1.0 / self.ema_halflife)
-        self.threshold = _env_float("INKLING_ADAPTIVE_SPEC_THRESHOLD", 2.05)
+
+        # Break-even model (task #139 ns sweep): a draft+verify round costs
+        # roughly verify (~ a plain decode step p, weight-bound) plus ns
+        # sequential drafter passes of ~RATIO*p each, so drafting pays off
+        # when accepted-per-round A > round/p ~= 1 + RATIO*ns. Measured at
+        # ns=2 @32K (2026-07-19): p ~24.5ms, round ~48ms -> RATIO ~0.48; the
+        # default threshold adds a MARGIN so marginal content suspends
+        # (ns=2 default: 1.05 * (1 + 0.96) ~= 2.06, matching the gated 2.05).
+        # INKLING_ADAPTIVE_SPEC_THRESHOLD overrides absolutely.
+        self.draft_cost_ratio = _env_float(
+            "INKLING_ADAPTIVE_SPEC_DRAFT_COST_RATIO", 0.48
+        )
+        self.threshold_margin = _env_float("INKLING_ADAPTIVE_SPEC_MARGIN", 1.05)
+        default_threshold = self.threshold_margin * (
+            1.0 + self.draft_cost_ratio * num_spec_tokens
+        )
+        self.threshold = _env_float(
+            "INKLING_ADAPTIVE_SPEC_THRESHOLD", default_threshold
+        )
         self.resume_threshold = _env_float(
-            "INKLING_ADAPTIVE_SPEC_RESUME_THRESHOLD", 2.25
+            "INKLING_ADAPTIVE_SPEC_RESUME_THRESHOLD", self.threshold * 1.1
         )
         self.suspend_len0 = max(1, _env_int("INKLING_ADAPTIVE_SPEC_SUSPEND", 1024))
         self.suspend_len_max = max(

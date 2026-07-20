@@ -95,10 +95,18 @@ _FUSED_PREFILL_DISABLED = (
 )
 # Multi-token decode batches (spec-decode verify, concurrent seqs) route to
 # the grouped kernel via a graph-safe block map instead of the per-slot gemv,
-# which pays num_tokens x the single-token MoE weight traffic. Escape hatch
-# for A/B and triage; single-token decode always keeps the gemv path.
+# which pays num_tokens x the single-token MoE weight traffic.
+# DEFAULT DISABLED since task #137 (laneB): with the V2 gemv (see
+# hybrid_moe_kernels._GEMV_V2) the per-slot gemv beats the grouped kernel at
+# prod verify shapes -- router picks ~distinct experts per token, so expert
+# runs are length ~1 and the grouped m-blocks amortize nothing while paying
+# tl.dot on mostly-empty BM=16 tiles (microbench S=18: grouped 532 vs V2
+# gemv ~340 us/layer-pair; server A/B ns=2: 48.9 -> 39.5 ms/round, -19%,
+# acceptance unchanged). Set INKLING_DISABLE_DECODE_GROUPED=0 to re-enable
+# (worth re-testing if max_num_seqs or top_k grows: expert-run lengths scale
+# with S and the grouped path wins again once runs get long).
 _DECODE_GROUPED_DISABLED = (
-    os.environ.get("INKLING_DISABLE_DECODE_GROUPED", "0") == "1"
+    os.environ.get("INKLING_DISABLE_DECODE_GROUPED", "1") == "1"
     or os.path.exists("/tmp/INKLING_DISABLE_DECODE_GROUPED")
 )
 

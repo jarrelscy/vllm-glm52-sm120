@@ -1,17 +1,25 @@
 #!/usr/bin/env bash
 # Inkling-512k-NVFP4-AQLM-hybrid on SM120 (4x RTX PRO 6000, TP4).
-# Final speed-campaign configs (task #134, gated 2026-07-19):
+# Speed campaigns: task #134 (gated 2026-07-19) + task #137 laneB decode
+# round cost (gated 2026-07-20: V2 gemv + fused attn combine + verify via
+# gemv, all default-on in model code; see hybrid_moe_kernels.py /
+# triton_decode_attention.py / hybrid_moe.py. Escape hatches:
+# INKLING_GEMV_V2=0, INKLING_ATTN_FUSED_COMBINE=0,
+# INKLING_DISABLE_DECODE_GROUPED=0):
 #
 #   MODE=512k-mtp (default)  524,288 ctx + MTP ns=2 (lossless spec decode)
 #                            + adaptive per-request draft suspension
 #                            (INKLING_ADAPTIVE_SPEC=1 default, task #138
-#                            laneC; set 0 to disable). Gated 2026-07-19:
-#                            decode ~40 prose (worst-pass 39.7 vs 37.7
-#                            static) / 52-54 code / 58-62 counting tok/s
-#                            (server-mode), prefill ~1128 tok/s warm @512K
+#                            laneC; set 0 to disable). Task #137 offline
+#                            bench (no adaptive): round 38-40ms short
+#                            (was 47-50), 48.7ms @512K depth (was ~61);
+#                            decode 50-67 prose / 68-77 code / 74-76
+#                            counting tok/s short, ~33-35 pure @512K
+#                            depth; prefill ~1174 tok/s warm @512K
 #   MODE=640k                655,360 ctx, no MTP (longest context)
-#                            decode ~40.8 short / 34.5 @640K depth
-#                            prefill ~1075 tok/s warm at 640K
+#                            decode ~50-52 short (task #137; was ~40.8)
+#                            / >=34.5 @640K depth (pre-#137 number,
+#                            depth not re-measured); prefill ~1075 warm
 #
 # Both: FULL_DECODE_ONLY CUDA graphs (capture sizes [1,2,4]), bf16 KV
 # (lossless -- fp8 KV excluded by directive), util 0.97, mnbt 2048.

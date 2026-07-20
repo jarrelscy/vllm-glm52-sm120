@@ -35,14 +35,18 @@ import torch
 import triton
 import triton.language as tl
 
-# INKLING_ATTN_FUSED_COMBINE=1 (default off): replace the torch epilogue
-# that merges the split-KV partials (max/exp/isnan/sum/div -- ~8 small
-# kernels serialized per layer per decode pass) with one Triton kernel.
-# Same streaming-softmax merge math; the -inf/empty-split guard is expressed
-# as a mask instead of an isnan() fixup (identical values, no NaNs formed);
-# split partials are accumulated in fp32 chunks so results differ from the
-# torch reduction only by fp32 rounding.
-_FUSED_COMBINE = os.environ.get("INKLING_ATTN_FUSED_COMBINE", "0") == "1"
+# INKLING_ATTN_FUSED_COMBINE (default ON since task #137; =0 disables):
+# replace the torch epilogue that merges the split-KV partials
+# (max/exp/isnan/sum/div -- ~8 small kernels serialized per layer per
+# decode pass) with one Triton kernel. Same streaming-softmax merge math;
+# the -inf/empty-split guard is expressed as a mask instead of an isnan()
+# fixup (identical values, no NaNs formed); split partials are accumulated
+# in fp32 chunks so results differ from the torch reduction only by fp32
+# rounding (tight-tolerance A/B test in test_verify_attention.py).
+# Measured: attention call 64 -> 19 us/layer at decode shapes (~3 ms/pass
+# across 66 layers); the old epilogue was the bulk of the profiler's
+# "memops" bucket (attn kernels proper are only ~6 us/layer).
+_FUSED_COMBINE = os.environ.get("INKLING_ATTN_FUSED_COMBINE", "1") == "1"
 
 
 @triton.jit

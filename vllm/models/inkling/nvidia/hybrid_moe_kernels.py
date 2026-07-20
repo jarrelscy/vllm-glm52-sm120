@@ -38,16 +38,22 @@ import triton.language as tl
 
 _G = tl.constexpr(8)  # AQLM group size along the in (K) dim
 
-# INKLING_GEMV_V2=1 (default off): hot-NVFP4 gemv load-issue variant. The
-# baseline gathers the per-16-element fp8 block scale once PER PACKED BYTE
-# (BLOCK_K//2 gathers per row per k-chunk, 8x redundant) and the activations
-# as two stride-2 gathers; V2 loads the BLOCK_K//16 distinct scale bytes and
-# expands in-register via tl.interleave (the _grouped_hot_acc pattern), and
-# loads the activation chunk contiguously, splitting even/odd in-register.
-# Decoded values, products and the tl.sum reduction shape are IDENTICAL to
-# the baseline, so results are bit-identical (gated by the equivalence test
-# in tests/models/inkling/test_hybrid_moe.py).
-_GEMV_V2 = os.environ.get("INKLING_GEMV_V2", "0") == "1"
+# INKLING_GEMV_V2 (default ON since task #137; =0 disables): hot-NVFP4 gemv
+# load-issue variant. The baseline gathers the per-16-element fp8 block
+# scale once PER PACKED BYTE (BLOCK_K//2 gathers per row per k-chunk, 8x
+# redundant) and the activations as two stride-2 gathers; V2 loads the
+# BLOCK_K//16 distinct scale bytes and expands in-register via
+# tl.interleave (the _grouped_hot_acc pattern), and loads the activation
+# chunk contiguously, splitting even/odd in-register. Decoded values,
+# products and the tl.sum reduction shape are IDENTICAL to the baseline, so
+# results are bit-identical (gated by the exact-equality test in
+# tests/models/inkling/test_hybrid_moe.py). Although only the hot branch
+# changes, the win is kernel-wide: the fat hot branch sets the kernel's
+# register footprint, so shrinking it lifts occupancy for the (dominant)
+# cold-AQLM programs too. Measured: 1.36x on the gemv pair at S=6
+# (161 -> 118 us), server ns=0 decode 42 -> 50.7 tok/s stacked with the
+# fused attention combine.
+_GEMV_V2 = os.environ.get("INKLING_GEMV_V2", "1") == "1"
 
 # INKLING_GEMV_SPLITK=<k> (default 1 = off): split the gemv K-loop across k
 # programs (each owns every k-th BLOCK_K chunk), writing fp32 partials to a
@@ -60,6 +66,9 @@ _GEMV_V2 = os.environ.get("INKLING_GEMV_V2", "0") == "1"
 # results differ from the baseline only by fp32 rounding (see the
 # equivalence test's tight tolerance). Graph-safe: shapes depend only on
 # (S, N, K, k).
+# VERDICT (task #137 microbench @real shapes): weak -- 1.08x alone, ~0 on
+# top of _GEMV_V2 (1.36x -> 1.38x). The latency problem was register
+# footprint (V2), not K-parallelism. Kept for future shapes; default off.
 _GEMV_SPLITK = max(1, int(os.environ.get("INKLING_GEMV_SPLITK", "1")))
 
 # INKLING_GROUPED_SPLITK=<k> (default 1 = off): same split-K treatment for
@@ -68,6 +77,9 @@ _GEMV_SPLITK = max(1, int(os.environ.get("INKLING_GEMV_SPLITK", "1")))
 # x N/BLOCK_N), so the same latency-bound argument applies. Decode-regime
 # only: the prefill caller keeps split_k=1 (partials would be [S, k, N] at
 # prefill S). Rounding-only numerics, same reduce kernel.
+# VERDICT (task #137 microbench): 1.04-1.06x at S=18, <=1.0x at S=36 --
+# not worth graph memory; superseded anyway by _DECODE_GROUPED_DISABLED
+# default (verify now takes the V2 gemv path). Kept for triage; default off.
 _GROUPED_SPLITK = max(1, int(os.environ.get("INKLING_GROUPED_SPLITK", "1")))
 
 # NVFP4 magnitude table for code&7: 0, .5, 1, 1.5, 2, 3, 4, 6

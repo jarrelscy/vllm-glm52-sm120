@@ -93,10 +93,12 @@ RUN . .venv/bin/activate \
 # to force a fresh `git+https://...@glm52-dcp-dsa` checkout instead of
 # reusing a stale cached layer (the branch ref is a moving target while
 # the fork is being fixed up; docker's layer cache is keyed on this
-# RUN's literal text, not on upstream repo state). Defaults to 0 so
-# normal/CI builds stay byte-for-byte reproducible unless a rebuild is
-# explicitly requested.
-ARG LMCACHE_CACHEBUST=0
+# RUN's literal text, not on upstream repo state). Bump this default
+# whenever a new fork commit must be baked in so that plain rebuilds
+# (switch.sh, `compose up --build`) pick up the fixed lmcache instead of
+# reusing a stale cached layer. Current: 89840cfa (retrieve/lookup
+# double-unpin deadlock fix on save_only_first_rank / DCP retrieve path).
+ARG LMCACHE_CACHEBUST=89840cfa
 RUN . .venv/bin/activate \
     && NV="/opt/vllm/.venv/lib/python3.12/site-packages/nvidia" \
     && CUX="$NV/cu13"; [ -d "$CUX" ] || CUX="$NV/cu12" \

@@ -124,7 +124,20 @@ case "$PARALLEL" in
     PAR="--pipeline-parallel-size 4"; SPEC=1; DEFLEN=450000; UTIL_DEFAULT=0.97; DRAFT_TP=4 ;;
   *) echo "unknown PARALLEL=$PARALLEL (use pp4-1m | pp4-mtp | tp2pp2 | tp2pp2-mtp | tp4-dspark | tp4-1m | tp4-1m-mtp | pp4-dspark | pp4-tpdraft)"; exit 1 ;;
 esac
+USER_SET_UTIL="${UTIL:+1}"   # 1 iff the user pinned UTIL explicitly
 UTIL="${UTIL:-$UTIL_DEFAULT}"
+# LMCache's KV staging buffer lives on GPU (kv_buffer_device=cuda, ~1 GiB/GPU,
+# kv_buffer_size=1e9) and is NOT counted by vLLM's memory profiler: vLLM sizes
+# the KV cache at full util as if LMCache weren't present (observed identical
+# 1,124,589-token KV with LMCache on vs off), THEN LMCache allocates its 1 GiB
+# buffer on top -> each GPU pinned to ~94.3/94.97 GiB -> the first full 4096-tok
+# prefill chunk's fp32 MoE dequant transient OOMs (a 39K-tok prompt was enough;
+# LMCache-off handles 158K at util 0.97). Reserve ~1.9 GiB (0.02*96) for the
+# buffer + prefill transient when LMCache is on and the user hasn't pinned UTIL.
+# KV stays >950K tokens (the max-model-len), so the 1M window is preserved.
+if [ "${ENABLE_LMCACHE:-0}" = 1 ] && [ -z "$USER_SET_UTIL" ]; then
+  UTIL=$(awk -v u="$UTIL" 'BEGIN{v=u-0.02; if(v<0.80)v=0.80; printf "%.3f", v}')
+fi
 # per-mode spec-token default: MTP=2 (matrix optimum, best all-round), DSpark=5; env NUM_SPEC overrides
 if [ "$SPEC" = 2 ]; then NUM_SPEC="${NUM_SPEC_ENV:-${NSDEF:-2}}"; else NUM_SPEC="${NUM_SPEC_ENV:-${NSDEF:-5}}"; fi
 # NOTE: 1M context and the DSpark drafter cannot co-fit on 4x96GB. The drafter

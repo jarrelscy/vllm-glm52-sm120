@@ -73,6 +73,20 @@ CPU checks (glm52-sm120:latest, no --gpus), ALL PASS:
 
 ## Next: GPU boots (per boot plan below)
 
+## GPU boot results
+
+**Boot A/B (tp4-1m, MAXLEN=65536, no spec, no LMCache) — ALL PASS (2026-07-23 ~08:46)**
+- Boot: ~8.5 min total (weights ~5 min, init engine 138.7s). KV cache 1,461,760 tokens @ 18.36 GiB free.
+  Multi-modal warmup completed in 1.048s. No weight-loading warnings; no unexpected/missing keys.
+- TEXT: "The capital of France is? one word" -> reasoned then "Paris". Text path coherent.
+- IMAGE 1 (red square + centered white circle): "background is a solid, vibrant red ... a single, perfectly
+  round, white circle ... centered" — EXACT content, no hallucination.
+- IMAGE 2 (blue bg + yellow triangle): "The background is blue, and the shape is a yellow triangle."
+- TWO IMAGES one request: "Image 1: solid red ... white circle. Image 2: solid blue ... yellow triangle."
+  Correct per-image attribution and ordering.
+- Correct descriptions prove the trained projector + tower weights loaded and are wired correctly
+  (a random projector would produce garbage).
+
 ## Boot plan (exact commands — run only after CPU checks pass)
 
 ```bash

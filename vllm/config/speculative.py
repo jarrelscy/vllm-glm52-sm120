@@ -335,6 +335,19 @@ class SpeculativeConfig:
     @staticmethod
     def hf_config_override(hf_config: PretrainedConfig) -> PretrainedConfig:
         initial_architecture = hf_config.architectures[0]
+        if hf_config.model_type == "glm5v":
+            # glm5v (GLM-5.2-Vision): the MTP weights live on the TEXT
+            # backbone (text layer 78), so promote text_config before the
+            # glm_moe_dsa -> deepseek_mtp rewrite below (minimax_m3_vl /
+            # step3p7 precedent). Without this the draft worker would try to
+            # rebuild the whole multimodal wrapper as the "draft".
+            quantization_config = getattr(hf_config, "quantization_config", None)
+            hf_config = hf_config.text_config
+            if (
+                quantization_config is not None
+                and getattr(hf_config, "quantization_config", None) is None
+            ):
+                hf_config.update({"quantization_config": quantization_config})
         if hf_config.model_type in (
             "deepseek_v3",
             "deepseek_v32",

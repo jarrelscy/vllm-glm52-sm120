@@ -51,10 +51,34 @@ RUN uv venv --python 3.12 .venv \
     && VLLM_USE_PRECOMPILED=1 uv pip install -e . --torch-backend=auto \
     && uv pip install ninja "huggingface_hub[cli]"
 
-# flashinfer git main — GLM DSA needs kv_scale_format='arbitrary_fp32' for the
-# SM120 sparse-MLA path, which released flashinfer wheels lack.
+# flashinfer PINNED to a known-good commit — GLM DSA needs
+# kv_scale_format='arbitrary_fp32' for the SM120 sparse-MLA path, which released
+# flashinfer wheels lack, so we build from git. flashinfer's `main` is a MOVING
+# ref, so pin to 56d538e (the exact commit the shipped inkling + pre-lmcache GLM
+# images were gated on). Do NOT float this — bump only after re-gating.
+ARG FLASHINFER_COMMIT=56d538ed7ca36ae2b1f60e9865134bf6fa7f5106
 RUN . .venv/bin/activate \
-    && uv pip install "flashinfer-python @ git+https://github.com/flashinfer-ai/flashinfer.git"
+    && uv pip install "flashinfer-python @ git+https://github.com/flashinfer-ai/flashinfer.git@${FLASHINFER_COMMIT}"
+
+# --- cutlass-dsl republish guard (GLM crash-loop root cause) ----------------
+# ROOT CAUSE of the 2026-07-22 crash-loop: nvidia-cutlass-dsl (a py3-none-any
+# wheel pulled transitively by flashinfer) had its 4.5.2 REPUBLISHED on the
+# index. The newer 4.5.2's cutlass/cute/experimental/__init__.py does
+# `_dsl.CuteExperimentalDSL.jit` — a symbol its own bundled cutlass_dsl lacks on
+# CUDA<13.1 — so `import flashinfer.comm` (which imports cute.experimental for a
+# registration side-effect) raises a FATAL AttributeError at
+# init_model_parallel_group and crash-loops the server. The OLDER good 4.5.2
+# shipped that file as a stub raising NotImplementedError, which flashinfer
+# TOLERATES (it catches NotImplementedError, NOT AttributeError). The wheel
+# cannot be pinned by version (same version string, republished in place) and
+# flashinfer vendors its OWN CuTeDSL under flashinfer/data/cutlass for actual
+# compute, so the standalone package's core is only touched by this tolerated
+# import. Force the stub: index-independent, idempotent, reproduces the gated
+# inkling behavior exactly. (See also inkling-sm120's identical guard.)
+RUN . .venv/bin/activate \
+    && CUTE_EXP=$(python -c "import cutlass,os;print(os.path.join(os.path.dirname(cutlass.__file__),'cute','experimental','__init__.py'))") \
+    && printf '%s\n' 'raise NotImplementedError("CuTe Experimental disabled (pinned guard): nvidia-cutlass-dsl 4.5.2 republished with a broken CuteExperimentalDSL ref on CUDA<13.1; flashinfer tolerates this import failure.")' > "$CUTE_EXP" \
+    && echo "patched cutlass cute.experimental stub -> $CUTE_EXP"
 
 # SM120 JIT toolchain: pin nvcc/crt/nvvm/cccl to torch's CUDA minor + lib64 link.
 # (nvidia is a namespace package -> nvidia.__file__ is None; use the venv path.)

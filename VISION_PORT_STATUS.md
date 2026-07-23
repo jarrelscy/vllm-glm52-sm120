@@ -96,6 +96,13 @@ CPU checks (glm52-sm120:latest, no --gpus), ALL PASS:
 - Boot time note: after "Building aqlm_moe extension" the engine goes silent ~5 min (nvcc, shm_broadcast
   60s warnings are normal); total boot ~8 min.
 
+**Boot D (tp4-1m-mtp, MAXLEN=950000 full prod window, no LMCache) — ALL PASS (2026-07-23 ~09:11)**
+- KV cache 1,066,222 tokens (>950K window fits WITH vision tower+projector resident). Startup clean.
+- TEXT: Paris. IMAGE: red bg + white circle correct.
+- LONG CONTEXT + VISION: 57,323-token prompt (needle "PLUM-7742-OTTER" buried mid-document + trailing
+  image): BOTH answered exactly — needle verbatim, image = "yellow triangle on a blue background".
+  End-to-end 50s (fresh prefill).
+
 ## Boot plan (exact commands — run only after CPU checks pass)
 
 ```bash

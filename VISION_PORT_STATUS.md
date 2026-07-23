@@ -112,8 +112,24 @@ CPU checks (glm52-sm120:latest, no --gpus), ALL PASS:
   109s prefill; "Stored N out of total N tokens" lines throughout, 6.7GB written to disk tier.
   Needle answered: FALCON-9931-MAPLE (correct). (The 4 grep hits for OOM patterns = LMCache config dumps,
   false positives.)
-- IN FLIGHT: cold-restart disk-restore lossless gate (boot E3) — re-send the same 130K prompt after full
-  container restart; expect disk retrieve + same answer + prefill much faster than 109s.
+- **COLD-RESTART DISK-RESTORE GATE PASS (boot E3, ~09:36)**: full container restart, same 130,246-token
+  prompt: completed in **3.4s vs 109s cold prefill (~32x)**; LMCache "Retrieved 32512 out of 32512 required
+  tokens" disk hits; **output byte-identical** to the pre-restart baseline (vault combination
+  FALCON-9931-MAPLE). Two-image request on the LMCache server also correct (red/white circle + blue/yellow
+  triangle). ALL LMCACHE GATES GREEN.
+
+## FINAL STATE (2026-07-23 ~09:40)
+
+- ALL RUNGS PASS: text-only -> vision -> two-image -> MTP (accept 3.2/72-77%) -> 950K window (KV 1,066,222
+  no LMCache / 991,727 with LMCache at UTIL=0.96) -> 57K & 130K long-context needle+image -> LMCache
+  store/cold-restore lossless.
+- **PROD-STEP-UP NOTE: the LMCache rung needs UTIL=0.96 pinned** (default auto-trim to 0.95 would land
+  ~917K < 950K; 0.97-no-trim risks the historical store-OOM). To productionize: compose env UTIL=0.96 for a
+  vision profile, or extend the entrypoint auto-trim to 0.01 for this model dir.
+- GPUs FREE, dev container removed, prod container homeassistant-vllm-glm5.2-hybrid-1m-mtp-1 left STOPPED
+  (orchestrator restores it).
+- LMCache dev disk tier: /data/lmcache/glm5v-dev (6.7GB) — safe to delete or keep for warm-start.
+- Repro (dev): see Boot plan below; prod-like full command = Boot E2 form (UTIL=0.96, ENABLE_LMCACHE=1).
 
 ## Boot plan (exact commands — run only after CPU checks pass)
 

@@ -108,7 +108,19 @@ class Glm5vMultiModalProcessor(KimiK25MultiModalProcessor):
 class Glm5vForConditionalGeneration(KimiK25ForConditionalGeneration):
     """glm5v: MoonViT vision tower + trained projector + GLM-5.2 text."""
 
-    hf_to_vllm_mapper = WeightsMapper(
+    # IMPORTANT: hf_to_vllm_mapper must stay None at CLASS level.
+    # SupportsQuant.__new__ applies a class-level mapper to the quant config
+    # (quant_config.apply_vllm_mapper), which would rewrite the hybrid
+    # checkpoint's ignore/AQLM layer lists from their bare prod names
+    # ("model.layers.N...") to "language_model.model.layers.N..." — but the
+    # language model is built with prefix="" (bare prod names), so the
+    # rewritten lists would no longer match and e.g. the unquantized dense
+    # layers would be built NVFP4-quantized (observed: layer-0 gate_up shape
+    # AssertionError at load). The name remap is applied locally in
+    # load_weights() instead.
+    hf_to_vllm_mapper = None
+
+    _checkpoint_to_vllm_mapper = WeightsMapper(
         orig_to_new_prefix={
             # GLM-5.2 text weights are stored bare in the checkpoint
             # (identical names to the standalone GLM-5.2 checkpoint).
@@ -120,6 +132,12 @@ class Glm5vForConditionalGeneration(KimiK25ForConditionalGeneration):
             "mm_projector.proj.2": "mm_projector.linear_2",
         }
     )
+
+    def load_weights(self, weights):
+        from .utils import AutoWeightsLoader
+
+        loader = AutoWeightsLoader(self)
+        return loader.load_weights(weights, mapper=self._checkpoint_to_vllm_mapper)
 
     @classmethod
     def get_placeholder_str(cls, modality: str, i: int) -> str | None:

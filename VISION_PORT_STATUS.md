@@ -98,4 +98,16 @@ API key: if 401, read from prod compose env into a shell var; never print/commit
 
 ## Failures + hypotheses
 
-(none yet)
+1. Boot A #1: ImportError _vllm_fa2_C — bind mount shadows compiled ext subdirs. FIX: rsync ALL missing
+   files (vllm_flash_attn/*.so, third_party/deep_gemm/*.so, _version.py) from prod checkout
+   /home/jarrelscy/glm52/vllm/vllm into the worktree vllm/ (untracked); delete stale __pycache__.
+2. Boot A #2: AssertionError load_merged_column_weight on layer-0 gate_up (first shard). ROOT CAUSE:
+   SupportsQuant.__new__ applies the CLASS-level hf_to_vllm_mapper to quant_config
+   (nvfp4_aqlm_hybrid -> modelopt apply_vllm_mapper), rewriting the ignore/AQLM lists from bare
+   "model.layers.*" to "language_model.model.layers.*" while the language model is built with prefix=""
+   (bare names) -> dense layers built quantized. FIX: class hf_to_vllm_mapper=None; name remap applied
+   locally in load_weights() via _checkpoint_to_vllm_mapper.
+
+## GPU state
+
+- 2026-07-23 ~08:40 prod STOPPED (docker stop homeassistant-vllm-glm5.2-hybrid-1m-mtp-1); GPUs taken for glm5v boots. Orchestrator restores prod at the end.

@@ -87,6 +87,15 @@ CPU checks (glm52-sm120:latest, no --gpus), ALL PASS:
 - Correct descriptions prove the trained projector + tower weights loaded and are wired correctly
   (a random projector would produce garbage).
 
+**Boot C (tp4-1m-mtp, MAXLEN=65536, MTP ns3, no LMCache) — ALL PASS (2026-07-23 ~09:00)**
+- After the __getattr__ fix: boots clean; KV cache 1,407,488 tokens; "Resolved architecture: DeepSeekMTPModel";
+  MTP heads loaded in the draft (never trimmed); V2 model runner handles the multimodal wrapper fine.
+- TEXT: Paris (coherent). IMAGE (red/white circle): correct. TWO IMAGES: both correct per-image.
+- SpecDecoding metrics: mean acceptance length 3.17-3.30, per-position 0.90/0.73/0.57, avg draft acceptance
+  72-77% — in prod envelope (VLLM_MTP_INDEX_SHARE=1 default). 0 ERROR lines in the whole boot log.
+- Boot time note: after "Building aqlm_moe extension" the engine goes silent ~5 min (nvcc, shm_broadcast
+  60s warnings are normal); total boot ~8 min.
+
 ## Boot plan (exact commands — run only after CPU checks pass)
 
 ```bash

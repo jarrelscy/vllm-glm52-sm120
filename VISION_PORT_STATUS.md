@@ -48,18 +48,30 @@ CPU-only sanity checks are done and committed.** Prod container: homeassistant-v
 4. registry.py: "Glm5vForConditionalGeneration": ("glm5v", ...).
 5. `vllm/config/speculative.py` hf_config_override: glm5v -> promote text_config (+carry quantization_config).
 
-## Next (in order)
+## Dir assembly + CPU gates (ALL DONE, commit ab38e5991)
 
-1. Assemble /data/huggingface/glm52-models/v2-vision (symlinks to v2 files + vision safetensors; REAL files:
-   merged config.json, merged model.safetensors.index.json, chat_template.jinja (v2 + image branch),
-   preprocessor_config.json, kimi_k25_vision_processing.py, media_utils.py, kimi_k25_processor.py).
-2. CPU-only sanity in glm52-sm120 image (docker run WITHOUT --gpus, bind-mount worktree vllm):
-   - import vllm.model_executor.models.glm5v
-   - vLLM get_config() on v2-vision -> Glm5vConfig, text_config glm_moe_dsa, quant config present
-   - tokenizer id 154854; index keys == union(v2 keys, 335 vision keys); loader name-mapping dry-run
-   - multimodal processor instantiation + dummy prompt expansion if feasible
-3. Commit. THEN stop prod, boot text-only (PARALLEL=tp4-1m, MAXLEN 65536, no spec, ENABLE_LMCACHE=0),
-   then vision requests, then step up (MTP -> full 950K -> LMCACHE).
+/data/huggingface/glm52-models/v2-vision assembled: symlinks to every v2 file + vision_tower/mm_projector
+safetensors + kimi_k25_vision_processing.py/media_utils.py/kimi_k25_processor.py/preprocessor_config.json
+(from glm52-vision-head); REAL files authored: config.json (text_config = v2's EXACT dict incl.
+nvfp4_aqlm_hybrid quant config, mirrored at top level too), model.safetensors.index.json (5489 v2 + 335
+vision = 5824), chat_template.jinja (v2's + image branch; byte-identical to the vision-head template).
+NOTE: symlinks are absolute -> containers must ALSO mount -v /data/huggingface:/data/huggingface:ro.
+NOTE: worktree vllm/ now carries the compiled *.so + _version.py copied from prod checkout (untracked,
+needed for the bind-mount dev loop).
+
+CPU checks (glm52-sm120:latest, no --gpus), ALL PASS:
+- get_config -> Glm5vConfig, text glm_moe_dsa 78L/6144/154880, index_topk passthrough 2048, quant nvfp4_aqlm_hybrid
+- registry resolves Glm5vForConditionalGeneration; tokenizer <|image|> == 154854
+- weight-map dry run: all 5824 names bucket into language_model.model./language_model.lm_head./vision_tower./mm_projector.; MTP layer-78 = 3095 tensors present
+- safetensors headers == index for both vision files; projector shapes pre_norm[1152] linear_1[4608,4608] linear_2[6144,4608]
+- MoonViT tower + projector instantiated on CPU: param names EXACTLY match checkpoint (329 + 6, zero diff)
+- ModelConfig(model=v2-vision): is_deepseek_mla True, use_mla True, is_moe True, quant nvfp4_aqlm_hybrid, multimodal True
+- Glm5vMultiModalProcessor.apply(): 64x96 img -> 12 tokens @ correct placeholder range; two-image prompt -> (3,12)+(19,25); dummy profiling 3000x3000 -> 4225 tokens
+- Processor round trip: 512x512 -> 361 tokens, KimiK25Processor expansion == calculator
+- SpeculativeConfig.hf_config_override(glm5v cfg) -> model_type deepseek_mtp, arch DeepSeekMTPModel, n_predict 1, quant preserved
+- chat template: text-only AND tools renders byte-identical to v2's template; image message renders <|begin_of_image|><|image|><|end_of_image|>
+
+## Next: GPU boots (per boot plan below)
 
 ## Boot plan (exact commands — run only after CPU checks pass)
 
@@ -70,6 +82,7 @@ docker stop homeassistant-vllm-glm5.2-hybrid-1m-mtp-1   # note in this file when
 docker run --rm --name glm5v-dev --gpus all --ipc=host -p 8001:8001 \
   -v /home/jarrelscy/glm52/vllm-vision/vllm:/opt/vllm/vllm \
   -v /data/huggingface/glm52-models/v2-vision:/models/1m:ro \
+  -v /data/huggingface:/data/huggingface:ro \
   -e PARALLEL=tp4-1m -e MAXLEN=65536 -e ENABLE_LMCACHE=0 \
   glm52-sm120:latest --trust-remote-code
 # expect: Glm5vForConditionalGeneration resolved, vision_tower/mm_projector weights loaded (not "unexpected"),

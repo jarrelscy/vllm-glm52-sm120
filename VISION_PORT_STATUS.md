@@ -121,6 +121,12 @@ API key: if 401, read from prod compose env into a shell var; never print/commit
    "model.layers.*" to "language_model.model.layers.*" while the language model is built with prefix=""
    (bare names) -> dense layers built quantized. FIX: class hf_to_vllm_mapper=None; name remap applied
    locally in load_weights() via _checkpoint_to_vllm_mapper.
+3. Boot C #1 (tp4-1m-mtp): AttributeError 'Glm5vConfig' has no 'num_hidden_layers' in
+   DeepSeekMultiTokenPredictor.__init__ — the V2-runner MTP draft path reads text fields off the TARGET's
+   top-level hf_config (deepseek_mtp.py uses vllm_config.model_config.hf_config: num_hidden_layers,
+   n_group, rms_norm_eps, n_routed_experts, n_shared_experts...). FIX: Glm5vConfig.__getattr__ read-delegates
+   missing attrs to text_config (underscore + text_config excluded; explicit DSA properties take precedence).
+   Verified MTP draft loader tolerates vision_tower./mm_projector. keys (spec_layer None -> continue).
 
 ## GPU state
 

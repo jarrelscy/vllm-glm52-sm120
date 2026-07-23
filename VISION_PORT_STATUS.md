@@ -103,6 +103,18 @@ CPU checks (glm52-sm120:latest, no --gpus), ALL PASS:
   image): BOTH answered exactly — needle verbatim, image = "yellow triangle on a blue background".
   End-to-end 50s (fresh prefill).
 
+**Boot E (tp4-1m-mtp + ENABLE_LMCACHE=1) — UTIL=0.96 pinned (coordinator guidance) — PASS so far (2026-07-23 ~09:25)**
+- Default LMCache auto-trim (0.97-0.02=0.95) would have landed <950K; UTIL=0.96 pinned instead:
+  **KV cache 991,727 tokens >= 950,000** — window preserved with ~1 GiB/GPU reserve for the LMCache buffer.
+- Fresh disk dir /data/lmcache/glm5v-dev (NOT prod's, to avoid polluting its cache).
+- Text (Paris) + image (red/white circle) correct under LMCache serving.
+- 130,246-token prompt through full chunked prefill WITH LMCache storing: no CUDA OOM, no store errors,
+  109s prefill; "Stored N out of total N tokens" lines throughout, 6.7GB written to disk tier.
+  Needle answered: FALCON-9931-MAPLE (correct). (The 4 grep hits for OOM patterns = LMCache config dumps,
+  false positives.)
+- IN FLIGHT: cold-restart disk-restore lossless gate (boot E3) — re-send the same 130K prompt after full
+  container restart; expect disk retrieve + same answer + prefill much faster than 109s.
+
 ## Boot plan (exact commands — run only after CPU checks pass)
 
 ```bash

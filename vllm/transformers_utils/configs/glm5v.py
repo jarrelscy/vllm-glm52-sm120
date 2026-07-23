@@ -162,6 +162,30 @@ class Glm5vConfig(PretrainedConfig):
         """Get vocab size from text config for compatibility."""
         return self.text_config.vocab_size
 
+    def __getattr__(self, name: str):
+        """Read-delegate missing attributes to the text config.
+
+        Several vLLM code paths read text-model fields off the TOP-LEVEL
+        hf_config (e.g. the V2-runner MTP draft model reads
+        vllm_config.model_config.hf_config.num_hidden_layers / n_group /
+        rms_norm_eps / n_routed_experts...). For the standalone GLM-5.2
+        checkpoint the top-level config IS the text config, so delegate the
+        long tail here to keep those paths prod-identical. Only called when
+        normal attribute lookup fails; explicit properties above take
+        precedence. Writes still store on the wrapper as usual.
+        """
+        if name.startswith("_") or name == "text_config":
+            raise AttributeError(
+                f"'{type(self).__name__}' object has no attribute '{name}'"
+            )
+        d = object.__getattribute__(self, "__dict__")
+        tc = d.get("text_config")
+        if tc is not None and hasattr(tc, name):
+            return getattr(tc, name)
+        raise AttributeError(
+            f"'{type(self).__name__}' object has no attribute '{name}'"
+        )
+
 
 def _make_text_passthrough(name: str) -> property:
     def fget(self: Glm5vConfig):

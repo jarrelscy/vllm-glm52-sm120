@@ -41,9 +41,29 @@ RUN uv venv --python 3.12 .venv \
     && VLLM_USE_PRECOMPILED=1 uv pip install -e . --torch-backend=auto \
     && uv pip install ninja "huggingface_hub[cli]" soundfile librosa
 
-# flashinfer git main (matches the dev venv this config was gated on)
+# flashinfer PINNED to the commit this config was gated on. flashinfer `main` is
+# a MOVING ref: newer HEADs (e.g. 7f786be) import cutlass.cutlass_dsl.
+# CuteExperimentalDSL, absent in nvidia-cutlass-dsl 4.5.2 on CUDA<13.1, which
+# fatally AttributeErrors at `import flashinfer.comm`. 56d538e is the exact main
+# HEAD the shipped inkling image was built and gated on. Do NOT float this ref.
+ARG FLASHINFER_COMMIT=56d538ed7ca36ae2b1f60e9865134bf6fa7f5106
 RUN . .venv/bin/activate \
-    && uv pip install "flashinfer-python @ git+https://github.com/flashinfer-ai/flashinfer.git"
+    && uv pip install "flashinfer-python @ git+https://github.com/flashinfer-ai/flashinfer.git@${FLASHINFER_COMMIT}"
+
+# --- cutlass-dsl republish guard --------------------------------------------
+# nvidia-cutlass-dsl (py3-none-any, pulled transitively by flashinfer) had its
+# 4.5.2 REPUBLISHED on the index: the newer 4.5.2's
+# cutlass/cute/experimental/__init__.py does `_dsl.CuteExperimentalDSL.jit`, a
+# symbol absent from its own cutlass_dsl on CUDA<13.1 -> fatal AttributeError at
+# `import flashinfer.comm`. This image was gated on the OLDER good 4.5.2 whose
+# experimental/__init__.py is a NotImplementedError stub (flashinfer tolerates
+# it; it does NOT tolerate AttributeError). The wheel can't be pinned by version
+# (republished in place) and flashinfer vendors its own CuTeDSL for compute, so
+# force the stub to make rebuilds index-independent. Matches glm52-sm120.
+RUN . .venv/bin/activate \
+    && CUTE_EXP=$(python -c "import cutlass,os;print(os.path.join(os.path.dirname(cutlass.__file__),'cute','experimental','__init__.py'))") \
+    && printf '%s\n' 'raise NotImplementedError("CuTe Experimental disabled (pinned guard): nvidia-cutlass-dsl 4.5.2 republished with a broken CuteExperimentalDSL ref on CUDA<13.1; flashinfer tolerates this import failure.")' > "$CUTE_EXP" \
+    && echo "patched cutlass cute.experimental stub -> $CUTE_EXP"
 
 # SM120 JIT toolchain: pin nvcc/crt/nvvm/cccl to torch's CUDA minor + lib64
 # link. (nvidia is a namespace package -> use the venv path, not __file__.)
@@ -59,6 +79,33 @@ RUN . .venv/bin/activate \
 
 ENV PYINC=/root/.local/share/uv/python
 ENV FLASHINFER_DISABLE_VERSION_CHECK=1
+
+# LMCache KV persistence (task #143), opt-in via ENABLE_LMCACHE=1 at runtime.
+# Installs the SM120-hybrid fork (jarrelscy/LMCache branch inkling-mp-hybrid,
+# pinned to the SWA whole-chunk-skip commit) that adds the MP connector + the
+# per-object-group sliding-window trim making >=512K restore lossless.
+#
+# The native_storage_ops CUDA/C++ extension MUST be built: the MP server hard-
+# imports it (storage_manager.py: `from lmcache.native_storage_ops import ...`,
+# no pure-Python fallback), and ENABLE_LMCACHE=1 launches that MP server. Build
+# against the venv's cu130 torch via --no-build-isolation (pyproject recommends
+# this to keep the torch version flexible) with the cu13 nvcc on PATH so torch's
+# CUDA-version check matches (the base image's /usr/local/cuda is 12.9 and would
+# fail against cu130 torch). LMCACHE_CUDA_MAJOR + ENABLE_CXX11_ABI are derived to
+# match. Deps (cupy-cuda13x, pyzmq, sortedcontainers, aiofile, opentelemetry-*,
+# msgspec, ...) resolve automatically from the fork's metadata.
+RUN . .venv/bin/activate \
+    && uv pip install ninja "packaging>=24.2" "setuptools>=77.0.3,<81.0.0" \
+                      "setuptools_scm>=8" wheel \
+    && NV="/opt/vllm/.venv/lib/python3.12/site-packages/nvidia" \
+    && CUX="$NV/cu13"; [ -d "$CUX" ] || CUX="$NV/cu12" \
+    && export CUDA_HOME="$CUX" PATH="$CUX/bin:$PATH" \
+    && export LMCACHE_CUDA_MAJOR="$(basename "$CUX" | tr -dc 0-9 | cut -c1-2)" \
+    && export ENABLE_CXX11_ABI=1 \
+    && export TORCH_CUDA_ARCH_LIST="12.0+PTX" \
+    && nvcc --version | tail -2 \
+    && uv pip install --no-build-isolation \
+       "lmcache @ git+https://github.com/jarrelscy/LMCache.git@fbec1c14"
 
 # Runtime knobs (override with -e): MODEL_DIR, MODE (512k-mtp|640k), MAXLEN,
 # NUM_SPEC (512k-mtp only, default 2 = the swept optimum). See entrypoint.

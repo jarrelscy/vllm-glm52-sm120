@@ -838,6 +838,33 @@ def safetensors_weights_iterator(
 
     sorted_files = sorted(hf_weights_files, key=_natural_sort_key)
 
+    # Index consistency guard: a sharded checkpoint's safetensors.index.json is
+    # authoritative about which FILE holds each weight. Some checkpoints (e.g.
+    # re-tiered quant repos) leave a STALE copy of a re-sharded tensor inside a
+    # base shard that is still opened for its other (index-referenced) tensors.
+    # Opening that shard would otherwise yield the stale copy (often a different
+    # shape than the re-tiered param) and crash the weight loader. Skip any
+    # tensor whose containing file is not the one the index designates for its
+    # name. No-op for checkpoints without such duplicates (map matches file).
+    _index_file_of: dict[str, str] = {}
+    try:
+        _idx_dir = os.path.dirname(sorted_files[0]) if sorted_files else None
+        _idx_path = (
+            os.path.join(_idx_dir, "model.safetensors.index.json")
+            if _idx_dir
+            else None
+        )
+        if _idx_path and os.path.isfile(_idx_path):
+            with open(_idx_path) as _idxf:
+                _wm = json.load(_idxf).get("weight_map", {})
+            _index_file_of = {n: os.path.basename(v) for n, v in _wm.items()}
+    except Exception:
+        _index_file_of = {}
+
+    def _wrong_index_file(name: str, st_file: str) -> bool:
+        designated = _index_file_of.get(name)
+        return designated is not None and designated != os.path.basename(st_file)
+
     fs_type = _get_fs_type(sorted_files)
     is_net_fs = fs_type in ("nfs", "nfs4", "lustre")
     total_bytes = _get_checkpoints_size_bytes(sorted_files)
@@ -913,8 +940,11 @@ def safetensors_weights_iterator(
             with open(st_file, "rb") as f:
                 state_dict = load(f.read())
             for name, param in state_dict.items():
-                if not should_skip_weight(name, local_expert_ids):
-                    yield name, param
+                if should_skip_weight(name, local_expert_ids):
+                    continue
+                if _wrong_index_file(name, st_file):
+                    continue
+                yield name, param
         elif safetensors_load_strategy == "torchao":
             # we can't load flattened torchao tensor subclasses directly into the model
             # instead we reconstruct the subclasses here before returning
@@ -931,6 +961,8 @@ def safetensors_weights_iterator(
                 state_dict = {}
                 for name in f.keys():  # noqa: SIM118
                     if should_skip_weight(name, local_expert_ids):
+                        continue
+                    if _wrong_index_file(name, st_file):
                         continue
                     state_dict[name] = f.get_tensor(name)
 
@@ -949,6 +981,8 @@ def safetensors_weights_iterator(
             with safe_open(st_file, framework="pt") as f:
                 for name in f.keys():  # noqa: SIM118
                     if should_skip_weight(name, local_expert_ids):
+                        continue
+                    if _wrong_index_file(name, st_file):
                         continue
                     param = f.get_tensor(name)
                     yield name, param

@@ -67,17 +67,31 @@ RUN . .venv/bin/activate \
 # `_dsl.CuteExperimentalDSL.jit` — a symbol its own bundled cutlass_dsl lacks on
 # CUDA<13.1 — so `import flashinfer.comm` (which imports cute.experimental for a
 # registration side-effect) raises a FATAL AttributeError at
-# init_model_parallel_group and crash-loops the server. The OLDER good 4.5.2
-# shipped that file as a stub raising NotImplementedError, which flashinfer
-# TOLERATES (it catches NotImplementedError, NOT AttributeError). The wheel
-# cannot be pinned by version (same version string, republished in place) and
-# flashinfer vendors its OWN CuTeDSL under flashinfer/data/cutlass for actual
-# compute, so the standalone package's core is only touched by this tolerated
-# import. Force the stub: index-independent, idempotent, reproduces the gated
-# inkling behavior exactly. (See also inkling-sm120's identical guard.)
+# init_model_parallel_group and crash-loops the server. The wheel cannot be
+# pinned by version (same version string, republished in place) and flashinfer
+# vendors its OWN CuTeDSL under flashinfer/data/cutlass for actual compute, so
+# the standalone package's core is only touched by tolerated imports. Force a
+# stub that FAILS the import cleanly. (See also inkling-sm120's identical guard.)
+#
+# EXCEPTION TYPE MATTERS — must be ImportError, NOT NotImplementedError
+# (2026-07-27, task #164): TWO independent consumers import cute.experimental
+# and each degrades gracefully only on the RIGHT exception:
+#   (1) flashinfer.comm  — try/except catches ImportError (and NotImplementedError).
+#   (2) the DCP indexer cutedsl compile — cutlass `get_module_hash` ->
+#       `get_version()` -> `pkgutil.walk_packages(..., onerror=None)` __import__s
+#       every cutlass.* submodule to build a version hash. walk_packages CATCHES
+#       ImportError and ignores it, but PROPAGATES anything else. A
+#       NotImplementedError (RuntimeError subclass) therefore kills the worker
+#       the FIRST time a DCP>1 request compiles the stable-topk merge kernel
+#       (`_merge_dcp_topk_global`, a CuteDSL-only path with no fallback) — the
+#       server boots fine, then crash-loops on the first long/real request.
+# An EMPTY (non-raising) module is NOT a fix: flashinfer then reaches
+# `cute.experimental.jit` -> AttributeError (the original 07-22 failure).
+# ImportError is the unique content that satisfies both (verified: cutedsl
+# compile OK + flashinfer.comm import OK).
 RUN . .venv/bin/activate \
     && CUTE_EXP=$(python -c "import cutlass,os;print(os.path.join(os.path.dirname(cutlass.__file__),'cute','experimental','__init__.py'))") \
-    && printf '%s\n' 'raise NotImplementedError("CuTe Experimental disabled (pinned guard): nvidia-cutlass-dsl 4.5.2 republished with a broken CuteExperimentalDSL ref on CUDA<13.1; flashinfer tolerates this import failure.")' > "$CUTE_EXP" \
+    && printf '%s\n' 'raise ImportError("CuTe Experimental disabled (pinned guard): nvidia-cutlass-dsl 4.5.2 republished with a broken CuteExperimentalDSL ref on CUDA<13.1; both flashinfer.comm and pkgutil.walk_packages tolerate ImportError.")' > "$CUTE_EXP" \
     && echo "patched cutlass cute.experimental stub -> $CUTE_EXP"
 
 # SM120 JIT toolchain: pin nvcc/crt/nvvm/cccl to torch's CUDA minor + lib64 link.

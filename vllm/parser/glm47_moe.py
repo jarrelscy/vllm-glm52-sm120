@@ -30,6 +30,9 @@ from vllm.parser.engine.parser_engine_config import (
 )
 
 if TYPE_CHECKING:
+    from vllm.entrypoints.openai.engine.protocol import (
+        ExtractedToolCallInformation,
+    )
     from vllm.tokenizers import TokenizerLike
     from vllm.tool_parsers.abstract_tool_parser import Tool
 
@@ -76,12 +79,6 @@ _ANTHROPIC_PARAM_RE = re.compile(
 _NAME_RE = re.compile(r"<name>\s*(?P<name>.*?)\s*</name>", re.DOTALL)
 _TOOL_MARKERS = ("<tool_call", "<function_calls", "<invoke", "<arg_key",
                  "<arguments", "<parameter")
-_STRIP_XML_RE = re.compile(
-    r"</?function_calls>|</?invoke>|</?arguments>|</?tool_call>|"
-    r'<parameter\s+name="[^"]*">|</?parameter>|<arg_key>|</arg_key>|'
-    r"<arg_value>|</arg_value>|<name>|</name>",
-    re.IGNORECASE,
-)
 
 
 def _json_value(value: str) -> object:
@@ -110,21 +107,26 @@ def _extract_parameters(raw_args: str) -> dict[str, object]:
 def _recover_tool_call(
     content: str,
     request,
-) -> tuple[list, str | None] | None:
+) -> tuple[str, dict[str, object], str | None] | None:
     """Recover a dropped tool call from leaked native-XML content.
 
     When the structural state machine never enters tool state (because the
-    model emitted a non-conformant wrapper), ``ParserEngine.parse`` returns no
-    tool calls and leaves the raw XML in ``content``. If the content clearly
-    contains a tool call we rebuild it so the client can execute it instead of
-    showing the raw XML.
+    model emitted a non-conformant wrapper), tool extraction yields no calls
+    and leaves the raw XML in the content. If the content clearly contains a
+    tool call this rebuilds it so the client can execute it instead of showing
+    the raw XML.
 
-    Returns ``(tool_calls, cleaned_content)`` or ``None`` when not repairable.
+    Returns ``(name, arguments, prose)`` where ``prose`` is any genuine
+    assistant text that precedes the leaked tool markup (``None`` when the
+    content was purely the tool call), or ``None`` when not repairable.
     """
-    from vllm.entrypoints.openai.engine.protocol import FunctionCall
-
     if not content or not any(m in content for m in _TOOL_MARKERS):
         return None
+
+    positions = [content.find(m) for m in _TOOL_MARKERS if m in content]
+    prose = content[:min(positions)].strip() if positions else None
+    if prose == "":
+        prose = None
 
     name = None
     match = _NAME_RE.search(content)
@@ -142,15 +144,7 @@ def _recover_tool_call(
         else:
             return None
 
-    cleaned = _STRIP_XML_RE.sub(" ", content).strip() or None
-    return [
-        FunctionCall(
-            id=f"chatcmpl-tool-repair-{uuid.uuid4().hex[:12]}",
-            name=name,
-            arguments=json.dumps(_extract_parameters(content),
-                                 ensure_ascii=False),
-        )
-    ], cleaned
+    return name, _extract_parameters(content), prose
 
 
 def _glm47_arg_converter(raw_args: str, partial: bool) -> str:
@@ -299,6 +293,45 @@ class Glm47MoeParser(ParserEngine):
         )
         super().__init__(tokenizer, tools, **kwargs)
 
+    def extract_tool_calls_from_content(
+        self,
+        content: str,
+        request: ChatCompletionRequest,
+    ) -> ExtractedToolCallInformation:
+        """Non-streaming tool extraction used by the OpenAI serving path.
+
+        Serving drives `Glm47MoeParserToolAdapter.extract_tool_calls` here (via
+        a `DelegatingParser`), NOT through :meth:`parse`. This is therefore the
+        seam where a call dropped by the strict state machine must be repaired;
+        otherwise the raw tool XML leaks straight into assistant content.
+        """
+        from vllm.entrypoints.openai.engine.protocol import (
+            ExtractedToolCallInformation,
+            FunctionCall,
+            ToolCall,
+        )
+
+        info = super().extract_tool_calls_from_content(content, request)
+        if info.tools_called:
+            return info
+        recovered = _recover_tool_call(content, request)
+        if recovered is None:
+            return info
+        name, args, prose = recovered
+        return ExtractedToolCallInformation(
+            tools_called=True,
+            tool_calls=[
+                ToolCall(
+                    function=FunctionCall(
+                        id=f"chatcmpl-tool-repair-{uuid.uuid4().hex[:12]}",
+                        name=name,
+                        arguments=json.dumps(args, ensure_ascii=False),
+                    )
+                )
+            ],
+            content=prose,
+        )
+
     def parse(
         self,
         model_output: str,
@@ -309,12 +342,20 @@ class Glm47MoeParser(ParserEngine):
         reasoning, content, tool_calls = super().parse(
             model_output, request, enable_auto_tools, model_output_token_ids
         )
-        # Non-streaming safety net: if the strict state machine dropped a tool
-        # call (left raw tool XML in content), rebuild it instead of leaking.
         if not tool_calls and content:
+            from vllm.entrypoints.openai.engine.protocol import FunctionCall
+
             recovered = _recover_tool_call(content, request)
             if recovered is not None:
-                tool_calls, content = recovered
+                name, args, prose = recovered
+                tool_calls = [
+                    FunctionCall(
+                        id=f"chatcmpl-tool-repair-{uuid.uuid4().hex[:12]}",
+                        name=name,
+                        arguments=json.dumps(args, ensure_ascii=False),
+                    )
+                ]
+                content = prose
         return reasoning, content, tool_calls
 
     def extract_tool_calls_streaming(
@@ -344,22 +385,38 @@ class Glm47MoeParser(ParserEngine):
         )
 
     def finish_streaming(self):
+        from vllm.entrypoints.openai.engine.protocol import (
+            DeltaFunctionCall,
+            DeltaMessage,
+            DeltaToolCall,
+        )
+
         delta = super().finish_streaming()
-        if delta is None or getattr(delta, "tool_calls", None):
-            return delta
         text = getattr(self, "_repair_stream_text", "") or ""
         request = getattr(self, "_repair_stream_request", None)
-        if not text or request is None:
-            return delta
-        recovered = _recover_tool_call(text, request)
-        if recovered is None:
-            return delta
-        tool_calls, cleaned = recovered
-        delta.tool_calls = tool_calls
-        if cleaned:
-            delta.content = cleaned
-        elif hasattr(delta, "content"):
-            delta.content = None
+        if text and request is not None and not (
+            delta is not None and getattr(delta, "tool_calls", None)
+        ):
+            recovered = _recover_tool_call(text, request)
+            if recovered is not None:
+                name, args, prose = recovered
+                if delta is None:
+                    delta = DeltaMessage()
+                if not getattr(delta, "tool_calls", None):
+                    delta.tool_calls = [
+                        DeltaToolCall(
+                            index=0,
+                            function=DeltaFunctionCall(
+                                name=name,
+                                arguments=json.dumps(args, ensure_ascii=False),
+                            ),
+                        )
+                    ]
+                if prose:
+                    delta.content = prose
+                elif hasattr(delta, "content"):
+                    delta.content = None
+                return delta
         return delta
 
     def _emit_name_delta(self, idx: int, deltas, name: str | None) -> None:

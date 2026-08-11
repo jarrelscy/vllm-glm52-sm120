@@ -12,14 +12,20 @@ the strict ``<arg_key>/<arg_value>`` grammar rejects, e.g.::
 
 When that happens the structural parser drops the call and the raw XML leaks
 into content. These tests cover recovery of the arguments and of the dropped
-tool call itself.
+tool call itself, including through the serving seam
+(:meth:`Glm47MoeParser.extract_tool_calls_from_content`).
 """
 
 import json
 
 import pytest
 
+from vllm.entrypoints.openai.engine.protocol import (
+    ExtractedToolCallInformation,
+)
+from vllm.parser.engine.parser_engine import ParserEngine
 from vllm.parser.glm47_moe import (
+    Glm47MoeParser,
     _extract_parameters,
     _glm47_arg_converter,
     _recover_tool_call,
@@ -69,7 +75,7 @@ class TestArgTolerance:
 
 
 # ---------------------------------------------------------------------------
-# Dropped tool-call recovery
+# Dropped tool-call recovery (name, arguments, prose)
 # ---------------------------------------------------------------------------
 
 
@@ -83,12 +89,11 @@ class TestToolCallRecovery:
         req = _Req([_tool("question")])
         recovered = _recover_tool_call(content, req)
         assert recovered is not None
-        tool_calls, cleaned = recovered
-        assert len(tool_calls) == 1
-        assert tool_calls[0].name == "question"
-        assert json.loads(tool_calls[0].arguments) == {"questions": [{"q": "a"}]}
-        # With a name tag, no single-tool assumption is needed.
-        assert "<arg_key>" not in (cleaned or "")
+        name, args, prose = recovered
+        assert name == "question"
+        assert args == {"questions": [{"q": "a"}]}
+        # Pure tool markup -> no assistant prose to keep.
+        assert prose is None
 
     def test_recover_with_explicit_name(self):
         content = ("<tool_call><name>get_weather</name><arguments>"
@@ -97,9 +102,22 @@ class TestToolCallRecovery:
         req = _Req([_tool("get_weather"), _tool("question")])
         recovered = _recover_tool_call(content, req)
         assert recovered is not None
-        tool_calls, _cleaned = recovered
-        assert tool_calls[0].name == "get_weather"
-        assert json.loads(tool_calls[0].arguments) == {"city": "Paris"}
+        name, args, prose = recovered
+        assert name == "get_weather"
+        assert args == {"city": "Paris"}
+        assert prose is None
+
+    def test_preserves_leading_prose(self):
+        content = ("Let me check the weather.\n"
+                   "<function_calls><invoke>"
+                   "<parameter>city</arg_key><arg_value>Oslo</arg_value>"
+                   "</parameter></invoke></function_calls>")
+        req = _Req([_tool("get_weather")])
+        recovered = _recover_tool_call(content, req)
+        assert recovered is not None
+        _name, args, prose = recovered
+        assert args == {"city": "Oslo"}
+        assert prose == "Let me check the weather."
 
     def test_plain_content_not_recovered(self):
         req = _Req([_tool("question")])
@@ -113,6 +131,67 @@ class TestToolCallRecovery:
         )
         req = _Req([_tool("a"), _tool("b")])
         assert _recover_tool_call(content, req) is None
+
+
+def _no_tools_stub(self, content, request):
+    """Mimic the strict engine failing to recognize any tool call."""
+    return ExtractedToolCallInformation(
+        tools_called=False, tool_calls=[], content=content
+    )
+
+
+# ---------------------------------------------------------------------------
+# Serving seam: Glm47MoeParser.extract_tool_calls_from_content
+# ---------------------------------------------------------------------------
+
+
+class TestExtractToolCallsFromContentRepair:
+    """Repair applied on the exact method the OpenAI serving path calls."""
+
+    def _parser(self, monkeypatch):
+        monkeypatch.setattr(
+            ParserEngine,
+            "extract_tool_calls_from_content",
+            _no_tools_stub,
+        )
+        # Avoid full engine setup; we only exercise the repair override.
+        return Glm47MoeParser.__new__(Glm47MoeParser)
+
+    def test_repairs_leaked_call(self, monkeypatch):
+        content = ("<function_calls><invoke><parameter>questions</arg_key>"
+                   "<arg_value>[{\"q\":\"a\"}]</arg_value></parameter>"
+                   "</invoke></function_calls>")
+        req = _Req([_tool("question")])
+        info = self._parser(monkeypatch).extract_tool_calls_from_content(
+            content, req
+        )
+        assert info.tools_called is True
+        assert info.tool_calls[0].function.name == "question"
+        assert json.loads(info.tool_calls[0].function.arguments) == {
+            "questions": [{"q": "a"}]
+        }
+        assert info.content is None
+
+    def test_existing_call_untouched(self, monkeypatch):
+        # A successfully parsed call must not be rewritten.
+        content = (
+            "<tool_call><name>get_weather</name><arguments>"
+            "<arg_key>city</arg_key><arg_value>Paris</arg_value>"
+            "</arguments></tool_call>"
+        )
+        req = _Req([_tool("get_weather"), _tool("question")])
+        info = self._parser(monkeypatch).extract_tool_calls_from_content(
+            content, req
+        )
+        assert info.tools_called is True
+        assert info.tool_calls[0].function.name == "get_weather"
+
+    def test_plain_content_no_repair(self, monkeypatch):
+        req = _Req([_tool("question")])
+        info = self._parser(monkeypatch).extract_tool_calls_from_content(
+            "No tool here.", req
+        )
+        assert info.tools_called is False
 
 
 if __name__ == "__main__":

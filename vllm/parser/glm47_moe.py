@@ -373,6 +373,7 @@ class Glm47MoeParser(ParserEngine):
         )
 
     def finish_streaming(self):
+        from vllm.entrypoints.chat_utils import make_tool_call_id
         from vllm.entrypoints.openai.engine.protocol import (
             DeltaFunctionCall,
             DeltaMessage,
@@ -394,6 +395,8 @@ class Glm47MoeParser(ParserEngine):
                     delta.tool_calls = [
                         DeltaToolCall(
                             index=0,
+                            id=make_tool_call_id(),
+                            type="function",
                             function=DeltaFunctionCall(
                                 name=name,
                                 arguments=json.dumps(args, ensure_ascii=False),

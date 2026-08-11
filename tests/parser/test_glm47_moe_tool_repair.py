@@ -140,6 +140,73 @@ def _no_tools_stub(self, content, request):
     )
 
 
+def _no_stream_marker(self, *args, **kwargs):
+    """Mimic the strict engine producing no streamed tool calls."""
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Streaming repair: finish_streaming emits a well-formed DeltaToolCall
+# ---------------------------------------------------------------------------
+
+
+class TestFinishStreamingRepair:
+    def _parser(self, monkeypatch):
+        monkeypatch.setattr(
+            ParserEngine, "finish_streaming", _no_stream_marker
+        )
+        return Glm47MoeParser.__new__(Glm47MoeParser)
+
+    def test_repaired_stream_delta_has_id_and_type(self, monkeypatch):
+        content = ("<function_calls><invoke><parameter>questions</arg_key>"
+                   "<arg_value>[{\"q\":\"a\"}]</arg_value></parameter>"
+                   "</invoke></function_calls>")
+        p = self._parser(monkeypatch)
+        p._repair_stream_text = content
+        p._repair_stream_request = _Req([_tool("question")])
+        delta = p.finish_streaming()
+        assert delta is not None
+        assert delta.tool_calls and len(delta.tool_calls) == 1
+        call = delta.tool_calls[0]
+        assert call.type == "function"
+        assert call.id and call.id.startswith("chatcmpl-tool-")
+        assert call.function.name == "question"
+        assert json.loads(call.function.arguments) == {
+            "questions": [{"q": "a"}]
+        }
+
+    def test_existing_stream_tool_calls_not_duplicated(self, monkeypatch):
+        from vllm.entrypoints.openai.engine.protocol import (
+            DeltaFunctionCall,
+            DeltaMessage,
+            DeltaToolCall,
+        )
+
+        def _has_calls(self, *a, **k):
+            return DeltaMessage(
+                tool_calls=[
+                    DeltaToolCall(
+                        index=0,
+                        id="nope",
+                        type="function",
+                        function=DeltaFunctionCall(name="already"),
+                    )
+                ]
+            )
+
+        monkeypatch.setattr(ParserEngine, "finish_streaming", _has_calls)
+        p = Glm47MoeParser.__new__(Glm47MoeParser)
+        p._repair_stream_text = ("<function_calls><invoke>"
+                                 "<parameter>x</arg_key>"
+                                 "<arg_value>1</arg_value></parameter>"
+                                 "</invoke></function_calls>")
+        p._repair_stream_request = _Req([_tool("question")])
+        delta = p.finish_streaming()
+        # Existing tool call wins; recovery must not add a second one.
+        assert len(delta.tool_calls) == 1
+        assert delta.tool_calls[0].function.name == "already"
+
+
 # ---------------------------------------------------------------------------
 # Serving seam: Glm47MoeParser.extract_tool_calls_from_content
 # ---------------------------------------------------------------------------

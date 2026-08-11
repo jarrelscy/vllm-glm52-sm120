@@ -285,6 +285,30 @@ class Glm47MoeParser(ParserEngine):
         )
         super().__init__(tokenizer, tools, **kwargs)
 
+    def _refine_recovered_call(
+        self,
+        name: str,
+        arguments_json: str,
+    ) -> str | None:
+        """Mirror engine validation/type-coercion for a repaired call.
+
+        Same intent as :meth:`ParserEngine._build_extracted_result`: only
+        emit a call whose tool name is defined, and coerce scalar argument
+        types from the tool schema. Any internal uncertainty (e.g. schema
+        unavailable) falls back to the original JSON so the repair never
+        regresses a recoverable call. Returns ``None`` when the name is not
+        a defined tool and the call should be dropped.
+        """
+        try:
+            if not self._is_valid_tool_name(name):
+                return None
+        except Exception:
+            pass
+        try:
+            return self._fix_arg_types(arguments_json, name)
+        except Exception:
+            return arguments_json
+
     def extract_tool_calls_from_content(
         self,
         content: str,
@@ -310,15 +334,21 @@ class Glm47MoeParser(ParserEngine):
         if recovered is None:
             return info
         name, args, prose = recovered
+        from vllm.entrypoints.openai.engine.protocol import (
+            FunctionCall,
+            ToolCall,
+        )
+        arguments_json = json.dumps(args, ensure_ascii=False)
+        refined = self._refine_recovered_call(name, arguments_json)
+        if refined is None:
+            # Name isn't a defined tool; keep the original (leaked) content.
+            return info
         return ExtractedToolCallInformation(
             tools_called=True,
             tool_calls=[
                 ToolCall(
-                    function=FunctionCall(
-                        id=f"chatcmpl-tool-repair-{uuid.uuid4().hex[:12]}",
-                        name=name,
-                        arguments=json.dumps(args, ensure_ascii=False),
-                    )
+                    id=f"chatcmpl-tool-repair-{uuid.uuid4().hex[:12]}",
+                    function=FunctionCall(name=name, arguments=refined),
                 )
             ],
             content=prose,
@@ -340,14 +370,17 @@ class Glm47MoeParser(ParserEngine):
             recovered = _recover_tool_call(content, request)
             if recovered is not None:
                 name, args, prose = recovered
-                tool_calls = [
-                    FunctionCall(
-                        id=f"chatcmpl-tool-repair-{uuid.uuid4().hex[:12]}",
-                        name=name,
-                        arguments=json.dumps(args, ensure_ascii=False),
-                    )
-                ]
-                content = prose
+                arguments_json = json.dumps(args, ensure_ascii=False)
+                refined = self._refine_recovered_call(name, arguments_json)
+                if refined is not None:
+                    tool_calls = [
+                        FunctionCall(
+                            id=f"chatcmpl-tool-repair-{uuid.uuid4().hex[:12]}",
+                            name=name,
+                            arguments=refined,
+                        )
+                    ]
+                    content = prose
         return reasoning, content, tool_calls
 
     def extract_tool_calls_streaming(
@@ -392,6 +425,10 @@ class Glm47MoeParser(ParserEngine):
             recovered = _recover_tool_call(text, request)
             if recovered is not None:
                 name, args, prose = recovered
+                arguments_json = json.dumps(args, ensure_ascii=False)
+                refined = self._refine_recovered_call(name, arguments_json)
+                if refined is None:
+                    return delta
                 if delta is None:
                     delta = DeltaMessage()
                 if not getattr(delta, "tool_calls", None):
@@ -402,7 +439,7 @@ class Glm47MoeParser(ParserEngine):
                             type="function",
                             function=DeltaFunctionCall(
                                 name=name,
-                                arguments=json.dumps(args, ensure_ascii=False),
+                                arguments=refined,
                             ),
                         )
                     ]

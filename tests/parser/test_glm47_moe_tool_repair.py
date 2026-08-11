@@ -288,6 +288,49 @@ class TestExtractToolCallsFromContentRepair:
         )
         assert info.tools_called is False
 
+    def test_repair_id_on_toolcall_not_function(self, monkeypatch):
+        # id belongs on ToolCall (serialized), not the nested FunctionCall
+        # (an internal, exclude=True field).
+        content = ("<function_calls><invoke><parameter>questions</arg_key>"
+                   "<arg_value>[{\"q\":\"a\"}]</arg_value></parameter>"
+                   "</invoke></function_calls>")
+        req = _Req([_tool("question")])
+        info = self._parser(monkeypatch).extract_tool_calls_from_content(
+            content, req
+        )
+        assert info.tools_called is True
+        call = info.tool_calls[0]
+        assert call.id and call.id.startswith("chatcmpl-tool-repair-")
+        assert getattr(call.function, "id", None) is None
+
+    def test_invalid_recovered_name_dropped(self, monkeypatch):
+        p = self._parser(monkeypatch)
+        monkeypatch.setattr(
+            Glm47MoeParser, "_is_valid_tool_name", lambda self, name: False
+        )
+        content = ("<function_calls><invoke><parameter>questions</arg_key>"
+                   "<arg_value>[{\"q\":\"a\"}]</arg_value></parameter>"
+                   "</invoke></function_calls>")
+        req = _Req([_tool("question")])
+        info = p.extract_tool_calls_from_content(content, req)
+        # Not a defined tool -> repair declines, original content preserved.
+        assert info.tools_called is False
+
+    def test_repair_runs_schema_coercion(self, monkeypatch):
+        p = self._parser(monkeypatch)
+        monkeypatch.setattr(
+            Glm47MoeParser,
+            "_fix_arg_types",
+            lambda self, args_json, name: '{"city": "COERCED"}',
+        )
+        content = ("<function_calls><invoke><parameter>city</arg_key>"
+                   "<arg_value>Paris</arg_value></parameter>"
+                   "</invoke></function_calls>")
+        req = _Req([_tool("get_weather")])
+        info = p.extract_tool_calls_from_content(content, req)
+        assert info.tools_called is True
+        assert info.tool_calls[0].function.arguments == '{"city": "COERCED"}'
+
 
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-v"]))

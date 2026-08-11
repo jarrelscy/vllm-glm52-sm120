@@ -56,17 +56,8 @@ _PARTIAL_ARG_RE = re.compile(
     re.DOTALL,
 )
 
-# GLM can occasionally emit a tool call in a hybrid/Anthropic XML form that
-# does not match the strict ``<arg_key>/<arg_value>`` grammar, for example::
-#
-#     <function_calls><invoke>
-#       <parameter>key</arg_key><arg_value>value</arg_value></parameter>
-#     </invoke></function_calls>
-#
-# or the plain Anthropic form ``<parameter name="key">value</parameter>``.
-# With thinking enabled and complex tool schemas this happens intermittently;
-# without tolerance the whole call is dropped and the raw XML leaks into the
-# assistant content. These patterns let the converter / repair recover them.
+# GLM occasionally wraps args in hybrid/Anthropic XML forms the strict
+# grammar rejects; these regexes make conversion/repair tolerant of them.
 _HYBRID_ARG_RE = re.compile(
     r"<parameter>"
     r"(?P<key>.*?)</arg_key>\s*<arg_value>(?P<value>.*?)</arg_value>"
@@ -133,8 +124,7 @@ def _recover_tool_call(
     if match and match.group("name").strip():
         name = match.group("name").strip()
     if not name:
-        # Some wrapper forms carry no explicit <name>; accept it only when a
-        # single tool is defined so the name is unambiguous.
+        # Wrapper forms may omit <name>; require a single defined tool.
         defined = [
             t.function.name for t in (getattr(request, "tools", None) or [])
             if getattr(getattr(t, "function", None), "name", None)
@@ -161,8 +151,7 @@ def _glm47_arg_converter(raw_args: str, partial: bool) -> str:
             if key:
                 params[key] = match.group("value")
     else:
-        # Complete args: accept the hybrid / Anthropic forms and JSON-decode
-        # nested values that the strict converter would otherwise mangle.
+        # Accept hybrid/Anthropic forms and JSON-decode nested values.
         params.update(_extract_parameters(raw_args))
 
     return json.dumps(params, ensure_ascii=False)
@@ -368,8 +357,7 @@ class Glm47MoeParser(ParserEngine):
         delta_token_ids,
         request,
     ):
-        # Retain the last request + accumulated text so finish_streaming can
-        # repair a call that the streaming decoder never recognized.
+        # Retain last request/text so finish_streaming can repair undecoded calls.
         self._repair_stream_text = current_text or getattr(
             self, "_repair_stream_text", ""
         )

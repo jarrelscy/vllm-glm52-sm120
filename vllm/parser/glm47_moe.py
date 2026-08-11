@@ -309,6 +309,17 @@ class Glm47MoeParser(ParserEngine):
         except Exception:
             return arguments_json
 
+    def _repair_suppressed(self, request) -> bool:
+        """True when tool calls are suppressed (e.g. ``tool_choice="none"``).
+
+        Mirrors :meth:`ParserEngine._check_skip_tool_parsing`: when the caller
+        explicitly asked for no tool calls, a leaked marker must not be
+        re-injected as a call; the raw content is the correct output.
+        """
+        if getattr(self, "_suppress_tool_calls", False):
+            return True
+        return getattr(request, "tool_choice", None) == "none"
+
     def extract_tool_calls_from_content(
         self,
         content: str,
@@ -328,7 +339,7 @@ class Glm47MoeParser(ParserEngine):
         )
 
         info = super().extract_tool_calls_from_content(content, request)
-        if info.tools_called:
+        if info.tools_called or self._repair_suppressed(request):
             return info
         recovered = _recover_tool_call(content, request)
         if recovered is None:
@@ -364,7 +375,7 @@ class Glm47MoeParser(ParserEngine):
         reasoning, content, tool_calls = super().parse(
             model_output, request, enable_auto_tools, model_output_token_ids
         )
-        if not tool_calls and content:
+        if not tool_calls and content and not self._repair_suppressed(request):
             from vllm.entrypoints.openai.engine.protocol import FunctionCall
 
             recovered = _recover_tool_call(content, request)
@@ -419,8 +430,11 @@ class Glm47MoeParser(ParserEngine):
         delta = super().finish_streaming()
         text = getattr(self, "_repair_stream_text", "") or ""
         request = getattr(self, "_repair_stream_request", None)
-        if text and request is not None and not (
-            delta is not None and getattr(delta, "tool_calls", None)
+        if (
+            text
+            and request is not None
+            and not self._repair_suppressed(request)
+            and not (delta is not None and getattr(delta, "tool_calls", None))
         ):
             recovered = _recover_tool_call(text, request)
             if recovered is not None:

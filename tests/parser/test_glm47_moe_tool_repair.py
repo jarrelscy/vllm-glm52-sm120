@@ -331,6 +331,28 @@ class TestExtractToolCallsFromContentRepair:
         assert info.tools_called is True
         assert info.tool_calls[0].function.arguments == '{"city": "COERCED"}'
 
+    def test_repair_skipped_when_tool_choice_none(self, monkeypatch):
+        content = ("<function_calls><invoke><parameter>questions</arg_key>"
+                   "<arg_value>[{\"q\":\"a\"}]</arg_value></parameter>"
+                   "</invoke></function_calls>")
+        req = _Req([_tool("question")])
+        req.tool_choice = "none"
+        info = self._parser(monkeypatch).extract_tool_calls_from_content(
+            content, req
+        )
+        # tool_choice="none" suppresses repair so the raw content is kept.
+        assert info.tools_called is False
+
+    def test_repair_skipped_when_suppressed(self, monkeypatch):
+        p = self._parser(monkeypatch)
+        p._suppress_tool_calls = True
+        content = ("<function_calls><invoke><parameter>city</arg_key>"
+                   "<arg_value>Paris</arg_value></parameter>"
+                   "</invoke></function_calls>")
+        req = _Req([_tool("get_weather")])
+        info = p.extract_tool_calls_from_content(content, req)
+        assert info.tools_called is False
+
 
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-v"]))

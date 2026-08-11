@@ -123,18 +123,21 @@ def _recover_tool_call(
     match = _NAME_RE.search(content)
     if match and match.group("name").strip():
         name = match.group("name").strip()
+    params = _extract_parameters(content)
     if not name:
-        # Wrapper forms may omit <name>; require a single defined tool.
+        # Wrapper forms may omit <name>: invent the single defined tool only
+        # when there is real argument evidence. A lone marker (e.g. prose
+        # merely mentioning "<parameter") must not fabricate an empty call.
         defined = [
             t.function.name for t in (getattr(request, "tools", None) or [])
             if getattr(getattr(t, "function", None), "name", None)
         ]
-        if len(defined) == 1:
+        if len(defined) == 1 and params:
             name = defined[0]
         else:
             return None
 
-    return name, _extract_parameters(content), prose
+    return name, params, prose
 
 
 def _glm47_arg_converter(raw_args: str, partial: bool) -> str:

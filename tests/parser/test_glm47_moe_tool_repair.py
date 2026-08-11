@@ -132,6 +132,34 @@ class TestToolCallRecovery:
         req = _Req([_tool("a"), _tool("b")])
         assert _recover_tool_call(content, req) is None
 
+    def test_lone_marker_with_empty_args_not_recovered(self):
+        # Single tool + a lone marker must not fabricate an empty-arg call.
+        req = _Req([_tool("question")])
+        assert (
+            _recover_tool_call("See the <tool_call> tag in the docs.", req)
+            is None
+        )
+
+    def test_prose_mentioning_parameter_not_recovered(self):
+        req = _Req([_tool("question")])
+        assert (
+            _recover_tool_call(
+                "The <parameter> element is part of the spec.", req
+            )
+            is None
+        )
+
+    def test_explicit_name_allows_empty_args(self):
+        # A real <name> is itself a call even with no arguments.
+        content = "<tool_call><name>get_time</name></tool_call>"
+        req = _Req([_tool("get_time"), _tool("question")])
+        recovered = _recover_tool_call(content, req)
+        assert recovered is not None
+        name, args, prose = recovered
+        assert name == "get_time"
+        assert args == {}
+        assert prose is None
+
 
 def _no_tools_stub(self, content, request):
     """Mimic the strict engine failing to recognize any tool call."""

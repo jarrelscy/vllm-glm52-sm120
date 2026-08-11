@@ -36,12 +36,8 @@ if TYPE_CHECKING:
     from vllm.tokenizers import TokenizerLike
     from vllm.tool_parsers.abstract_tool_parser import Tool
 
-# Reasoning boundaries. Confirmed against the served GLM-5.2-NVFP4-AQLM
-# chat_template.jinja, whose assistant-generation path emits ``' thinking'
-# ... ' response'`` (line ~120) when thinking is enabled — i.e. the DeepSeek-ML
-# style with a leading space, NOT the ``<think>/</think>`` XML form.
-THINK_START = " thinking"
-THINK_END = " response"
+THINK_START = "<think>"
+THINK_END = "</think>"
 TOOL_CALL_START = "<tool_call>"
 TOOL_CALL_END = "</tool_call>"
 ARG_KEY_START = "<arg_key>"

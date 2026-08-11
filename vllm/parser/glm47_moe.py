@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import functools
 import json
+import uuid
 from typing import TYPE_CHECKING
 
 import regex as re
@@ -32,8 +33,8 @@ if TYPE_CHECKING:
     from vllm.tokenizers import TokenizerLike
     from vllm.tool_parsers.abstract_tool_parser import Tool
 
-THINK_START = "<think>"
-THINK_END = "</think>"
+THINK_START = " thinking"
+THINK_END = " response"
 TOOL_CALL_START = "<tool_call>"
 TOOL_CALL_END = "</tool_call>"
 ARG_KEY_START = "<arg_key>"
@@ -52,6 +53,105 @@ _PARTIAL_ARG_RE = re.compile(
     re.DOTALL,
 )
 
+# GLM can occasionally emit a tool call in a hybrid/Anthropic XML form that
+# does not match the strict ``<arg_key>/<arg_value>`` grammar, for example::
+#
+#     <function_calls><invoke>
+#       <parameter>key</arg_key><arg_value>value</arg_value></parameter>
+#     </invoke></function_calls>
+#
+# or the plain Anthropic form ``<parameter name="key">value</parameter>``.
+# With thinking enabled and complex tool schemas this happens intermittently;
+# without tolerance the whole call is dropped and the raw XML leaks into the
+# assistant content. These patterns let the converter / repair recover them.
+_HYBRID_ARG_RE = re.compile(
+    r"<parameter>"
+    r"(?P<key>.*?)</arg_key>\s*<arg_value>(?P<value>.*?)</arg_value>"
+    r"\s*</parameter>",
+    re.DOTALL,
+)
+_ANTHROPIC_PARAM_RE = re.compile(
+    r'<parameter\s+name="(?P<key>.*?)">(?P<value>.*?)</parameter>', re.DOTALL
+)
+_NAME_RE = re.compile(r"<name>\s*(?P<name>.*?)\s*</name>", re.DOTALL)
+_TOOL_MARKERS = ("<tool_call", "<function_calls", "<invoke", "<arg_key",
+                 "<arguments", "<parameter")
+_STRIP_XML_RE = re.compile(
+    r"</?function_calls>|</?invoke>|</?arguments>|</?tool_call>|"
+    r'<parameter\s+name="[^"]*">|</?parameter>|<arg_key>|</arg_key>|'
+    r"<arg_value>|</arg_value>|<name>|</name>",
+    re.IGNORECASE,
+)
+
+
+def _json_value(value: str) -> object:
+    """Decode a value the model emitted as embedded JSON, else keep the str."""
+    v = value.strip()
+    if v and v[0] in "[{":
+        try:
+            return json.loads(v)
+        except ValueError:
+            return v
+    return v
+
+
+def _extract_parameters(raw_args: str) -> dict[str, object]:
+    """Best-effort extraction of keyword arguments from any supported form."""
+    params: dict[str, object] = {}
+    for match in _ARG_RE.finditer(raw_args):
+        params[match.group("key").strip()] = _json_value(match.group("value"))
+    for match in _HYBRID_ARG_RE.finditer(raw_args):
+        params[match.group("key").strip()] = _json_value(match.group("value"))
+    for match in _ANTHROPIC_PARAM_RE.finditer(raw_args):
+        params[match.group("key").strip()] = _json_value(match.group("value"))
+    return params
+
+
+def _recover_tool_call(
+    content: str,
+    request,
+) -> tuple[list, str | None] | None:
+    """Recover a dropped tool call from leaked native-XML content.
+
+    When the structural state machine never enters tool state (because the
+    model emitted a non-conformant wrapper), ``ParserEngine.parse`` returns no
+    tool calls and leaves the raw XML in ``content``. If the content clearly
+    contains a tool call we rebuild it so the client can execute it instead of
+    showing the raw XML.
+
+    Returns ``(tool_calls, cleaned_content)`` or ``None`` when not repairable.
+    """
+    from vllm.entrypoints.openai.engine.protocol import FunctionCall
+
+    if not content or not any(m in content for m in _TOOL_MARKERS):
+        return None
+
+    name = None
+    match = _NAME_RE.search(content)
+    if match and match.group("name").strip():
+        name = match.group("name").strip()
+    if not name:
+        # Some wrapper forms carry no explicit <name>; accept it only when a
+        # single tool is defined so the name is unambiguous.
+        defined = [
+            t.function.name for t in (getattr(request, "tools", None) or [])
+            if getattr(getattr(t, "function", None), "name", None)
+        ]
+        if len(defined) == 1:
+            name = defined[0]
+        else:
+            return None
+
+    cleaned = _STRIP_XML_RE.sub(" ", content).strip() or None
+    return [
+        FunctionCall(
+            id=f"chatcmpl-tool-repair-{uuid.uuid4().hex[:12]}",
+            name=name,
+            arguments=json.dumps(_extract_parameters(content),
+                                 ensure_ascii=False),
+        )
+    ], cleaned
+
 
 def _glm47_arg_converter(raw_args: str, partial: bool) -> str:
     params: dict[str, object] = {}
@@ -66,6 +166,10 @@ def _glm47_arg_converter(raw_args: str, partial: bool) -> str:
             key = match.group("key").strip()
             if key:
                 params[key] = match.group("value")
+    else:
+        # Complete args: accept the hybrid / Anthropic forms and JSON-decode
+        # nested values that the strict converter would otherwise mangle.
+        params.update(_extract_parameters(raw_args))
 
     return json.dumps(params, ensure_ascii=False)
 
@@ -194,6 +298,69 @@ class Glm47MoeParser(ParserEngine):
             glm47_moe_config(thinking=self.thinking_enabled),
         )
         super().__init__(tokenizer, tools, **kwargs)
+
+    def parse(
+        self,
+        model_output: str,
+        request,
+        enable_auto_tools: bool = False,
+        model_output_token_ids=(),
+    ) -> tuple[str | None, str | None, list | None]:
+        reasoning, content, tool_calls = super().parse(
+            model_output, request, enable_auto_tools, model_output_token_ids
+        )
+        # Non-streaming safety net: if the strict state machine dropped a tool
+        # call (left raw tool XML in content), rebuild it instead of leaking.
+        if not tool_calls and content:
+            recovered = _recover_tool_call(content, request)
+            if recovered is not None:
+                tool_calls, content = recovered
+        return reasoning, content, tool_calls
+
+    def extract_tool_calls_streaming(
+        self,
+        previous_text: str,
+        current_text: str,
+        delta_text: str,
+        previous_token_ids,
+        current_token_ids,
+        delta_token_ids,
+        request,
+    ):
+        # Retain the last request + accumulated text so finish_streaming can
+        # repair a call that the streaming decoder never recognized.
+        self._repair_stream_text = current_text or getattr(
+            self, "_repair_stream_text", ""
+        )
+        self._repair_stream_request = request
+        return super().extract_tool_calls_streaming(
+            previous_text,
+            current_text,
+            delta_text,
+            previous_token_ids,
+            current_token_ids,
+            delta_token_ids,
+            request,
+        )
+
+    def finish_streaming(self):
+        delta = super().finish_streaming()
+        if delta is None or getattr(delta, "tool_calls", None):
+            return delta
+        text = getattr(self, "_repair_stream_text", "") or ""
+        request = getattr(self, "_repair_stream_request", None)
+        if not text or request is None:
+            return delta
+        recovered = _recover_tool_call(text, request)
+        if recovered is None:
+            return delta
+        tool_calls, cleaned = recovered
+        delta.tool_calls = tool_calls
+        if cleaned:
+            delta.content = cleaned
+        elif hasattr(delta, "content"):
+            delta.content = None
+        return delta
 
     def _emit_name_delta(self, idx: int, deltas, name: str | None) -> None:
         if name is not None:

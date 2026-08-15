@@ -60,15 +60,19 @@ __device__ __forceinline__ uint4 ld_cb(const uint4* p) {
 // ---------------------------------------------------------------------------
 // AQLM: per-(slot,row) warp gemv body. Call with all threads of the block
 // (contains __syncthreads); `expert` must be uniform within the block.
-// sh_b must hold >= 32*9 int4.
+// GROUP = weights per code (8 -> 2.0 bpw, 16 -> 1.0 bpw). Each code group
+// spans AW = GROUP/8 activation int4s (8 fp16 each) and AW codebook int4s.
+// sh_b must hold >= 32*(8*AW+1) int4.
 // ---------------------------------------------------------------------------
-template <int BOOKS>
+template <int BOOKS, int GROUP>
 __device__ __forceinline__ void aqlm_slot_gemv(
     const int4* __restrict__ codes, const int4* __restrict__ codebooks,
     const half* __restrict__ scales, const int expert,
     const int4* __restrict__ B, half* __restrict__ C_slot, const int prob_m,
     const int prob_k, int4* sh_b, const int row, const bool pred) {
-  const int a_gl_stride = prob_k / 8 / 8;  // int4s per code row
+  constexpr int AW = GROUP / 8;    // activation int4s (8 fp16) per code group
+  constexpr int PAD = 8 * AW + 1;  // per-lane sh_b stride (bank-conflict pad)
+  const int a_gl_stride = prob_k / GROUP / 8;  // int4s per code row
   const int4* a_base[BOOKS];
 #pragma unroll
   for (int b = 0; b < BOOKS; b++) {
@@ -81,14 +85,15 @@ __device__ __forceinline__ void aqlm_slot_gemv(
   const uint4* cb = reinterpret_cast<const uint4*>(codebooks);
 
   float res = 0;
-  int iters = (prob_k / 8 + 8 * 32 - 1) / (8 * 32);
+  int iters = (prob_k / 8 + 8 * 32 * AW - 1) / (8 * 32 * AW);
   while (iters--) {
     __syncthreads();
-    for (int i = threadIdx.x; i < 32 * 8; i += blockDim.x) {
-      if (b_gl_rd + i < prob_k / 8) sh_b[9 * (i / 8) + i % 8] = B[b_gl_rd + i];
+    for (int i = threadIdx.x; i < 32 * 8 * AW; i += blockDim.x) {
+      if (b_gl_rd + i < prob_k / 8)
+        sh_b[PAD * (i / (8 * AW)) + i % (8 * AW)] = B[b_gl_rd + i];
     }
     __syncthreads();
-    b_gl_rd += 32 * 8;
+    b_gl_rd += 32 * 8 * AW;
 
     if (pred && a_rd < a_end) {
       // The 8 code indices per book arrive in one int4.
@@ -99,35 +104,44 @@ __device__ __forceinline__ void aqlm_slot_gemv(
 #pragma unroll
       for (int b = 0; b < BOOKS; b++) enc[b].raw = __ldg(&a_base[b][a_rd]);
 
-      const int4* bvec = &sh_b[9 * (threadIdx.x % 32)];
+      const int4* bvec = &sh_b[PAD * (threadIdx.x % 32)];
 #pragma unroll
       for (int i0 = 0; i0 < 8; i0 += AQLM_MLP) {
-        // Phase 1: issue all gathers for this batch (independent loads).
-        uint4 w[AQLM_MLP][BOOKS];
+        // AW passes: one activation-word (int4) of the group per pass. For
+        // GROUP=8 (AW=1) this is the single-pass baseline; the gather buffer
+        // stays AQLM_MLP*BOOKS uint4 regardless of GROUP.
 #pragma unroll
-        for (int u = 0; u < AQLM_MLP; u++) {
+        for (int a = 0; a < AW; a++) {
+          // Phase 1: issue all gathers for this batch (independent loads).
+          uint4 w[AQLM_MLP][BOOKS];
 #pragma unroll
-          for (int b = 0; b < BOOKS; b++) {
-            w[u][b] = ld_cb(cb + (int64_t)b * 65536 + enc[b].u16[i0 + u]);
+          for (int u = 0; u < AQLM_MLP; u++) {
+#pragma unroll
+            for (int b = 0; b < BOOKS; b++) {
+              w[u][b] = ld_cb(
+                  cb + ((int64_t)b * 65536 + enc[b].u16[i0 + u]) * AW + a);
+            }
           }
-        }
-        // Phase 2: fp16 FMA against the staged activation chunk.
+          // Phase 2: fp16 FMA against the staged activation chunk.
 #pragma unroll
-        for (int u = 0; u < AQLM_MLP; u++) {
-          half2 wsum[4];
-          const half2* a0 = reinterpret_cast<const half2*>(&w[u][0]);
+          for (int u = 0; u < AQLM_MLP; u++) {
+            half2 wsum[4];
+            const half2* a0 = reinterpret_cast<const half2*>(&w[u][0]);
 #pragma unroll
-          for (int j = 0; j < 4; j++) wsum[j] = a0[j];
-          if (BOOKS == 2) {
-            const half2* a1 = reinterpret_cast<const half2*>(&w[u][BOOKS - 1]);
+            for (int j = 0; j < 4; j++) wsum[j] = a0[j];
+            if (BOOKS == 2) {
+              const half2* a1 =
+                  reinterpret_cast<const half2*>(&w[u][BOOKS - 1]);
 #pragma unroll
-            for (int j = 0; j < 4; j++) wsum[j] = __hadd2(wsum[j], a1[j]);
+              for (int j = 0; j < 4; j++) wsum[j] = __hadd2(wsum[j], a1[j]);
+            }
+            const half2* bb =
+                reinterpret_cast<const half2*>(&bvec[(i0 + u) * AW + a]);
+            half2 res2 = {};
+#pragma unroll
+            for (int j = 0; j < 4; j++) res2 = __hfma2(wsum[j], bb[j], res2);
+            res += __half2float(res2.x) + __half2float(res2.y);
           }
-          const half2* bb = reinterpret_cast<const half2*>(&bvec[i0 + u]);
-          half2 res2 = {};
-#pragma unroll
-          for (int j = 0; j < 4; j++) res2 = __hfma2(wsum[j], bb[j], res2);
-          res += __half2float(res2.x) + __half2float(res2.y);
         }
       }
       a_rd += 32;
@@ -277,7 +291,7 @@ __device__ __forceinline__ void nvfp4_slot_gemv(
 // ---------------------------------------------------------------------------
 // Standalone kernels (same signatures/semantics as baseline)
 // ---------------------------------------------------------------------------
-template <int BOOKS>
+template <int BOOKS, int GROUP>
 __global__ void CodeKx16MatVecMoE(const int4* __restrict__ codes,
                                   const int4* __restrict__ B_all,
                                   half* __restrict__ C,
@@ -289,7 +303,7 @@ __global__ void CodeKx16MatVecMoE(const int4* __restrict__ codes,
   const int expert = expert_ids[slot];
   const int row = (blockDim.x / 32) * blockIdx.x + (threadIdx.x / 32);
   const bool pred = row < prob_m;
-  __shared__ int4 sh_b[32 * 9];
+  __shared__ int4 sh_b[32 * (8 * (GROUP / 8) + 1)];
 
   if (expert < 0) {  // slot handled by another format: contribute zeros
     if (pred && threadIdx.x % 32 == 0) {
@@ -297,10 +311,10 @@ __global__ void CodeKx16MatVecMoE(const int4* __restrict__ codes,
     }
     return;
   }
-  aqlm_slot_gemv<BOOKS>(codes, codebooks, scales, expert,
-                        B_all + (int64_t)slot * (prob_k / 8),
-                        C + (int64_t)slot * prob_m, prob_m, prob_k, sh_b, row,
-                        pred);
+  aqlm_slot_gemv<BOOKS, GROUP>(codes, codebooks, scales, expert,
+                               B_all + (int64_t)slot * (prob_k / 8),
+                               C + (int64_t)slot * prob_m, prob_m, prob_k, sh_b,
+                               row, pred);
 }
 
 __global__ void NvFp4MatVecMoE(const int4* __restrict__ packed,
@@ -333,7 +347,7 @@ __global__ void NvFp4MatVecMoE(const int4* __restrict__ packed,
 // active slot; both < 0 writes zeros. The branch is uniform per block
 // (blockIdx.y == slot), so the contained __syncthreads is safe.
 // ---------------------------------------------------------------------------
-template <int BOOKS>
+template <int BOOKS, int GROUP>
 __global__ void HybridMatVecMoE(
     const int4* __restrict__ codes, const int4* __restrict__ codebooks,
     const half* __restrict__ scales, const int* __restrict__ aqlm_ids,
@@ -346,14 +360,14 @@ __global__ void HybridMatVecMoE(
   const int n_id = nv_ids[slot];
   const int row = (blockDim.x / 32) * blockIdx.x + (threadIdx.x / 32);
   const bool pred = row < prob_m;
-  __shared__ int4 sh_b[32 * 9 + (NVFP4_SMEM_EXTRA + 3) / 4];
+  __shared__ int4 sh_b[32 * (8 * (GROUP / 8) + 1) + (NVFP4_SMEM_EXTRA + 3) / 4];
 
   const int4* B = B_all + (int64_t)slot * (prob_k / 8);
   half* C_slot = C + (int64_t)slot * prob_m;
 
   if (a_id >= 0) {
-    aqlm_slot_gemv<BOOKS>(codes, codebooks, scales, a_id, B, C_slot, prob_m,
-                          prob_k, sh_b, row, pred);
+    aqlm_slot_gemv<BOOKS, GROUP>(codes, codebooks, scales, a_id, B, C_slot,
+                                 prob_m, prob_k, sh_b, row, pred);
   } else if (n_id >= 0) {
     nvfp4_slot_gemv(packed, bscale, scale2, s2n, n_id, B, C_slot, prob_m,
                     prob_k, sh_b, row, pred);
@@ -661,17 +675,18 @@ __global__ void HybridMatVecMoEV3(
 // ---------------------------------------------------------------------------
 // Prefill dequant kernels: copied unchanged from baseline (not decode-hot).
 // ---------------------------------------------------------------------------
-template <int BOOKS>
+template <int BOOKS, int GROUP>
 __global__ void CodeKx16DequantMoE(const int4* __restrict__ codes,
                                    half* __restrict__ out,
                                    const int4* __restrict__ codebooks,
                                    const half* __restrict__ scales,
                                    const int* __restrict__ expert_list,
                                    const int prob_m, const int prob_k) {
+  constexpr int AW = GROUP / 8;  // output int4s (8 fp16) per code group
   const int g = blockIdx.y;
   const int expert = expert_list[g];
 
-  const int a_gl_stride = prob_k / 8 / 8;
+  const int a_gl_stride = prob_k / GROUP / 8;
   const int row = (blockDim.x / 32) * blockIdx.x + (threadIdx.x / 32);
   const bool pred = row < prob_m;
 
@@ -690,29 +705,30 @@ __global__ void CodeKx16DequantMoE(const int4* __restrict__ codes,
       pred ? __half2float(scales[(int64_t)expert * prob_m + row]) : 0.f;
   const half2 s2 = __float2half2_rn(s);
 
-  int iters = (prob_k / 8 - 1) / (8 * 32) + 1;
+  const uint4* cb = reinterpret_cast<const uint4*>(codebooks);
+  int iters = (a_gl_stride - 1) / 32 + 1;
   while (iters--) {
     if (pred && a_rd < a_end) {
-      uint32_t dec[4];
 #pragma unroll
-      for (int i = 0; i < 8; i++) {
-        half2 wsum[4] = {};
+      for (int i = 0; i < 8; i++) {         // 8 code groups per int4
 #pragma unroll
-        for (int b = 0; b < BOOKS; b++) {
-          const uint16_t* enc =
-              reinterpret_cast<const uint16_t*>(&a_base[b][a_rd]);
-          asm volatile("ld.cg.global.v4.u32 {%0, %1, %2, %3}, [%4];"
-                       : "=r"(dec[0]), "=r"(dec[1]), "=r"(dec[2]), "=r"(dec[3])
-                       : "l"((void*)&codebooks[(int64_t)b * 65536 + enc[i]]));
-          half2* a = reinterpret_cast<half2*>(&dec);
+        for (int a = 0; a < AW; a++) {      // AW output int4s per group
+          half2 wsum[4] = {};
 #pragma unroll
-          for (int j = 0; j < 4; j++) wsum[j] = __hadd2(wsum[j], a[j]);
+          for (int b = 0; b < BOOKS; b++) {
+            const uint16_t* enc =
+                reinterpret_cast<const uint16_t*>(&a_base[b][a_rd]);
+            uint4 w = ld_cb(cb + ((int64_t)b * 65536 + enc[i]) * AW + a);
+            half2* wh = reinterpret_cast<half2*>(&w);
+#pragma unroll
+            for (int j = 0; j < 4; j++) wsum[j] = __hadd2(wsum[j], wh[j]);
+          }
+          int4 chunk;
+          half2* c2 = reinterpret_cast<half2*>(&chunk);
+#pragma unroll
+          for (int j = 0; j < 4; j++) c2[j] = __hmul2(wsum[j], s2);
+          C[(int64_t)(a_rd * 8 + i) * AW + a] = chunk;
         }
-        int4 chunk;
-        half2* c2 = reinterpret_cast<half2*>(&chunk);
-#pragma unroll
-        for (int j = 0; j < 4; j++) c2[j] = __hmul2(wsum[j], s2);
-        C[(int64_t)a_rd * 8 + i] = chunk;
       }
     }
     a_rd += 32;
@@ -780,7 +796,7 @@ static void pick_grid(int prob_m, int n_rows_out, dim3& blocks, int& threads) {
   threads = 32 * thread_m;
 }
 
-template <int BOOKS>
+template <int BOOKS, int GROUP>
 void launch_matvec(const int4* codes, const int4* B, half* C,
                    const int4* codebooks, const half* scales,
                    const int* expert_ids, int n_rows_out, int prob_m,
@@ -788,7 +804,7 @@ void launch_matvec(const int4* codes, const int4* B, half* C,
   dim3 blocks;
   int threads;
   pick_grid(prob_m, n_rows_out, blocks, threads);
-  CodeKx16MatVecMoE<BOOKS><<<blocks, threads, 0, stream>>>(
+  CodeKx16MatVecMoE<BOOKS, GROUP><<<blocks, threads, 0, stream>>>(
       codes, B, C, codebooks, scales, expert_ids, prob_m, prob_k);
 }
 
@@ -797,63 +813,67 @@ static bool env_flag(const char* name) {
   return e && e[0] && e[0] != '0';
 }
 
-template <int BOOKS>
+template <int BOOKS, int GROUP>
 void launch_hybrid(const int4* codes, const int4* codebooks,
                    const half* scales, const int* aqlm_ids, const int4* packed,
                    const uchar2* bscale, const float* scale2, int s2n,
                    const int* nv_ids, const int4* B, half* C, int n_rows_out,
                    int prob_m, int prob_k, cudaStream_t stream) {
+  dim3 blocks;
+  int threads;
   // DECODE-K features, env-gated per launch (cheap; also lets the tier-1
   // variant harness A/B within one process), default OFF -> V2 kernel.
   // GLM_MOE_DEDUP: 0/off | 2 = dedup pairs (UMAX=2, half the smem/regs) |
-  // any other nonzero = UMAX=4.
-  const char* de = getenv("GLM_MOE_DEDUP");
-  int kDedup = 0;
-  if (de && de[0] && de[0] != '0') {
-    kDedup = atoi(de);
-    if (kDedup <= 0) kDedup = 4;  // non-numeric truthy value -> default width
-  }
-  const bool kLaneRows = env_flag("GLM_MOE_LANE_ROWS");
-  dim3 blocks;
-  int threads;
-  if (kDedup || kLaneRows) {
-    static bool logged = false;
-    if (!logged) {
-      logged = true;
-      fprintf(stderr, "[aqlm_moe_v2] DECODE-K V3 kernel active: dedup=%d "
-              "lane_rows=%d\n", kDedup, (int)kLaneRows);
+  // any other nonzero = UMAX=4. The V3 dedup/lane-rows path is group-8 only
+  // (aqlm_multi_gemv assumes one activation int4 per code); for GROUP=16 the
+  // flags are ignored and the V2 kernel runs.
+  if constexpr (GROUP == 8) {
+    const char* de = getenv("GLM_MOE_DEDUP");
+    int kDedup = 0;
+    if (de && de[0] && de[0] != '0') {
+      kDedup = atoi(de);
+      if (kDedup <= 0) kDedup = 4;  // non-numeric truthy value -> default width
     }
-    int G = 32;
-    if (kLaneRows) {
-      const int s_n = prob_k / 32;  // NVFP4 uint4s per row (2*AQLM int4s)
-      if (s_n >= 2 && s_n <= 16 && (s_n & (s_n - 1)) == 0) G = s_n;
+    const bool kLaneRows = env_flag("GLM_MOE_LANE_ROWS");
+    if (kDedup || kLaneRows) {
+      static bool logged = false;
+      if (!logged) {
+        logged = true;
+        fprintf(stderr, "[aqlm_moe_v2] DECODE-K V3 kernel active: dedup=%d "
+                "lane_rows=%d\n", kDedup, (int)kLaneRows);
+      }
+      int G = 32;
+      if (kLaneRows) {
+        const int s_n = prob_k / 32;  // NVFP4 uint4s per row (2*AQLM int4s)
+        if (s_n >= 2 && s_n <= 16 && (s_n & (s_n - 1)) == 0) G = s_n;
+      }
+      const int R = 32 / G;
+      pick_grid(ceildiv(prob_m, R), n_rows_out, blocks, threads);
+      auto kern = HybridMatVecMoEV3<BOOKS, 1>;
+      if (kDedup == 2) {
+        kern = HybridMatVecMoEV3<BOOKS, 2>;
+      } else if (kDedup) {
+        kern = HybridMatVecMoEV3<BOOKS, 4>;
+      }
+      kern<<<blocks, threads, 0, stream>>>(
+          codes, codebooks, scales, aqlm_ids, packed, bscale, scale2, s2n,
+          nv_ids, B, C, prob_m, prob_k, n_rows_out, G);
+      return;
     }
-    const int R = 32 / G;
-    pick_grid(ceildiv(prob_m, R), n_rows_out, blocks, threads);
-    auto kern = HybridMatVecMoEV3<BOOKS, 1>;
-    if (kDedup == 2) {
-      kern = HybridMatVecMoEV3<BOOKS, 2>;
-    } else if (kDedup) {
-      kern = HybridMatVecMoEV3<BOOKS, 4>;
-    }
-    kern<<<blocks, threads, 0, stream>>>(
-        codes, codebooks, scales, aqlm_ids, packed, bscale, scale2, s2n,
-        nv_ids, B, C, prob_m, prob_k, n_rows_out, G);
-    return;
   }
   pick_grid(prob_m, n_rows_out, blocks, threads);
-  HybridMatVecMoE<BOOKS><<<blocks, threads, 0, stream>>>(
+  HybridMatVecMoE<BOOKS, GROUP><<<blocks, threads, 0, stream>>>(
       codes, codebooks, scales, aqlm_ids, packed, bscale, scale2, s2n, nv_ids,
       B, C, prob_m, prob_k);
 }
 
-template <int BOOKS>
+template <int BOOKS, int GROUP>
 void launch_dequant(const int4* codes, half* out, const int4* codebooks,
                     const half* scales, const int* expert_list, int n_experts,
                     int prob_m, int prob_k, cudaStream_t stream) {
   dim3 blocks(ceildiv(prob_m, THREAD_M), n_experts);
   int threads = 32 * THREAD_M;
-  CodeKx16DequantMoE<BOOKS><<<blocks, threads, 0, stream>>>(
+  CodeKx16DequantMoE<BOOKS, GROUP><<<blocks, threads, 0, stream>>>(
       codes, out, codebooks, scales, expert_list, prob_m, prob_k);
 }
 
@@ -868,24 +888,31 @@ torch::Tensor aqlm_moe_gemv(const torch::Tensor& x, const torch::Tensor& codes,
                             const torch::Tensor& expert_ids) {
   TORCH_CHECK(x.is_cuda() && x.dtype() == torch::kFloat16 && x.is_contiguous());
   TORCH_CHECK(codes.dim() == 4 && codes.dtype() == torch::kInt16);
-  TORCH_CHECK(codebooks.size(1) == 65536 && codebooks.size(2) == 8);
+  TORCH_CHECK(codebooks.size(1) == 65536 &&
+                  (codebooks.size(2) == 8 || codebooks.size(2) == 16),
+              "codebook group must be 8 or 16");
   TORCH_CHECK(expert_ids.dtype() == torch::kInt32 && expert_ids.is_contiguous());
   const int64_t n = x.size(0);
   const int64_t k = x.size(1);
   const int64_t m = codes.size(2);
   const int64_t books = codes.size(1);
-  TORCH_CHECK(codes.size(3) * 8 == k, "codes K mismatch");
+  const int group = (int)codebooks.size(2);
+  TORCH_CHECK(codes.size(3) * group == k, "codes K mismatch");
   TORCH_CHECK(expert_ids.size(0) == n);
-  TORCH_CHECK(k % 64 == 0, "K must be a multiple of 64");
+  TORCH_CHECK(k % (8 * group) == 0, "K must be a multiple of 8*group");
 
   const at::cuda::OptionalCUDAGuard guard(device_of(x));
   auto out = torch::empty({n, m}, x.options());
   auto stream = at::cuda::getCurrentCUDAStream().stream();
 
   if (n == 0) return out;
-  auto run =
-      books == 1 ? aqlm_moe_v2::launch_matvec<1> : aqlm_moe_v2::launch_matvec<2>;
   TORCH_CHECK(books == 1 || books == 2, "books must be 1 or 2");
+  auto run =
+      books == 1
+          ? (group == 8 ? aqlm_moe_v2::launch_matvec<1, 8>
+                        : aqlm_moe_v2::launch_matvec<1, 16>)
+          : (group == 8 ? aqlm_moe_v2::launch_matvec<2, 8>
+                        : aqlm_moe_v2::launch_matvec<2, 16>);
   run((const int4*)codes.data_ptr(), (const int4*)x.data_ptr(),
       (half*)out.data_ptr(), (const int4*)codebooks.data_ptr(),
       (const half*)scales.data_ptr(), expert_ids.data_ptr<int>(), (int)n,
@@ -942,16 +969,19 @@ torch::Tensor hybrid_moe_gemv(const torch::Tensor& x,
                               const torch::Tensor& nv_ids) {
   TORCH_CHECK(x.is_cuda() && x.dtype() == torch::kFloat16 && x.is_contiguous());
   TORCH_CHECK(codes.dim() == 4 && codes.dtype() == torch::kInt16);
-  TORCH_CHECK(codebooks.size(1) == 65536 && codebooks.size(2) == 8);
+  TORCH_CHECK(codebooks.size(1) == 65536 &&
+                  (codebooks.size(2) == 8 || codebooks.size(2) == 16),
+              "codebook group must be 8 or 16");
   TORCH_CHECK(aqlm_ids.dtype() == torch::kInt32 && aqlm_ids.is_contiguous());
   TORCH_CHECK(nv_ids.dtype() == torch::kInt32 && nv_ids.is_contiguous());
   const int64_t n = x.size(0);
   const int64_t k = x.size(1);
   const int64_t m = codes.size(2);
   const int64_t books = codes.size(1);
-  TORCH_CHECK(codes.size(3) * 8 == k, "codes K mismatch");
+  const int group = (int)codebooks.size(2);
+  TORCH_CHECK(codes.size(3) * group == k, "codes K mismatch");
   TORCH_CHECK(aqlm_ids.size(0) == n && nv_ids.size(0) == n);
-  TORCH_CHECK(k % 64 == 0, "K must be a multiple of 64");
+  TORCH_CHECK(k % (8 * group) == 0, "K must be a multiple of 8*group");
   const bool has_nv = packed.numel() > 0;
   int s2n = 1;
   if (has_nv) {
@@ -968,9 +998,13 @@ torch::Tensor hybrid_moe_gemv(const torch::Tensor& x,
   auto stream = at::cuda::getCurrentCUDAStream().stream();
   if (n == 0) return out;
 
-  auto run = books == 1 ? aqlm_moe_v2::launch_hybrid<1>
-                        : aqlm_moe_v2::launch_hybrid<2>;
   TORCH_CHECK(books == 1 || books == 2, "books must be 1 or 2");
+  auto run =
+      books == 1
+          ? (group == 8 ? aqlm_moe_v2::launch_hybrid<1, 8>
+                        : aqlm_moe_v2::launch_hybrid<1, 16>)
+          : (group == 8 ? aqlm_moe_v2::launch_hybrid<2, 8>
+                        : aqlm_moe_v2::launch_hybrid<2, 16>);
   run((const int4*)codes.data_ptr(), (const int4*)codebooks.data_ptr(),
       (const half*)scales.data_ptr(), aqlm_ids.data_ptr<int>(),
       has_nv ? (const int4*)packed.data_ptr() : nullptr,
@@ -992,7 +1026,9 @@ torch::Tensor aqlm_moe_dequant(const torch::Tensor& codes,
   const int64_t g = expert_list.size(0);
   const int64_t books = codes.size(1);
   const int64_t m = codes.size(2);
-  const int64_t k = codes.size(3) * 8;
+  const int group = (int)codebooks.size(2);
+  TORCH_CHECK(group == 8 || group == 16, "codebook group must be 8 or 16");
+  const int64_t k = codes.size(3) * group;
 
   const at::cuda::OptionalCUDAGuard guard(device_of(codes));
   auto out = torch::empty({g, m, k},
@@ -1000,9 +1036,13 @@ torch::Tensor aqlm_moe_dequant(const torch::Tensor& codes,
   auto stream = at::cuda::getCurrentCUDAStream().stream();
 
   if (g == 0) return out;
-  auto run = books == 1 ? aqlm_moe_v2::launch_dequant<1>
-                        : aqlm_moe_v2::launch_dequant<2>;
   TORCH_CHECK(books == 1 || books == 2, "books must be 1 or 2");
+  auto run =
+      books == 1
+          ? (group == 8 ? aqlm_moe_v2::launch_dequant<1, 8>
+                        : aqlm_moe_v2::launch_dequant<1, 16>)
+          : (group == 8 ? aqlm_moe_v2::launch_dequant<2, 8>
+                        : aqlm_moe_v2::launch_dequant<2, 16>);
   run((const int4*)codes.data_ptr(), (half*)out.data_ptr(),
       (const int4*)codebooks.data_ptr(), (const half*)scales.data_ptr(),
       expert_list.data_ptr<int>(), (int)g, (int)m, (int)k, stream);

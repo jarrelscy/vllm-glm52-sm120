@@ -7170,6 +7170,18 @@ class GPUModelRunner(
                         if kv_cache_spec.kv_quant_mode == KVQuantMode.NONE
                         else self.cache_config.cache_dtype
                     )
+                    # MLA specs (e.g. DeepseekV4 fp8_ds_mla) encode their exact
+                    # on-disk KV layout in ``cache_dtype_str`` but leave
+                    # ``kv_quant_mode`` at NONE. ``get_kv_cache_shape`` keys off
+                    # this string, so pass it through directly; otherwise the
+                    # kv_quant_mode-derived "auto" selects the unquantized
+                    # (semantic head_size) shape and mis-sizes the page (512 vs
+                    # the real 584B fp8_ds_mla row).
+                    spec_cache_dtype_str = getattr(
+                        kv_cache_spec, "cache_dtype_str", None
+                    )
+                    if spec_cache_dtype_str not in (None, "auto"):
+                        layer_cache_dtype_str = spec_cache_dtype_str
                     kv_cache_shape = attn_backend.get_kv_cache_shape(
                         kernel_num_blocks,
                         shape_block_size,

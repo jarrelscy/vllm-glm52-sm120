@@ -73,7 +73,11 @@ if TYPE_CHECKING:
 
 logger = init_logger(__name__)
 
-_EXPERTS_PREFIX_RE = re.compile(r"(?:model\.)?layers\.(\d+)\.mlp\.experts")
+# Matches both the DeepSeek-V2/GLM expert path (`.mlp.experts`) and the
+# DeepSeek-V4 path (`.ffn.experts`).
+_EXPERTS_PREFIX_RE = re.compile(
+    r"(?:model\.)?layers\.(\d+)\.(?:mlp|ffn)\.experts"
+)
 
 _ext = None
 
@@ -190,8 +194,10 @@ def _register_custom_ops() -> None:
 
     @aqlm_moe_dequant.register_fake
     def _(codes, codebooks, scales, expert_list):
+        # K = (codes along in-dim) * group_size; group_size = codebook width.
+        group = codebooks.shape[2]
         return codebooks.new_empty(
-            (expert_list.shape[0], codes.shape[2], codes.shape[3] * 8),
+            (expert_list.shape[0], codes.shape[2], codes.shape[3] * group),
             dtype=torch.float16,
         )
 
@@ -223,12 +229,13 @@ def _dequant_reference(
     codes: torch.Tensor, codebooks: torch.Tensor, scales: torch.Tensor
 ) -> torch.Tensor:
     """Pure-torch dequant of all experts, for testing: [E, M, K] fp16."""
-    e, books, m, k8 = codes.shape
-    idx = codes.view(torch.uint16).long()  # [E, books, M, K8]
-    w = codebooks[0][idx[:, 0]]  # [E, M, K8, 8]
+    e, books, m, kg = codes.shape
+    g = codebooks.shape[-1]  # group size (8 or 16)
+    idx = codes.view(torch.uint16).long()  # [E, books, M, KG]
+    w = codebooks[0][idx[:, 0]]  # [E, M, KG, g]
     for b in range(1, books):
         w = w + codebooks[b][idx[:, b]]
-    w = w.reshape(e, m, k8 * 8)
+    w = w.reshape(e, m, kg * g)
     return w * scales.unsqueeze(-1)
 
 
@@ -247,8 +254,11 @@ class NvFp4AqlmHybridConfig(QuantizationConfig):
         self.aqlm_layer_books = aqlm_layer_books
         self.entries = entries
         self.group_size = group_size
-        if entries != 65536 or group_size != 8:
-            raise ValueError("only 65536-entry codebooks over groups of 8")
+        if entries != 65536 or group_size not in (8, 16):
+            raise ValueError(
+                "only 65536-entry codebooks over groups of 8 (2.0 bpw) or "
+                "16 (1.0 bpw)"
+            )
 
     @classmethod
     def get_name(cls) -> str:
@@ -320,6 +330,7 @@ class NvFp4AqlmHybridConfig(QuantizationConfig):
                         n_nvfp4=b["n_nvfp4"],
                         n_base=b["n_base"],
                         n_cold=b["n_cold"],
+                        group_size=self.group_size,
                         tp_size=tp,
                         tp_rank=get_tensor_model_parallel_rank(),
                     )
@@ -329,19 +340,38 @@ class NvFp4AqlmHybridConfig(QuantizationConfig):
                     n_nvfp4=b["n_nvfp4"],
                     n_base=b["n_base"],
                     n_cold=b["n_cold"],
+                    group_size=self.group_size,
                 )
-        # v4: e4m3 W8A16 for the bf16-side attention / shared-expert projections
-        # (o_proj, q_b_proj, qkv_a, shared experts) — in the NVFP4 ignore-list,
-        # so without this they stay bf16. Undo: empty TARGET_SUFFIXES.
-        from vllm.model_executor.layers.linear import LinearBase
-        from vllm.model_executor.layers.quantization.fp8_w8a16 import (
-            Fp8W8A16LinearMethod,
-            matches as _fp8_matches,
-        )
+        # Non-expert modules (MLA attention projections, dense, shared experts)
+        # are stored as DSV4-native block-fp8 (e4m3 weights + e8m0 128x128 block
+        # scales) — byte-identical passthrough from the base fp8 checkpoint.
+        # Serve them through DSV4's own fp8 config so the fused_wqa_wkv /
+        # weight_scale_inv params and MLA weight absorption match the checkpoint
+        # exactly, identical to the base fp8 serve. (The GLM-style W8A16 matcher
+        # is wrong here: v4's MLA projections are fp8-on-disk, not bf16, and the
+        # bf16 side — compressor, norms — is built unquantized by the v4 model
+        # itself, so an empty-ignore fp8 config reproduces the base behaviour.)
+        return self._dsv4_fp8_config().get_quant_method(layer, prefix)
 
-        if isinstance(layer, LinearBase) and _fp8_matches(prefix):
-            return Fp8W8A16LinearMethod()
-        return self.nvfp4_config.get_quant_method(layer, prefix)
+    def _dsv4_fp8_config(self):
+        """DSV4-native block-fp8 config for the non-expert projections.
+
+        Cached. Constructed with the invariant DSV4 fp8 linear scheme
+        (e4m3 weights + e8m0 128x128 block scales, dynamic activations, no
+        ignore-list) — matching /data/deepseek-v4-pro-0813's quant_config.
+        """
+        cfg = getattr(self, "_dsv4_fp8", None)
+        if cfg is None:
+            from vllm.models.deepseek_v4.quant_config import DeepseekV4FP8Config
+
+            cfg = DeepseekV4FP8Config(
+                is_checkpoint_fp8_serialized=True,
+                activation_scheme="dynamic",
+                weight_block_size=[128, 128],
+                ignored_layers=[],
+            )
+            self._dsv4_fp8 = cfg
+        return cfg
 
     def apply_vllm_mapper(self, hf_to_vllm_mapper) -> None:
         self.nvfp4_config.apply_vllm_mapper(hf_to_vllm_mapper)
@@ -378,12 +408,14 @@ class HybridExpertsMoEMethod(FusedMoEMethodBase):
         n_nvfp4: int,
         n_base: int,
         n_cold: int,
+        group_size: int = 8,
     ) -> None:
         super().__init__(moe_config)
         self.layer_idx = layer_idx
         self.n_nvfp4 = n_nvfp4
         self.n_base = n_base
         self.n_cold = n_cold
+        self.group_size = group_size
         if self.moe.moe_parallel_config.tp_size > 1 or (
             self.moe.moe_parallel_config.ep_size > 1
         ):
@@ -411,7 +443,7 @@ class HybridExpertsMoEMethod(FusedMoEMethodBase):
 
         h = hidden_size
         i = intermediate_size_per_partition
-        g = 8
+        g = self.group_size
         entries = 65536
         na, nm, nc = self.n_nvfp4, self.n_base, self.n_cold
         nb = nm + nc

@@ -1162,6 +1162,28 @@ class DeepseekV4Model(nn.Module, EagleModelMixin):
         )
 
         for name, loaded_weight in weights:
+            # Hybrid per-expert tensors (nvfp4_aqlm_hybrid) are stored at the
+            # checkpoint-stable path ffn.experts.*; the runtime parameters live
+            # on the MoERunner's RoutedExperts submodule. Remap and load them
+            # through the generic single-tensor loader, bypassing both the
+            # stacked-param loop and the per-expert expert_mapping loop (whose
+            # w1/w2/w3 ckpt names can't match these stacked tensors).
+            if any(
+                f".ffn.experts.{p}" in name
+                for p in ("w13_", "w2_", "w2m_", "w2c_", "nvfp4_", "hyb_")
+            ):
+                name = name.replace(
+                    ".ffn.experts.", ".ffn.experts.routed_experts."
+                )
+                if is_pp_missing_parameter(name, self):
+                    continue
+                param = params_dict[name]
+                weight_loader = getattr(
+                    param, "weight_loader", default_weight_loader
+                )
+                weight_loader(param, loaded_weight)
+                loaded_params.add(name)
+                continue
             if pad_shared_expert and ".shared_experts." in name:
                 loaded_weight = self._pad_shared_expert_weight(name, loaded_weight)
             for param_name, weight_name, shard_id in stacked_params_mapping:

@@ -91,6 +91,7 @@ class TPHybridExpertsMoEMethod(HybridExpertsMoEMethod):
         self.n_nvfp4 = kw["n_nvfp4"]
         self.n_base = kw["n_base"]
         self.n_cold = kw["n_cold"]
+        self.group_size = kw.get("group_size", 8)
         import os
         self._stats_dir = os.environ.get("VLLM_HYBRID_EXPERT_STATS")
         self._stats = None
@@ -107,7 +108,7 @@ class TPHybridExpertsMoEMethod(HybridExpertsMoEMethod):
         h = hidden_size                       # hidden is NOT sharded
         ish = intermediate_size_per_partition
         i_full = ish * T
-        g = 8
+        g = self.group_size
         entries = 65536
         na, nm, nc = self.n_nvfp4, self.n_base, self.n_cold
         nb = nm + nc

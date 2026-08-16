@@ -92,6 +92,29 @@ ENV VLLM_DISABLE_FP8_W8A16=1
 # per-mode default (it can't tell an image default from a user override). Set -e NUM_SPEC=N to override.
 ENV MODEL_DIR=/models/1m PARALLEL=tp4-1m-mtp
 
+# --- DSV4-Pro-0813 boot fixes (cutlass-dsl 4.7.0 skew) -----------------------
+# flashinfer main pins nvidia-cutlass-dsl==4.7.0, which post-dates the cute
+# kernels vendored by the precompiled vLLM wheel and quack 0.5.0:
+#  1) 4.7.0 moved ThrMma/ThrCopy/TiledMma from cutlass.cute.core to cutlass.cute;
+#     stale annotations evaluate at import and kill the DSV4 sparse indexer.
+#  2) vllm_flash_attn/cute/utils.py::fmax assumes cu129 => old 3-positional
+#     nvvm.fmax; 4.7.0 uses the new 2-positional API even on cu129.
+#  3) 4.7.0's tvm_ffi_provider needs apache-tvm-ffi>=0.1.11 for
+#     map_dataclass_to_tuple, but 0.1.12+ breaks `import tilelang` (registry
+#     AttributeError) — 0.1.11 is the only version both accept.
+RUN . .venv/bin/activate && set -e; \
+    for root in /opt/vllm/vllm /opt/vllm/.venv/lib/python3.12/site-packages/quack; do \
+      [ -d "$root" ] || continue; \
+      grep -rl -E 'cute\.core\.(ThrMma|ThrCopy|TiledMma)' "$root" --include='*.py' 2>/dev/null \
+        | xargs -r sed -i -E 's/cute\.core\.(ThrMma|ThrCopy|TiledMma)/cute.\1/g'; \
+    done; \
+    F=/opt/vllm/vllm/vllm_flash_attn/cute/utils.py; \
+    if [ -f "$F" ]; then \
+      sed -i -E 's/if CUDA_VERSION\.major == 12 and CUDA_VERSION\.minor == 9:/if False:  # cutlass-dsl 4.7.0 uses new 2-arg nvvm.fmax on cu129 (patched)/' "$F"; \
+    fi; \
+    uv pip install "apache-tvm-ffi==0.1.11"
+# -----------------------------------------------------------------------------
+
 COPY docker-entrypoint.glm52.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 EXPOSE 8001

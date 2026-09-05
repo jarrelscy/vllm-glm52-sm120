@@ -2,9 +2,25 @@
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
 """Utility functions for sparse MLA backends."""
 
+import os
+
 import torch
 
 from vllm.triton_utils import tl, triton
+
+# See sparse_attn_indexer._CANONICAL_TOPK (determinism audit 2026-09-05).
+# The COMPACT_TO_FRONT path below reserves each tile's output slice with an
+# atomic add, so the compacted prefix ORDER is scheduling-dependent (measured
+# 500/500 order changes on fixed inputs, kbench/stress_indexer_order.py) even
+# when the upstream merge order is canonical. The trtllm-gen sparse kernel
+# accumulates the first valid_count entries in order -> fp reduction-order
+# nondeterminism. With the flag on, the compacted rows are re-sorted into a
+# canonical (descending physical slot) order; -1 padding stays at the tail.
+# Set-preserving => lossless. Default OFF pending live gating.
+_CANONICAL_TOPK = os.environ.get("VLLM_DSA_CANONICAL_TOPK", "0") not in (
+    "",
+    "0",
+)
 
 
 # Kernel with prefill workspace support and valid count tracking
@@ -331,6 +347,13 @@ def triton_filter_and_convert_dcp_index(
         out_stride0,
         out_stride1,
     )
+
+    if _CANONICAL_TOPK and compact_valid_to_front:
+        # Canonicalize the compacted prefix (atomic slot-allocator order is
+        # scheduling-dependent): descending sort keeps valid physical slots
+        # in a deterministic order and the -1 padding at the tail. Same set,
+        # deterministic downstream attention accumulation order.
+        out = torch.sort(out, dim=1, descending=True).values
 
     if return_valid_counts:
         assert valid_counts is not None

@@ -2,6 +2,8 @@
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
 """Custom Sparse Attention Indexer layers."""
 
+import os
+
 import torch
 
 import vllm.envs as envs
@@ -39,6 +41,44 @@ from vllm.v1.worker.workspace import current_workspace_manager
 logger = init_logger(__name__)
 
 RADIX_TOPK_WORKSPACE_SIZE = 1024 * 1024
+
+# --- VLLM_DSA_CANONICAL_TOPK (determinism audit 2026-09-05, default OFF) ----
+# The DCP top-k merge (StableTopKFromGatheredCandidatesKernel) emits the
+# selected indices via an atomic slot allocator: the selected SET is
+# deterministic (stable 64-bit keys, unique per token id) but the output
+# ORDER is warp-scheduling dependent — measured 500/500 order changes on
+# fixed inputs (kbench/stress_indexer_order.py). Downstream sparse attention
+# accumulates in index order, so an unspecified order = fp reduction-order
+# nondeterminism on every step, i.e. the baseline temp-0 divergence that any
+# timing shift (V4 gemv, tail-fusion, router-gemm) amplifies. With this flag
+# the order is canonicalized by a descending sort (valid ids descending, -1
+# padding at the tail): same selected set, deterministic order. Sort points
+# are chosen to cost ONE sort per layer per pass: decode rows are sorted
+# after the compact DCP filter (sparse_utils, covers attention + MTP draft
+# index-share); prefill-chunk merge rows are sorted here (they feed the
+# order-preserving prefill conversion directly). Measured torch.sort cost:
+# ~63us for [<=16, 2048] rows, ~236us/1.13ms for [2048/8192, 2048] (RTX PRO
+# 6000). Read once at import (static branch, capture-safe).
+_CANONICAL_TOPK = os.environ.get("VLLM_DSA_CANONICAL_TOPK", "0") not in (
+    "",
+    "0",
+)
+
+
+def _canonicalize_topk_order(topk_indices: torch.Tensor) -> None:
+    """Rewrite each row to a canonical (descending) order, -1 padding last.
+
+    In-place (the buffer is a view of the persistent topk_indices_buffer that
+    later ops -- MTP draft index-share, prefill unpack, the attention filter
+    -- read). torch.sort on int32 is a deterministic radix sort; valid ids
+    are >= 0 and padding is -1, so descending order keeps padding at the
+    tail without bit tricks. Set-preserving => lossless.
+    """
+    # NB: unstable sort is fine — values are unique except the repeated -1
+    # padding, so the sorted OUTPUT is identical either way.
+    topk_indices.copy_(
+        torch.sort(topk_indices, dim=-1, descending=True).values
+    )
 
 # --- index_share_for_mtp_iteration (GLM-5.2 / DSA MTP draft) ---------------
 # When enabled by the V2 speculator around the MTP draft-decode loop
@@ -139,6 +179,14 @@ def _merge_dcp_topk_global(
     stable_topk_from_gathered_candidates_cutedsl(
         gathered, topk_tokens, out=topk_indices
     )
+    if _CANONICAL_TOPK and row_starts is not None:
+        # Prefill-chunk merges: the rows feed the order-preserving prefill
+        # conversion (no compaction), so the merge order reaches the sparse
+        # attention directly -- canonicalize here. Decode rows (row_starts
+        # is None) are canonicalized after the compact filter instead
+        # (triton_filter_and_convert_dcp_index), covering every decode
+        # consumer (incl. MTP draft index-share) with one sort per layer.
+        _canonicalize_topk_order(topk_indices)
 
 
 def _merge_dcp_topk_global_async(
@@ -195,6 +243,9 @@ def _merge_dcp_topk_global_async(
         stable_topk_from_gathered_candidates_cutedsl(
             gathered, topk_tokens, out=topk_indices
         )
+        # No canonicalization here: this path is decode-only (row_starts is
+        # None); the compact filter's sort canonicalizes the order for every
+        # decode consumer (see _merge_dcp_topk_global / sparse_utils).
 
     stash_pending_dcp_merge(_finish)
 

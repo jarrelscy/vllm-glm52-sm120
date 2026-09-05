@@ -189,6 +189,168 @@ def run_case(ext, w, a_ids, n_ids, key, x, row_div, iters, traffic, graph,
     return bad_iters
 
 
+def _garbage_(t: torch.Tensor, seed: int) -> torch.Tensor:
+    """Fill a tensor in place with adversarial raw bit patterns.
+
+    Mix of uniform random int bits (hits NaN/Inf/denormal fp16/bf16 payloads)
+    and all-ones (0xFFFF = fp16 -NaN), so any kernel read of a byte the launch
+    does not own turns into a poisoned value that would visibly perturb (or
+    NaN-poison) accumulated math.
+    """
+    g = torch.Generator().manual_seed(seed)
+    i16 = t.view(-1).view(torch.int16)
+    if seed % 3 == 0:
+        i16.fill_(-1)  # 0xFFFF everywhere
+    else:
+        i16.copy_(torch.randint(-32768, 32767, (i16.numel(),),
+                                dtype=torch.int16, generator=g))
+    return t
+
+
+class Poisoner:
+    """Randomized allocator-pool poison between launches.
+
+    The serving-side failure mode fixed-input stress cannot catch: a kernel
+    reading bytes whose CONTENT is whatever the previous request left behind
+    (tail-of-row padding, torch.empty outputs, freed intermediates). Between
+    probe launches we (a) run a randomized PREDECESSOR launch of a different
+    logical shape through the same op chain, and (b) allocate/garbage/free a
+    spread of blocks sized like the probe's own intermediates, so the probe's
+    torch.empty allocations land on memory full of varying garbage. The probe
+    itself runs on bitwise-fixed logical inputs; any output flip = a read of
+    memory the launch does not own.
+    """
+
+    def __init__(self, ext, w, dev, seed=1234):
+        self.ext, self.w, self.dev = ext, w, dev
+        self.it = 0
+        self.seed = seed
+
+    def _pool_poison(self, sizes_bytes):
+        held = []
+        for i, nb in enumerate(sizes_bytes):
+            t = torch.empty(nb // 2, dtype=torch.float16, device=self.dev)
+            _garbage_(t, self.seed + self.it * 131 + i)
+            held.append(t)
+        del held  # freed poisoned blocks -> pool
+
+    def predecessor(self):
+        """Random-shape random-content launch through the full decode chain."""
+        self.it += 1
+        g = torch.Generator().manual_seed(self.seed + self.it)
+        tokens = int(torch.randint(1, 9, (1,), generator=g))
+        S = tokens * TOPK
+        hot = torch.rand(S, generator=g) < float(torch.rand(1, generator=g))
+        a_ids = torch.where(hot, torch.tensor(-1),
+                            torch.randint(0, N_COLD, (S,), generator=g)).int()
+        n_ids = torch.where(hot, torch.randint(0, N_HOT, (S,), generator=g),
+                            torch.tensor(-1)).int()
+        # a couple of masked slots, like MTP verify
+        a_ids[S - 1] = -1
+        n_ids[S - 1] = -1
+        a_ids, n_ids = a_ids.to(self.dev), n_ids.to(self.dev)
+        x = torch.empty(tokens, H, dtype=torch.float16, device=self.dev)
+        _garbage_(x, self.seed + self.it * 7 + 1)
+        # keep magnitudes finite-ish half the time; leave raw NaN garbage the
+        # other half (NaN inputs must also stay confined to the predecessor)
+        if self.it % 2:
+            x.copy_((torch.randn(tokens, H,
+                                 generator=g) / 8).to(torch.float16))
+        w = self.w
+        h13 = self.ext.hybrid_moe_gemv(
+            x, w["w13_codes"], w["w13_cbs"], w["w13_scales"],
+            a_ids, w["w13_packed"], w["w13_bscale"], w["w13_scale2"],
+            n_ids, TOPK)
+        hact = self.ext.silu_mul(h13)
+        out = self.ext.hybrid_moe_gemv(
+            hact, w["w2_codes"], w["w2_cbs"], w["w2_scales"], a_ids,
+            w["w2_packed"], w["w2_bscale"], w["w2_scale2"], n_ids)
+        wts = torch.rand(S, generator=g).float().to(self.dev)
+        self.ext.moe_combine(out, wts, TOPK, 2)
+        # poison blocks shaped like the probe's own intermediates
+        self._pool_poison([1 << 16, 1 << 18, 1 << 20, 3 << 20, 1 << 22])
+
+
+def run_case_poison(ext, w, a_ids, n_ids, key, x, row_div, iters, poisoner,
+                    label, tail=False, pad_tokens=0):
+    """Fixed logical inputs; randomized predecessor + pool poison between
+    launches; bit-compare probe outputs. tail=True runs the full
+    gemv->silu->gemv->combine chain (covers AQLM_FUSED_SILU /
+    AQLM_FUSED_COMBINE / AQLM_GEMV_BF16IN composition), else one gemv.
+
+    pad_tokens > 0 appends garbage rows (re-poisoned each iter) after the
+    fixed logical rows, mimicking CUDA-graph padded decode batches; only the
+    logical rows are compared (checks cross-row bleed).
+    """
+    S_logical = a_ids.shape[0]
+    g = torch.Generator().manual_seed(77)
+    pad_S = pad_tokens * TOPK
+
+    def build_inputs(it):
+        if pad_S == 0:
+            return x, a_ids, n_ids, None
+        xt = x if row_div > 1 else x
+        rows = xt.shape[0]
+        pad_rows = pad_tokens if row_div > 1 else pad_S
+        xp = torch.empty(rows + pad_rows, xt.shape[1], dtype=xt.dtype,
+                         device=xt.device)
+        xp[:rows] = xt
+        _garbage_(xp[rows:], 900 + it)
+        gp = torch.Generator().manual_seed(it)
+        ap = torch.randint(0, N_COLD, (pad_S,), generator=gp).int().to(x.device)
+        np_ = torch.full((pad_S,), -1, dtype=torch.int32, device=x.device)
+        # mix formats in the pad rows too
+        sel = torch.rand(pad_S, generator=gp) < 0.5
+        np_[sel.to(x.device)] = torch.randint(
+            0, N_HOT, (int(sel.sum()),), generator=gp).int().to(x.device)
+        ap[sel.to(x.device)] = -1
+        return (xp, torch.cat([a_ids, ap]), torch.cat([n_ids, np_]), None)
+
+    def call(xi, ai, ni):
+        args13 = (w[f"{key}_codes"], w[f"{key}_cbs"], w[f"{key}_scales"], ai,
+                  w[f"{key}_packed"], w[f"{key}_bscale"], w[f"{key}_scale2"],
+                  ni)
+        if not tail:
+            if row_div > 1:
+                return ext.hybrid_moe_gemv(xi, *args13, row_div)
+            return ext.hybrid_moe_gemv(xi, *args13)
+        h13 = (ext.hybrid_moe_gemv(xi, *args13, row_div) if row_div > 1
+               else ext.hybrid_moe_gemv(xi, *args13))
+        hact = ext.silu_mul(h13)
+        out = ext.hybrid_moe_gemv(
+            hact, w["w2_codes"], w["w2_cbs"], w["w2_scales"], ai,
+            w["w2_packed"], w["w2_bscale"], w["w2_scale2"], ni)
+        return ext.moe_combine(out, wts_fixed, TOPK, 2)
+
+    wts_fixed = torch.rand(a_ids.shape[0] + pad_S,
+                           generator=g).float().to(x.device)
+
+    xi, ai, ni = build_inputs(0)[:3]
+    ref = call(xi, ai, ni)[: (S_logical if not tail else S_logical // TOPK)]
+    ref = ref.clone()
+    torch.cuda.synchronize()
+
+    bad_iters = 0
+    first = None
+    for it in range(iters):
+        poisoner.predecessor()
+        xi, ai, ni = build_inputs(it + 1)[:3]
+        cur = call(xi, ai, ni)[
+            : (S_logical if not tail else S_logical // TOPK)]
+        if not torch.equal(cur.view(torch.int16), ref.view(torch.int16)):
+            bad_iters += 1
+            if first is None:
+                d = (cur.view(torch.int16) != ref.view(torch.int16))
+                first = (it, int(d.sum()),
+                         d.nonzero()[:4].flatten().tolist())
+    torch.cuda.synchronize()
+    tag = "RACE" if bad_iters else "ok  "
+    extra = f" first={first}" if first else ""
+    print(f"  [{tag}] {label}: {bad_iters}/{iters} divergent iters "
+          f"(poison){extra}")
+    return bad_iters
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--iters", type=int, default=300)
@@ -200,6 +362,14 @@ def main():
     ap.add_argument("--rowdiv", default="both", choices=["1", "8", "both"])
     ap.add_argument("--graph", action="store_true",
                     help="run under CUDAGraph capture+replay")
+    ap.add_argument("--poison", action="store_true",
+                    help="randomized-poison variant: randomized predecessor "
+                         "launches + garbage-filled allocator pool between "
+                         "fixed-input probe launches (catches reads of "
+                         "memory whose content depends on prior requests)")
+    ap.add_argument("--pad-tokens", type=int, default=4,
+                    help="poison mode: garbage token rows appended after the "
+                         "fixed logical rows (CUDA-graph padded batches)")
     ap.add_argument("--no-traffic", action="store_true")
     ap.add_argument("--sanitize", action="store_true",
                     help="tiny single-config run for compute-sanitizer")
@@ -257,6 +427,33 @@ def main():
     rowdivs = {"1": [1], "8": [TOPK]}.get(args.rowdiv, [1, TOPK])
 
     total_bad = 0
+    if args.poison:
+        poisoner = Poisoner(ext, w, dev)
+        for key in shapes:
+            for dt in dtypes:
+                for rd in rowdivs:
+                    if key == "w2" and rd > 1:
+                        continue  # prod w2 is always row_div=1
+                    xin = (x13c if rd > 1 else (x13e if key == "w13" else x2))
+                    for pad in (0, args.pad_tokens):
+                        total_bad += run_case_poison(
+                            ext, w, a_ids, n_ids, key, xin.to(dt), rd,
+                            args.iters, poisoner,
+                            f"{key} {str(dt)[6:]} rowdiv={rd} pad={pad}",
+                            pad_tokens=pad)
+        # full decode tail chain: gemv -> silu_mul -> gemv -> moe_combine
+        # (AQLM_FUSED_SILU / AQLM_FUSED_COMBINE / BF16IN / ROWMAP composed)
+        for dt in dtypes:
+            for rd in rowdivs:
+                xin = (x13c if rd > 1 else x13e).to(dt)
+                for pad in (0, args.pad_tokens):
+                    total_bad += run_case_poison(
+                        ext, w, a_ids, n_ids, "w13", xin, rd, args.iters,
+                        poisoner,
+                        f"tail-chain {str(dt)[6:]} rowdiv={rd} pad={pad}",
+                        tail=True, pad_tokens=pad)
+        print(f"TOTAL divergent iters (poison): {total_bad}")
+        sys.exit(1 if total_bad else 0)
     for key in shapes:
         for dt in dtypes:
             for rd in rowdivs:

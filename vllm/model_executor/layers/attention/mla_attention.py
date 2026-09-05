@@ -832,7 +832,12 @@ class MLAAttention(nn.Module, AttentionLayerBase):
                     # collective is in flight. Identical collective and
                     # kernels with identical inputs => bit-exact vs the
                     # serial order below.
-                    ag_q = AsyncAllGather(get_dcp_group(), mqa_q, dim=1)
+                    # flush_coalesce: under VLLM_GLM_COMM_COALESCE this
+                    # launches the layer's deferred indexer candidates
+                    # all-gather and this query all-gather in one NCCL group.
+                    ag_q = AsyncAllGather(
+                        get_dcp_group(), mqa_q, dim=1, flush_coalesce=True
+                    )
                     precomputed_indices = self.impl.precompute_mqa_indices(  # type: ignore[attr-defined]
                         attn_metadata, num_mqa_tokens
                     )

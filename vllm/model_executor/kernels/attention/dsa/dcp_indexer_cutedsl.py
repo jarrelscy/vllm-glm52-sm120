@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
 
+import os
 from functools import cache
 
 import cutlass
@@ -13,11 +14,25 @@ from quack.compile_utils import make_fake_tensor
 from vllm.cute_utils import recast_val
 from vllm.triton_utils import tl, triton
 
+# VLLM_DSA_CANONICAL_TOPK=inkernel (determinism follow-up 2026-09-05): the
+# selector below emits the selected set via an atomic slot allocator, so its
+# output ORDER is warp-scheduling dependent (see sparse_attn_indexer). The
+# "logical" mode fixes that with a post-hoc torch.sort (~63us/layer). In
+# "inkernel" mode the kernel itself finishes with a block-wide bitonic sort of
+# the output row (descending token id, -1 padding at the tail) in shared
+# memory -- byte-identical order to the "logical" torch.sort, at in-kernel
+# cost. Read once at import (static branch, capture-safe); kbench overrides
+# via the explicit `canonical=` argument.
+_CANONICAL_TOPK_INKERNEL = (
+    os.environ.get("VLLM_DSA_CANONICAL_TOPK", "0").strip().lower() == "inkernel"
+)
+
 
 def stable_topk_from_gathered_candidates_cutedsl(
     gathered: torch.Tensor,
     topk: int,
     out: torch.Tensor | None = None,
+    canonical: bool | None = None,
 ) -> torch.Tensor:
     if out is None:
         out = torch.empty(
@@ -25,9 +40,11 @@ def stable_topk_from_gathered_candidates_cutedsl(
             dtype=torch.int32,
             device=gathered.device,
         )
-    StableTopKFromGatheredCandidatesKernel.compile(topk, gathered.shape[1])(
-        gathered, out
-    )
+    if canonical is None:
+        canonical = _CANONICAL_TOPK_INKERNEL
+    StableTopKFromGatheredCandidatesKernel.compile(
+        topk, gathered.shape[1], canonical
+    )(gathered, out)
     return out
 
 
@@ -170,13 +187,23 @@ class StableTopKFromGatheredCandidatesKernel:
     hist_chunks = (hist_bins + tb_size - 1) // tb_size
     warps_per_block = tb_size // cute.arch.WARP_SIZE
 
-    def __init__(self, topk: int, num_candidates: int):
+    def __init__(self, topk: int, num_candidates: int, canonical: bool = False):
         assert num_candidates % self.tb_size == 0, (
             "StableTopKFromGatheredCandidatesKernel requires candidate count "
             f"to be a multiple of {self.tb_size}, got {num_candidates}"
         )
         self.topk = topk
         self.keys_per_thread = num_candidates // self.tb_size
+        self.canonical = canonical
+        if canonical:
+            # The canonical sort runs in the histogram smem after the radix
+            # passes finish, so the row must fit in it; topk is also required
+            # to be a power of two (bitonic network) and a multiple of tb_size
+            # (uniform per-thread element counts between barriers). All hold
+            # for the supported topk values (512, 1024, 2048).
+            assert topk <= self.hist_bins, (topk, self.hist_bins)
+            assert topk & (topk - 1) == 0, topk
+            assert topk % self.tb_size == 0, (topk, self.tb_size)
 
         @cute.struct
         class SharedStorage:
@@ -341,6 +368,114 @@ class StableTopKFromGatheredCandidatesKernel:
         cute.arch.sync_threads()
         return pass_finished
 
+    @cute.jit
+    def _canonical_sort_desc(
+        self,
+        output_row: cute.Tensor,
+        storage,
+        tid: Int32,
+    ):
+        """Block-wide bitonic sort of output_row[0:topk], DESCENDING.
+
+        Values are int32 token ids (unique) with -1 padding; descending order
+        keeps the padding at the tail. Byte-identical result to the "logical"
+        mode's post-hoc ``torch.sort(..., descending=True)``, but runs inside
+        the selector launch.
+
+        Element mapping: thread ``tid`` keeps ``elems = topk / tb_size``
+        values in registers, element index ``i = e * tb_size + tid``. For a
+        compare-exchange stride ``j`` the partner element then lives
+          * in the SAME THREAD for ``j >= tb_size`` (register swap, free),
+          * in the SAME WARP for ``j < 32`` (butterfly shuffle, no barrier),
+          * across warps otherwise (one smem exchange + 2 barriers).
+        For topk=2048/tb=512 that is 3 register steps, 45 shuffle steps and
+        only 18 smem steps of the 66-step network (vs 66 all-smem barrier
+        steps for the naive version). All lanes are active in every step
+        (each element keeps max or min of its pair; direction and side derive
+        from bits k and j of the element index). The histogram smem is reused
+        as the exchange buffer (the radix passes are done with it by now).
+        """
+        sort_smem = storage.hist.get_tensor(cute.make_layout((self.hist_bins,)))
+        elems = self.topk // self.tb_size
+        vals = cute.make_rmem_tensor((elems,), Int32)
+        for e in cutlass.range_constexpr(elems):
+            vals[e] = output_row[tid + Int32(e * self.tb_size)]
+
+        log2n = self.topk.bit_length() - 1
+        for kk in cutlass.range_constexpr(1, log2n + 1):
+            k = 1 << kk
+            for jj in cutlass.range_constexpr(kk):
+                j = 1 << (kk - 1 - jj)
+                if cutlass.const_expr(j >= self.tb_size):
+                    # In-thread register step: pair (e, e ^ j/tb) of this
+                    # thread's own elements. Direction depends only on bit k
+                    # of i = e*tb + tid, which is an e bit here (k > j >= tb),
+                    # so it is compile-time per pair.
+                    ej = j // self.tb_size
+                    for e in cutlass.range_constexpr(elems):
+                        if cutlass.const_expr((e & ej) == 0):
+                            pe = e | ej
+                            # keep max at the LOW index iff descending block
+                            keep_max_low = ((e * self.tb_size) & k) == 0
+                            a = vals[e]
+                            b = vals[pe]
+                            if cutlass.const_expr(keep_max_low):
+                                if a < b:
+                                    vals[e] = b
+                                    vals[pe] = a
+                            else:
+                                if a > b:
+                                    vals[e] = b
+                                    vals[pe] = a
+                elif cutlass.const_expr(j >= cute.arch.WARP_SIZE):
+                    # Cross-warp step: exchange through smem. Two barriers:
+                    # publish, then read-partner (the second barrier protects
+                    # the next step's writes from overtaking these reads).
+                    for e in cutlass.range_constexpr(elems):
+                        sort_smem[tid + Int32(e * self.tb_size)] = vals[e]
+                    cute.arch.sync_threads()
+                    for e in cutlass.range_constexpr(elems):
+                        i = tid + Int32(e * self.tb_size)
+                        b = sort_smem[i ^ Int32(j)]
+                        a = vals[e]
+                        mn = a
+                        mx = b
+                        if a > b:
+                            mn = b
+                            mx = a
+                        # keep max iff bit k and bit j of i agree (both zero:
+                        # low side of a descending block; both one: high side
+                        # of an ascending block).
+                        keep = mn
+                        if ((i >> Int32(kk)) & Int32(1)) == (
+                            (i >> Int32(kk - 1 - jj)) & Int32(1)
+                        ):
+                            keep = mx
+                        vals[e] = keep
+                    cute.arch.sync_threads()
+                else:
+                    # Intra-warp step: butterfly shuffle, no barrier.
+                    for e in cutlass.range_constexpr(elems):
+                        i = tid + Int32(e * self.tb_size)
+                        a = vals[e]
+                        b = Int32(
+                            cute.arch.shuffle_sync_bfly(a, offset=j)
+                        )
+                        mn = a
+                        mx = b
+                        if a > b:
+                            mn = b
+                            mx = a
+                        keep = mn
+                        if ((i >> Int32(kk)) & Int32(1)) == (
+                            (i >> Int32(kk - 1 - jj)) & Int32(1)
+                        ):
+                            keep = mx
+                        vals[e] = keep
+
+        for e in cutlass.range_constexpr(elems):
+            output_row[tid + Int32(e * self.tb_size)] = vals[e]
+
     @cute.kernel
     def kernel(
         self,
@@ -396,9 +531,14 @@ class StableTopKFromGatheredCandidatesKernel:
                 True,
             )
 
+        if cutlass.const_expr(self.canonical):
+            # Every _radix_pass exits through a sync_threads, so all committed
+            # output_row stores are visible block-wide here.
+            self._canonical_sort_desc(output_row, storage, tid)
+
     @cache
     @staticmethod
-    def compile(topk: int, num_candidates: int):
+    def compile(topk: int, num_candidates: int, canonical: bool = False):
         num_rows = cute.sym_int()
 
         gathered = cute.runtime.make_fake_tensor(
@@ -409,7 +549,7 @@ class StableTopKFromGatheredCandidatesKernel:
         )
         out = make_fake_tensor(Int32, (num_rows, topk), divisibility=1)
 
-        kernel = StableTopKFromGatheredCandidatesKernel(topk, num_candidates)
+        kernel = StableTopKFromGatheredCandidatesKernel(topk, num_candidates, canonical)
         stream = cute.runtime.make_fake_stream(use_tvm_ffi_env_stream=True)
         return cute.compile(
             kernel,

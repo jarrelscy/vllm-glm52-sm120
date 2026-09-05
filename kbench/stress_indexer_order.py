@@ -91,6 +91,10 @@ def main():
         triton_filter_and_convert_dcp_index,
     )
     canonical = _CANONICAL_TOPK
+    # "inkernel" mode: the selector kernel itself must be bit-stable — no
+    # python-side sort is applied (that would mask a kernel-order bug).
+    mode = os.environ.get("VLLM_DSA_CANONICAL_TOPK", "0").strip().lower()
+    inkernel = mode == "inkernel"
 
     traffic = None if args.no_traffic else side_traffic(dev)
 
@@ -107,10 +111,11 @@ def main():
 
     def run_merge():
         # Mirrors _merge_dcp_topk_global: selector + (flag-gated) canonical
-        # ordering.
+        # ordering. In "inkernel" mode the selector sorts internally (the
+        # wrapper reads the env flag), so no python-side sort is applied.
         stable_topk_from_gathered_candidates_cutedsl(
             gathered, args.topk, out=out)
-        if canonical:
+        if canonical and not inkernel:
             _canonicalize_topk_order(out)
 
     sc, oc = run_repeated(run_merge, lambda: out, args.iters, traffic)

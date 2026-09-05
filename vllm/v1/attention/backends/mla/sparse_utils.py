@@ -32,9 +32,22 @@ from vllm.triton_utils import tl, triton
 # order-preserving mode followed by a STABLE compaction of the valid slots,
 # so the attention accumulation order is a pure function of request content.
 # Same selected set => lossless; deterministic across block layouts.
+#
+# VLLM_DSA_CANONICAL_TOPK=inkernel (2026-09-05 follow-up 2): same canonical
+# order as "logical" (the DCP merge kernel emits descending-global-token-id
+# rows itself now, see dcp_indexer_cutedsl), but the compaction keeps that
+# order IN-KERNEL: instead of the atomic slot allocator (order unspecified)
+# or the "logical" post-hoc stable argsort+gather (~63us/layer), each tile
+# derives its output base deterministically as the number of valid entries in
+# all PRECEDING columns of its row (DETERMINISTIC_BASE below). Validity is a
+# pure function of the token id and compile-time constants (DCP ownership +
+# block-bound check need no block_table load), so the prefix re-evaluation
+# costs one extra masked row read per tile and zero atomics/sorts.
+# Bit-identical output to "logical" mode.
 _ct = os.environ.get("VLLM_DSA_CANONICAL_TOPK", "0").strip().lower()
 _CANONICAL_TOPK = _ct not in ("", "0")
 _CANONICAL_TOPK_LOGICAL = _ct == "logical"
+_CANONICAL_TOPK_INKERNEL = _ct == "inkernel"
 del _ct
 
 
@@ -60,6 +73,14 @@ def _convert_req_index_to_global_index_kernel(
     # Requires COUNT_VALID and an out buffer pre-filled with -1. Order within the
     # prefix is unspecified (only the selected set matters).
     COMPACT_TO_FRONT: tl.constexpr,
+    # With COMPACT_TO_FRONT: derive each tile's output base deterministically
+    # (count of valid entries in all preceding columns of the row) instead of
+    # the atomic slot allocator, so the compacted prefix PRESERVES the input
+    # column order — a pure function of the row content, scheduling-independent.
+    # valid_count_ptr is then only written when COUNT_VALID is set (and may be
+    # null otherwise). Decode-only (asserted host-side: no prefill workspace).
+    DETERMINISTIC_BASE: tl.constexpr,
+    TOPK_TOTAL: tl.constexpr,  # full row width, for the prefix re-evaluation
     # DCP de-interleave: with DCP_SIZE == 1 these are an exact no-op
     DCP_SIZE: tl.constexpr,
     DCP_RANK: tl.constexpr,
@@ -133,7 +154,35 @@ def _convert_req_index_to_global_index_kernel(
         is_valid = (~is_invalid_tok).to(tl.int32)
         local_offset = tl.cumsum(is_valid) - is_valid
         tile_valid_count = tl.sum(is_valid)
-        base = tl.atomic_add(valid_count_ptr + token_id, tile_valid_count)
+        if DETERMINISTIC_BASE:
+            # Deterministic base: number of VALID entries among all columns
+            # before this tile. Validity is a pure function of the token id
+            # (DCP ownership + block-bound check) and compile-time constants,
+            # so one masked read of the row prefix reproduces it exactly —
+            # matching the is_invalid_tok computation above term for term
+            # (tok < 0, block bound, remoteness; no block_table load needed).
+            prev_cols = tl.arange(0, TOPK_TOTAL)
+            prev_mask = prev_cols < tile_id * BLOCK_N
+            ptok = tl.load(
+                token_indices_ptr + token_id * ti_stride0 + prev_cols * ti_stride1,
+                mask=prev_mask,
+                other=-1,
+            )
+            p_local = (
+                ptok // (DCP_SIZE * DCP_INTERLEAVE)
+            ) * DCP_INTERLEAVE + ptok % DCP_INTERLEAVE
+            p_block = p_local // BLOCK_SIZE
+            p_invalid = (
+                (ptok < 0)
+                | (((ptok // DCP_INTERLEAVE) % DCP_SIZE) != DCP_RANK)
+                | (p_block >= max_num_blocks_per_req)
+                | (p_block < 0)
+            )
+            base = tl.sum((~p_invalid).to(tl.int32))
+            if COUNT_VALID:
+                tl.atomic_add(valid_count_ptr + token_id, tile_valid_count)
+        else:
+            base = tl.atomic_add(valid_count_ptr + token_id, tile_valid_count)
         dest = base + local_offset
         out_ptr_dest = out_ptr + token_id * out_stride0 + dest * out_stride1
         tl.store(out_ptr_dest, out_val, mask=is_valid == 1)
@@ -243,6 +292,8 @@ def triton_convert_req_index_to_global_index(
         HAS_PREFILL_WORKSPACE,
         return_valid_counts,
         False,  # COMPACT_TO_FRONT: keep input column == output column
+        False,  # DETERMINISTIC_BASE (no compaction here)
+        NUM_TOPK_TOKENS,
         # DCP disabled (no-op de-interleave)
         1,
         0,
@@ -283,7 +334,12 @@ def triton_filter_and_convert_dcp_index(
     creates interior gaps; the trtllm-gen sparse kernel reads the first
     ``valid_count`` entries of each row, so they must be a contiguous prefix.
     Compaction is fused into the kernel (atomic slot allocator) rather than a
-    separate sort/gather pass. Prefix order is unspecified (only the set matters).
+    separate sort/gather pass. Prefix order is unspecified (only the set
+    matters) — except under VLLM_DSA_CANONICAL_TOPK: "1" re-sorts the prefix
+    (descending physical slot), "logical" compacts stably after an
+    order-preserving conversion, and "inkernel" keeps the fused compaction but
+    derives each tile's output base deterministically so the prefix preserves
+    the (already canonical) input order at atomic-path cost.
     """
     assert dcp_size >= 1
     assert 0 <= dcp_rank < dcp_size
@@ -326,10 +382,18 @@ def triton_filter_and_convert_dcp_index(
     logical_compact = _CANONICAL_TOPK_LOGICAL and compact_valid_to_front
     if logical_compact:
         compact_valid_to_front = False
+    # VLLM_DSA_CANONICAL_TOPK=inkernel: keep the fused compaction but derive
+    # each tile's output base deterministically inside the kernel (order-
+    # preserving, no atomics/sorts). See flag comment at top of file.
+    deterministic_base = _CANONICAL_TOPK_INKERNEL and compact_valid_to_front
 
-    # The compaction uses the valid-count buffer as an atomic slot allocator, so
-    # it requires counting. Pre-fill out with -1 so the unwritten tail stays -1.
-    count_valid = return_valid_counts or compact_valid_to_front
+    # The atomic compaction uses the valid-count buffer as a slot allocator, so
+    # it requires counting; the deterministic-base compaction only counts when
+    # the caller asked for counts. Pre-fill out with -1 so the unwritten tail
+    # stays -1.
+    count_valid = return_valid_counts or (
+        compact_valid_to_front and not deterministic_base
+    )
     if compact_valid_to_front:
         out = torch.full_like(token_indices_c, -1)
     else:
@@ -360,6 +424,8 @@ def triton_filter_and_convert_dcp_index(
         False,  # HAS_PREFILL
         count_valid,
         compact_valid_to_front,
+        deterministic_base,
+        NUM_TOPK_TOKENS,
         dcp_size,
         dcp_rank,
         cp_kv_cache_interleave_size,
@@ -381,13 +447,18 @@ def triton_filter_and_convert_dcp_index(
             (out == -1).to(torch.int8), dim=1, stable=True
         )
         out = torch.gather(out, 1, order)
-    elif _CANONICAL_TOPK and compact_valid_to_front:
+    elif (
+        _CANONICAL_TOPK
+        and not _CANONICAL_TOPK_INKERNEL
+        and compact_valid_to_front
+    ):
         # Canonicalize the compacted prefix (atomic slot-allocator order is
         # scheduling-dependent): descending sort keeps valid physical slots
         # in a deterministic order and the -1 padding at the tail. Same set,
         # deterministic downstream attention accumulation order — but only
         # per KV-block layout; see the "logical" mode above for the
-        # layout-independent variant.
+        # layout-independent variant. "inkernel" mode needs no post-pass: the
+        # DETERMINISTIC_BASE compaction already preserved the canonical order.
         out = torch.sort(out, dim=1, descending=True).values
 
     if return_valid_counts:

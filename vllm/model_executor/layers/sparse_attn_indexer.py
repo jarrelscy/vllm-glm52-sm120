@@ -71,9 +71,23 @@ RADIX_TOPK_WORKSPACE_SIZE = 1024 * 1024
 # and sparse_utils switches the decode conversion to order-preserving +
 # stable compaction, making the accumulation order a pure function of
 # request content. Set-preserving => lossless.
+#
+# VLLM_DSA_CANONICAL_TOPK=inkernel (2026-09-05 follow-up 2): same canonical
+# order as "logical" (descending global token id everywhere) but at in-kernel
+# cost — no post-hoc torch.sort here at all:
+#   * the DCP merge selector (StableTopKFromGatheredCandidatesKernel) finishes
+#     with a block-wide bitonic sort of its output row in shared memory, so
+#     BOTH prefill-chunk and decode merges (sync and deferred/async) emit
+#     canonical rows directly;
+#   * the decode compact filter (sparse_utils) keeps that order via a
+#     deterministic per-tile output base (DETERMINISTIC_BASE) instead of the
+#     atomic slot allocator — no stable argsort/gather pass.
+# Bit-identical outputs to "logical" mode (verified by
+# kbench/check_canonical_logical.py); same coverage, same lossless argument.
 _ct = os.environ.get("VLLM_DSA_CANONICAL_TOPK", "0").strip().lower()
 _CANONICAL_TOPK = _ct not in ("", "0")
 _CANONICAL_TOPK_LOGICAL = _ct == "logical"
+_CANONICAL_TOPK_INKERNEL = _ct == "inkernel"
 del _ct
 
 
@@ -191,7 +205,11 @@ def _merge_dcp_topk_global(
     stable_topk_from_gathered_candidates_cutedsl(
         gathered, topk_tokens, out=topk_indices
     )
-    if _CANONICAL_TOPK and row_starts is not None:
+    if _CANONICAL_TOPK_INKERNEL:
+        # The merge kernel itself emitted the canonical (descending global
+        # token id) order — nothing to do here for prefill or decode rows.
+        pass
+    elif _CANONICAL_TOPK and row_starts is not None:
         # Prefill-chunk merges: the rows feed the order-preserving prefill
         # conversion (no compaction), so the merge order reaches the sparse
         # attention directly -- canonicalize here. Decode rows (row_starts
@@ -267,6 +285,8 @@ def _merge_dcp_topk_global_async(
         # canonicalizes the order for every decode consumer (see
         # _merge_dcp_topk_global / sparse_utils). "logical" mode instead
         # canonicalizes the LOGICAL merge output (mirrors the sync path).
+        # "inkernel" mode needs nothing: the selector kernel emitted the
+        # canonical order already.
         if _CANONICAL_TOPK_LOGICAL:
             _canonicalize_topk_order(topk_indices)
 

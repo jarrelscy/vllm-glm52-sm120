@@ -17,10 +17,25 @@ from vllm.triton_utils import tl, triton
 # nondeterminism. With the flag on, the compacted rows are re-sorted into a
 # canonical (descending physical slot) order; -1 padding stays at the tail.
 # Set-preserving => lossless. Default OFF pending live gating.
-_CANONICAL_TOPK = os.environ.get("VLLM_DSA_CANONICAL_TOPK", "0") not in (
-    "",
-    "0",
-)
+#
+# VLLM_DSA_CANONICAL_TOPK=logical (2026-09-05 follow-up): the descending
+# PHYSICAL sort above is deterministic only per KV-block layout — physical
+# slot ids are block_table[req, i]*BLOCK_SIZE + off, and the block ids a
+# request gets depend on the block-pool free-list state left by PREVIOUS
+# requests. Two runs of the same prompt after different predecessors select
+# the same logical token set but sort it into a different physical order ->
+# different fp accumulation order in the sparse attention -> temp-0 flips
+# that track predecessor request shapes (flag-independent; observed on every
+# campaign-flag combination). "logical" mode removes the layout dependence:
+# the merged LOGICAL top-k is canonicalized (descending global token id) at
+# the merge (sparse_attn_indexer), and the conversion below runs in
+# order-preserving mode followed by a STABLE compaction of the valid slots,
+# so the attention accumulation order is a pure function of request content.
+# Same selected set => lossless; deterministic across block layouts.
+_ct = os.environ.get("VLLM_DSA_CANONICAL_TOPK", "0").strip().lower()
+_CANONICAL_TOPK = _ct not in ("", "0")
+_CANONICAL_TOPK_LOGICAL = _ct == "logical"
+del _ct
 
 
 # Kernel with prefill workspace support and valid count tracking
@@ -304,6 +319,14 @@ def triton_filter_and_convert_dcp_index(
     block_table_c = block_table.contiguous()
     token_indices_c = token_indices.contiguous()
 
+    # VLLM_DSA_CANONICAL_TOPK=logical: skip the in-kernel atomic compaction
+    # and compact deterministically afterwards (stable, order-preserving), so
+    # the prefix order inherits the canonical LOGICAL order of the input row
+    # instead of an atomic/physical order. See flag comment at top of file.
+    logical_compact = _CANONICAL_TOPK_LOGICAL and compact_valid_to_front
+    if logical_compact:
+        compact_valid_to_front = False
+
     # The compaction uses the valid-count buffer as an atomic slot allocator, so
     # it requires counting. Pre-fill out with -1 so the unwritten tail stays -1.
     count_valid = return_valid_counts or compact_valid_to_front
@@ -348,11 +371,23 @@ def triton_filter_and_convert_dcp_index(
         out_stride1,
     )
 
-    if _CANONICAL_TOPK and compact_valid_to_front:
+    if logical_compact:
+        # Stable compaction of the order-preserving conversion output: valid
+        # slots move to a contiguous prefix KEEPING their relative (logical,
+        # already canonicalized at the merge) order; -1 holes move to the
+        # tail. Deterministic regardless of KV block layout: the prefix order
+        # is a pure function of the selected logical token set.
+        order = torch.argsort(
+            (out == -1).to(torch.int8), dim=1, stable=True
+        )
+        out = torch.gather(out, 1, order)
+    elif _CANONICAL_TOPK and compact_valid_to_front:
         # Canonicalize the compacted prefix (atomic slot-allocator order is
         # scheduling-dependent): descending sort keeps valid physical slots
         # in a deterministic order and the -1 padding at the tail. Same set,
-        # deterministic downstream attention accumulation order.
+        # deterministic downstream attention accumulation order — but only
+        # per KV-block layout; see the "logical" mode above for the
+        # layout-independent variant.
         out = torch.sort(out, dim=1, descending=True).values
 
     if return_valid_counts:

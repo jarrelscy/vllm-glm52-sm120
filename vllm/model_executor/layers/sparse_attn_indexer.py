@@ -59,10 +59,22 @@ RADIX_TOPK_WORKSPACE_SIZE = 1024 * 1024
 # order-preserving prefill conversion directly). Measured torch.sort cost:
 # ~63us for [<=16, 2048] rows, ~236us/1.13ms for [2048/8192, 2048] (RTX PRO
 # 6000). Read once at import (static branch, capture-safe).
-_CANONICAL_TOPK = os.environ.get("VLLM_DSA_CANONICAL_TOPK", "0") not in (
-    "",
-    "0",
-)
+#
+# VLLM_DSA_CANONICAL_TOPK=logical (2026-09-05 follow-up): the decode-path
+# sort in sparse_utils orders PHYSICAL slot ids, which depend on the KV
+# block layout the block pool assigned — a function of predecessor request
+# history. Deterministic within one layout, but the same prompt after
+# different predecessors accumulates attention in a different order ->
+# temp-0 flips tracking predecessor shapes, on every flag combination.
+# "logical" mode canonicalizes the merged LOGICAL top-k here (descending
+# global token id, one sort per layer, same cost point as the prefill sort)
+# and sparse_utils switches the decode conversion to order-preserving +
+# stable compaction, making the accumulation order a pure function of
+# request content. Set-preserving => lossless.
+_ct = os.environ.get("VLLM_DSA_CANONICAL_TOPK", "0").strip().lower()
+_CANONICAL_TOPK = _ct not in ("", "0")
+_CANONICAL_TOPK_LOGICAL = _ct == "logical"
+del _ct
 
 
 def _canonicalize_topk_order(topk_indices: torch.Tensor) -> None:
@@ -187,6 +199,13 @@ def _merge_dcp_topk_global(
         # (triton_filter_and_convert_dcp_index), covering every decode
         # consumer (incl. MTP draft index-share) with one sort per layer.
         _canonicalize_topk_order(topk_indices)
+    elif _CANONICAL_TOPK_LOGICAL and row_starts is None:
+        # "logical" mode, decode rows: canonicalize the LOGICAL merged top-k
+        # here; the DCP filter then preserves this order (order-preserving
+        # conversion + stable compaction in sparse_utils), so the attention
+        # accumulation order is independent of the KV block layout. Also
+        # covers MTP draft index-share reads of the buffer.
+        _canonicalize_topk_order(topk_indices)
 
 
 def _merge_dcp_topk_global_async(
@@ -243,9 +262,13 @@ def _merge_dcp_topk_global_async(
         stable_topk_from_gathered_candidates_cutedsl(
             gathered, topk_tokens, out=topk_indices
         )
-        # No canonicalization here: this path is decode-only (row_starts is
-        # None); the compact filter's sort canonicalizes the order for every
-        # decode consumer (see _merge_dcp_topk_global / sparse_utils).
+        # Physical-sort mode: no canonicalization here — this path is
+        # decode-only (row_starts is None) and the compact filter's sort
+        # canonicalizes the order for every decode consumer (see
+        # _merge_dcp_topk_global / sparse_utils). "logical" mode instead
+        # canonicalizes the LOGICAL merge output (mirrors the sync path).
+        if _CANONICAL_TOPK_LOGICAL:
+            _canonicalize_topk_order(topk_indices)
 
     stash_pending_dcp_merge(_finish)
 

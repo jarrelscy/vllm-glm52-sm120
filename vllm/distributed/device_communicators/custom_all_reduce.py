@@ -148,12 +148,33 @@ class CustomAllreduce:
         assert current_platform.is_cuda_alike()
         fully_connected = current_platform.is_fully_connected(physical_device_ids)
         if world_size > 2 and not fully_connected:
-            logger.warning(
-                "Custom allreduce is disabled because it's not supported on"
-                " more than two PCIe-only GPUs. To silence this warning, "
-                "specify disable_custom_all_reduce=True explicitly."
-            )
-            return
+            if envs.VLLM_FORCE_CUSTOM_ALLREDUCE:
+                logger.warning(
+                    "VLLM_FORCE_CUSTOM_ALLREDUCE=1: enabling custom allreduce "
+                    "on %d PCIe-only GPUs despite the missing NVLink/full-mesh "
+                    "fabric. All other safety checks (P2P capability, IPC, "
+                    "world size, size thresholds) still apply. The IPC "
+                    "one-shot/two-shot kernels will run over PCIe P2P; this "
+                    "is only sensible when P2P works between ALL GPU pairs.",
+                    world_size,
+                )
+                # The C++ algorithm dispatch (csrc/custom_all_reduce.cuh,
+                # REDUCE_CASE) launches NO kernel for world_size > 2 unless
+                # fully_connected_ is set — the PCIe-only multi-GPU path was
+                # unreachable upstream. fully_connected is otherwise only used
+                # for one-shot/two-shot selection (both are correct over PCIe
+                # P2P), so report the topology as fully connected to get the
+                # size-based algorithm selection and to pass should_custom_ar.
+                fully_connected = True
+            else:
+                logger.warning(
+                    "Custom allreduce is disabled because it's not supported on"
+                    " more than two PCIe-only GPUs. To silence this warning, "
+                    "specify disable_custom_all_reduce=True explicitly. To "
+                    "force-enable it on a PCIe P2P-capable full mesh, set "
+                    "VLLM_FORCE_CUSTOM_ALLREDUCE=1."
+                )
+                return
         # test P2P capability, this checks software/cudaruntime support
         # this is expensive to compute at the first time
         # then we cache the result

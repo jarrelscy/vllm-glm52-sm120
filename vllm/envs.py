@@ -113,6 +113,7 @@ if TYPE_CHECKING:
     VLLM_TRITON_FORCE_FIRST_CONFIG: bool = False
     VLLM_ALLOW_RUNTIME_LORA_UPDATING: bool = False
     VLLM_SKIP_P2P_CHECK: bool = False
+    VLLM_FORCE_CUSTOM_ALLREDUCE: bool = False
     VLLM_DISABLED_KERNELS: list[str] = []
     VLLM_ENABLE_FLA_PACKED_RECURRENT_DECODE: bool = True
     VLLM_DISABLE_PYNCCL: bool = False
@@ -1111,6 +1112,18 @@ environment_variables: dict[str, Callable[[], Any]] = {
     # so that vLLM can verify if p2p is actually working.
     # See https://github.com/vllm-project/vllm/blob/a9b15c606fea67a072416ea0ea115261a2756058/vllm/distributed/device_communicators/custom_all_reduce_utils.py#L101-L108 for details. # noqa
     "VLLM_SKIP_P2P_CHECK": lambda: os.getenv("VLLM_SKIP_P2P_CHECK", "1") == "1",
+    # Force-enable the custom (IPC one-shot/two-shot) allreduce on topologies
+    # with more than two PCIe-only GPUs (no NVLink full mesh), which vLLM
+    # otherwise disables by blanket policy. Bypasses ONLY the full-mesh/NVLink
+    # capability check; all other safety checks (P2P capability test, IPC
+    # support, supported world sizes, max-size thresholds) remain in force.
+    # Only set this when GPU P2P works between ALL pairs (e.g. PCIe Gen5 x16
+    # with verified peer access), otherwise custom allreduce stays disabled by
+    # the P2P check anyway.
+    "VLLM_FORCE_CUSTOM_ALLREDUCE": lambda: (
+        os.environ.get("VLLM_FORCE_CUSTOM_ALLREDUCE", "0").strip().lower()
+        in ("1", "true")
+    ),
     # List of quantization kernels that should be disabled, used for testing
     # and performance comparisons. Currently only affects MPLinearKernel
     # selection

@@ -32,6 +32,7 @@
  * ~1e-3 relative (validated in bench.py).
  */
 
+#include <cstring>
 #include <cuda.h>
 #include <cuda_fp16.h>
 #include <cuda_fp8.h>
@@ -1195,11 +1196,17 @@ void launch_hybrid(const int4* codes, const int4* codebooks,
                    const uchar2* bscale, const float* scale2, int s2n,
                    const int* nv_ids, const int4* B, half* C, int n_rows_out,
                    int prob_m, int prob_k, cudaStream_t stream) {
-  // V4 pipelined path (AQLM_GEMV_PIPELINE=1, default OFF; takes precedence
+  // V4 pipelined path (AQLM_GEMV_PIPELINE, default OFF; takes precedence
   // over GLM_MOE_DEDUP / GLM_MOE_LANE_ROWS, and subsumes lane-rows). Falls
   // back to the V2/V3 paths below when the shape doesn't fit the pipelined
   // kernel (activations > smem budget, or > 6 weight chunks per lane).
-  if (env_flag("AQLM_GEMV_PIPELINE") && prob_k / 8 <= V4_MAX_ACT_INT4) {
+  // Values: "1"/"both" = V4 for w13+w2; "w2" = V4 only for the small-K
+  // (cpl==1, i.e. w2/down) shape; "w13" = only the large-K shape. Live
+  // slot-hot-fraction can sit in the regime where V4 w13 regresses vs V3
+  // while w2 always wins, so "w2" allows a per-projection split.
+  const char* pipe_env = getenv("AQLM_GEMV_PIPELINE");
+  const bool pipe_on = pipe_env && pipe_env[0] && pipe_env[0] != '0';
+  if (pipe_on && prob_k / 8 <= V4_MAX_ACT_INT4) {
     const int s_n = prob_k / 32;  // NVFP4 uint4s per row
     int G = 32;                   // lane-rows grouping, same rule as V3
     if (s_n >= 2 && s_n <= 16 && (s_n & (s_n - 1)) == 0) G = s_n;
@@ -1210,8 +1217,11 @@ void launch_hybrid(const int4* codes, const int4* codebooks,
     if (cpl == 1) {
       kern = HybridMatVecMoEV4<BOOKS, 4, 1>;  // small K: 4 rows per warp
       RW = 4;
+      if (strcmp(pipe_env, "w13") == 0) ok = false;
     } else if (cpl > 6) {
       ok = false;
+    } else {
+      if (strcmp(pipe_env, "w2") == 0) ok = false;
     }
     if (ok) {
       static bool logged4 = false;

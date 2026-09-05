@@ -93,6 +93,18 @@ def _env_flag(name: str) -> bool:
 #       --combine, incl the -0.0 zero-init edge).
 #   AQLM_GLUE_OPT=1        single stacked-table gather for the per-slot
 #       format-lookup ids (integer-exact) instead of 3 separate gathers.
+#   AQLM_GEMV_ROWMAP=1     (tail-fusion-2) the w13 gemv computes its
+#       activation row as slot // top_k in-kernel, so the per-layer
+#       x.repeat_interleave(top_k, dim=0) index kernel is never launched
+#       and the [T*top_k, K] expansion never materializes. The kernel
+#       stages exactly the bytes the expanded tensor would have held, so
+#       outputs are bit-identical (validated in kbench --rowmap on
+#       V2/V3/V4, fp16 + bf16 inputs, both projection shapes).
+#   AQLM_FUSED_SILU=1      (tail-fusion-2) one kernel for the SwiGLU
+#       mid-tail silu(h13[:, :m]) * h13[:, m:] instead of the eager
+#       silu + mul pair. Replicates torch's exact numerics including the
+#       fp16 intermediate rounding between the two ops (all-65536-bit-
+#       pattern sweeps in kbench --silu).
 # Read once at import: the decode path is captured in CUDA graphs, so these
 # must be static branches.
 _BF16IN = _env_flag("AQLM_GEMV_BF16IN")
@@ -105,6 +117,8 @@ _BF16IN = _env_flag("AQLM_GEMV_BF16IN")
 _BF16IN_MAXT = int(os.environ.get("AQLM_GEMV_BF16IN_MAXT", "6"))
 _FUSED_COMBINE = _env_flag("AQLM_FUSED_COMBINE")
 _GLUE_OPT = _env_flag("AQLM_GLUE_OPT")
+_GEMV_ROWMAP = _env_flag("AQLM_GEMV_ROWMAP")
+_FUSED_SILU = _env_flag("AQLM_FUSED_SILU")
 
 _COMBINE_MODE = {torch.float32: 0, torch.float16: 1, torch.bfloat16: 2}
 
@@ -213,6 +227,44 @@ def _register_custom_ops() -> None:
         # AQLM_GEMV_BF16IN; the kernel converts during smem staging).
         return x.new_empty((x.shape[0], codes.shape[2]),
                            dtype=torch.float16)
+
+    # ROWMAP variant: x is the compact [T, K] token activations and the
+    # kernel maps slot -> activation row slot // row_div, so the output has
+    # one row per SLOT (= aqlm_ids length), not per x row. Registered as a
+    # separate op so the env-off traced graph is unchanged.
+    @torch.library.custom_op(
+        "aqlm_hybrid::hybrid_moe_gemv_rowmap", mutates_args=()
+    )
+    def hybrid_moe_gemv_rowmap(
+        x: torch.Tensor,
+        codes: torch.Tensor,
+        codebooks: torch.Tensor,
+        scales: torch.Tensor,
+        aqlm_ids: torch.Tensor,
+        packed: torch.Tensor,
+        bscale: torch.Tensor,
+        scale2: torch.Tensor,
+        nv_ids: torch.Tensor,
+        row_div: int,
+    ) -> torch.Tensor:
+        return _get_ext().hybrid_moe_gemv(
+            x, codes, codebooks, scales, aqlm_ids, packed, bscale, scale2,
+            nv_ids, row_div,
+        )
+
+    @hybrid_moe_gemv_rowmap.register_fake
+    def _(x, codes, codebooks, scales, aqlm_ids, packed, bscale, scale2,
+          nv_ids, row_div):
+        return x.new_empty((aqlm_ids.shape[0], codes.shape[2]),
+                           dtype=torch.float16)
+
+    @torch.library.custom_op("aqlm_hybrid::silu_mul", mutates_args=())
+    def silu_mul(x: torch.Tensor) -> torch.Tensor:
+        return _get_ext().silu_mul(x)
+
+    @silu_mul.register_fake
+    def _(x):
+        return x.new_empty((x.shape[0], x.shape[1] // 2))
 
     @torch.library.custom_op("aqlm_hybrid::moe_combine", mutates_args=())
     def moe_combine(
@@ -609,7 +661,11 @@ class HybridExpertsMoEMethod(FusedMoEMethodBase):
             w2c_ids = layer._w2c_lookup[flat]
             nv_ids = layer._nv_lookup[flat] if self.n_nvfp4 > 0 else None
         # Each token row repeated top_k times: rows of xr line up with slots.
-        xr = xf.repeat_interleave(top_k, dim=0)
+        # ROWMAP: skip the expansion — the fused w13 gemv computes its
+        # activation row as slot // top_k in-kernel (bit-identical bytes),
+        # so the repeat_interleave index kernel is never launched.
+        rowmap = _GEMV_ROWMAP and fused_fmt
+        xr = xf if rowmap else xf.repeat_interleave(top_k, dim=0)
 
         if self.n_base == 0:
             # Fused path: one launch per projection dispatches each slot to
@@ -624,11 +680,19 @@ class HybridExpertsMoEMethod(FusedMoEMethodBase):
                         layer.nvfp4_w13_scale2)
                 nv2 = (layer.nvfp4_w2_packed, layer.nvfp4_w2_bscale,
                        layer.nvfp4_w2_scale2)
-            h13 = ops.hybrid_moe_gemv(
-                xr, layer.w13_codes, layer.w13_codebooks, layer.w13_scales,
-                b_ids, *nv13, nv_ids,
-            )
-            hact = _silu_and_mul(h13).contiguous()
+            if rowmap:
+                h13 = ops.hybrid_moe_gemv_rowmap(
+                    xr, layer.w13_codes, layer.w13_codebooks,
+                    layer.w13_scales, b_ids, *nv13, nv_ids, top_k,
+                )
+            else:
+                h13 = ops.hybrid_moe_gemv(
+                    xr, layer.w13_codes, layer.w13_codebooks,
+                    layer.w13_scales, b_ids, *nv13, nv_ids,
+                )
+            # w2 activations are per-slot already (row_div=1).
+            hact = (ops.silu_mul(h13) if _FUSED_SILU
+                    else _silu_and_mul(h13).contiguous())
             out = ops.hybrid_moe_gemv(
                 hact, layer.w2c_codes, layer.w2c_codebooks, layer.w2c_scales,
                 w2c_ids, *nv2, nv_ids,
@@ -644,7 +708,8 @@ class HybridExpertsMoEMethod(FusedMoEMethodBase):
                 xr, layer.nvfp4_w13_packed, layer.nvfp4_w13_bscale,
                 layer.nvfp4_w13_scale2, nv_ids,
             )
-        hact = _silu_and_mul(h13).contiguous()
+        hact = (ops.silu_mul(h13) if _FUSED_SILU
+                else _silu_and_mul(h13).contiguous())
         out = None
         for codes, cbs, scales, ids, n in (
             (layer.w2m_codes, layer.w2m_codebooks, layer.w2m_scales,

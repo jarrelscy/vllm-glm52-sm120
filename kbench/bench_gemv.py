@@ -21,6 +21,19 @@ Args: --tokens N (default 4 = 1+ns3 verify) --hot-frac F --iters --compile-only
       --combine (tail-fusion: validate moe_combine against the eager
                  .float()*w -> sum(dim=1) -> .to(dtype) tail — bit-exact in
                  all three output modes — and time both)
+      --rowmap  (tail-fusion-2: validate hybrid_moe_gemv row_div (in-kernel
+                 slot -> slot//top_k activation row mapping) against the
+                 x.repeat_interleave(top_k) expansion it replaces — must be
+                 BIT-exact on V2, V3 (dedup+lane-rows) and V4, fp16 + bf16,
+                 both shapes, T=1..512 — and time gemv + the saved kernel)
+      --silu    (tail-fusion-2: validate the fused silu_mul kernel against
+                 torch's eager F.silu(x[:, :m]) * x[:, m:] pair — bit-exact
+                 incl all-65536-bit-pattern gate and up sweeps, -0.0,
+                 denormals, inf/nan — and time both)
+      --compose (tail-fusion-2: full decode-tail emulation with V4 pipeline
+                 + bf16 input + fused combine: {repeat_interleave + eager
+                 silu} vs {rowmap + fused silu} must produce bit-identical
+                 final combined output)
 """
 import argparse, os, pathlib, sys
 
@@ -254,6 +267,169 @@ def check_combine(ext, tokens, iters, dev):
           f"({t_e - t_k:+.2f} us/layer)")
 
 
+def check_rowmap(ext, w, hot_frac, iters, dev):
+    """gemv(x, row_div=top_k) must be BIT-identical to
+    gemv(x.repeat_interleave(top_k), row_div=1) on every kernel path."""
+    failed = False
+    g = torch.Generator().manual_seed(11)
+    for path, pre, post in (
+        ("V2", lambda: (set_pipeline(False), set_v3(False)), None),
+        ("V3", lambda: (set_pipeline(False), set_v3(True)),
+         lambda: set_v3(False)),
+        ("V4", lambda: (set_pipeline(True), set_v3(False)),
+         lambda: set_pipeline(False)),
+    ):
+        pre()
+        for T in (1, 2, 3, 4, 64, 512):
+            mixes = ("prod",) if T > 4 else ("prod", "dup", "realdup")
+            for mix in mixes:
+                a_ids, n_ids = make_slots(T, hot_frac, mix, dev, seed=T)
+                for k, K in (("w13", H), ("w2", I)):
+                    xt = ((torch.randn(T, K, generator=g) / 8)
+                          .to(torch.float16).to(dev))
+                    for dt in (torch.float16, torch.bfloat16):
+                        xd = xt.to(dt)
+                        xr = xd.repeat_interleave(TOPK, dim=0)
+                        args = (w[f"{k}_codes"], w[f"{k}_cbs"],
+                                w[f"{k}_scales"], a_ids, w[f"{k}_packed"],
+                                w[f"{k}_bscale"], w[f"{k}_scale2"], n_ids)
+                        got = ext.hybrid_moe_gemv(xd, *args, TOPK)
+                        ref = ext.hybrid_moe_gemv(xr, *args)
+                        same = torch.equal(got.view(torch.int16),
+                                           ref.view(torch.int16))
+                        if not same or (T == 4 and mix == "prod"):
+                            print(f"  ROWMAP {path} {k:3s} T={T:3d} "
+                                  f"mix={mix} {str(dt)[6:]}: "
+                                  f"bit-exact={same}")
+                        failed |= not same
+        if post:
+            post()
+    if failed:
+        sys.exit("ROWMAP NOT BIT-EXACT vs repeat_interleave path")
+    print("  ROWMAP all paths/shapes/dtypes/T bit-exact PASS")
+    # timing at the prod decode point: saved repeat_interleave kernel plus
+    # V4 w13 gemv expanded-input vs rowmap
+    set_pipeline(True)
+    for T in (1, 4):
+        a_ids, n_ids = make_slots(T, hot_frac, "prod", dev, seed=T)
+        xt = ((torch.randn(T, H, generator=g) / 8).to(torch.float16).to(dev))
+        xr = xt.repeat_interleave(TOPK, dim=0)
+        args = (w["w13_codes"], w["w13_cbs"], w["w13_scales"], a_ids,
+                w["w13_packed"], w["w13_bscale"], w["w13_scale2"], n_ids)
+        t_rep = timed(lambda: xt.repeat_interleave(TOPK, dim=0), iters)
+        t_exp = timed(lambda: ext.hybrid_moe_gemv(xr, *args), iters)
+        t_map = timed(lambda: ext.hybrid_moe_gemv(xt, *args, TOPK), iters)
+        print(f"  ROWMAP V4 w13 T={T}: gemv expanded {t_exp:.2f} us  "
+              f"rowmap {t_map:.2f} us ({t_map - t_exp:+.2f})  saved "
+              f"repeat_interleave {t_rep:.2f} us  net "
+              f"{t_exp + t_rep - t_map:+.2f} us/layer")
+    set_pipeline(False)
+
+
+def _eager_silu_mul(x):
+    d = x.shape[-1] // 2
+    return (torch.nn.functional.silu(x[..., :d]) * x[..., d:]).contiguous()
+
+
+def check_silu(ext, tokens, iters, dev):
+    """silu_mul must match torch's eager silu + mul pair bit-for-bit."""
+    g = torch.Generator().manual_seed(13)
+    failed = False
+
+    def cmp(tag, x):
+        got = ext.silu_mul(x)
+        ref = _eager_silu_mul(x)
+        same = torch.equal(got.view(torch.int16), ref.view(torch.int16))
+        n_nan = int((got.isnan() & ref.isnan()).sum())
+        print(f"  SILU {tag}: bit-exact={same}"
+              + (f" (incl {n_nan} nan outputs)" if n_nan else ""))
+        return same
+
+    m = I  # 512: prod w13 output half-width
+    # all-65536-bit-pattern gate sweep (covers -0.0, denormals, inf, nan)
+    pats = (torch.arange(65536, dtype=torch.int32).to(torch.int16)
+            .view(torch.float16).to(dev).reshape(-1, m))
+    ones = torch.ones_like(pats)
+    rnd = (torch.randn(pats.shape, generator=g) * 2).to(torch.float16).to(dev)
+    failed |= not cmp("gate=allbits up=1   ",
+                      torch.cat([pats, ones], -1).contiguous())
+    failed |= not cmp("gate=allbits up=rand",
+                      torch.cat([pats, rnd], -1).contiguous())
+    failed |= not cmp("gate=rand up=allbits",
+                      torch.cat([rnd, pats], -1).contiguous())
+    # -0.0 / denormal edges on both halves
+    z = torch.full((4, m), -0.0, dtype=torch.float16, device=dev)
+    dn = (torch.randint(1, 1024, (4, m), generator=g).to(torch.int16)
+          .view(torch.float16).to(dev))  # fp16 denormals
+    for tag, a, b in (("gate=-0.0 up=rand ", z, rnd[:4]),
+                      ("gate=rand up=-0.0 ", rnd[:4], z),
+                      ("gate=denorm up=den", dn, -dn)):
+        failed |= not cmp(tag, torch.cat([a, b], -1).contiguous())
+    # prod shapes (vector kernel) + scalar-kernel odd width
+    for T in (1, 2, 3, tokens, 64, 512):
+        x = ((torch.randn(T * TOPK, 2 * m, generator=g) / 4)
+             .to(torch.float16).to(dev))
+        failed |= not cmp(f"T={T:3d} m={m}       ", x)
+    xo = ((torch.randn(37, 2 * 12, generator=g) / 4)
+          .to(torch.float16).to(dev))
+    failed |= not cmp("scalar m=12         ", xo)
+    if failed:
+        sys.exit("SILU NOT BIT-EXACT vs torch eager pair")
+    x = ((torch.randn(tokens * TOPK, 2 * m, generator=g) / 4)
+         .to(torch.float16).to(dev))
+    t_k = timed(lambda: ext.silu_mul(x), iters)
+    t_e = timed(lambda: _eager_silu_mul(x), iters)
+    print(f"  SILU kernel {t_k:.2f} us   eager silu+mul {t_e:.2f} us   "
+          f"({t_e - t_k:+.2f} us/layer)")
+
+
+def check_compose(ext, w, tokens, hot_frac, iters, dev):
+    """Full decode-tail emulation of _apply_gemv (fused n_base==0 path) with
+    the existing flags on (V4 pipeline, bf16 activations, fused combine):
+    baseline {repeat_interleave + eager silu} vs {rowmap + fused silu} must
+    agree bit-for-bit on the final combined [T, H] bf16 output."""
+    g = torch.Generator().manual_seed(17)
+    set_pipeline(True)
+    failed = False
+    for T in (1, 2, 4):
+        a_ids, n_ids = make_slots(T, hot_frac, "prod", dev, seed=100 + T)
+        x = (torch.randn(T, H, generator=g) / 8).to(torch.bfloat16).to(dev)
+        wts = torch.randn(T, TOPK, generator=g).float().to(dev)
+        wflat = wts.reshape(-1).contiguous()
+        a13 = (w["w13_codes"], w["w13_cbs"], w["w13_scales"], a_ids,
+               w["w13_packed"], w["w13_bscale"], w["w13_scale2"], n_ids)
+        a2 = (w["w2_codes"], w["w2_cbs"], w["w2_scales"], a_ids,
+              w["w2_packed"], w["w2_bscale"], w["w2_scale2"], n_ids)
+
+        def tail(rowmap_silu):
+            if rowmap_silu:
+                h13 = ext.hybrid_moe_gemv(x, *a13, TOPK)
+                hact = ext.silu_mul(h13)
+            else:
+                xr = x.repeat_interleave(TOPK, dim=0)
+                h13 = ext.hybrid_moe_gemv(xr, *a13)
+                hact = _eager_silu_mul(h13)
+            y = ext.hybrid_moe_gemv(hact, *a2)
+            return ext.moe_combine(y, wflat, TOPK, 2)  # bf16 out
+
+        ref, got = tail(False), tail(True)
+        same = torch.equal(got.view(torch.int16), ref.view(torch.int16))
+        print(f"  COMPOSE T={T} (V4+bf16in+fused-combine): rowmap+silu "
+              f"bit-exact={same}")
+        failed |= not same
+        if T == tokens or T == 4:
+            # best-of-3 alternating reps: a single pass right after the
+            # bit-checks sees a cold L2/allocator state and can invert the
+            # comparison by several us.
+            t_off = min(timed(lambda: tail(False), iters) for _ in range(3))
+            t_on = min(timed(lambda: tail(True), iters) for _ in range(3))
+            print(f"  COMPOSE T={T} tail: flags-off {t_off:.2f} us  "
+                  f"flags-on {t_on:.2f} us  ({t_on - t_off:+.2f} us/layer)")
+    set_pipeline(False)
+    if failed:
+        sys.exit("COMPOSE NOT BIT-EXACT")
+
+
 def timed(fn, iters, warmup=50):
     for _ in range(warmup):
         fn()
@@ -286,6 +462,12 @@ def main():
                     help="validate/time bf16-activation gemv input")
     ap.add_argument("--combine", action="store_true",
                     help="validate/time the fused top-k combine epilogue")
+    ap.add_argument("--rowmap", action="store_true",
+                    help="validate/time in-kernel slot->token row mapping")
+    ap.add_argument("--silu", action="store_true",
+                    help="validate/time the fused silu_mul mid-tail kernel")
+    ap.add_argument("--compose", action="store_true",
+                    help="all-flags-on decode-tail emulation bit-check")
     args = ap.parse_args()
     set_pipeline(False)  # bit-exact V2/V3 default unless --pipeline
 
@@ -314,7 +496,14 @@ def main():
         check_bf16in(ext, w, a_ids, n_ids, x13, x2, args.iters)
     if args.combine:
         check_combine(ext, args.tokens, args.iters, dev)
-    if (args.bf16in or args.combine) and not (args.check or args.prof):
+    if args.rowmap:
+        check_rowmap(ext, w, args.hot_frac, args.iters, dev)
+    if args.silu:
+        check_silu(ext, args.tokens, args.iters, dev)
+    if args.compose:
+        check_compose(ext, w, args.tokens, args.hot_frac, args.iters, dev)
+    if (args.bf16in or args.combine or args.rowmap or args.silu
+            or args.compose) and not (args.check or args.prof):
         return
 
     runs = []

@@ -369,6 +369,13 @@ __global__ void NvFp4MatVecMoE(const int4* __restrict__ packed,
 // projection. Exactly one of aqlm_ids[slot] / nv_ids[slot] is >= 0 for an
 // active slot; both < 0 writes zeros. The branch is uniform per block
 // (blockIdx.y == slot), so the contained __syncthreads is safe.
+//
+// row_div (AQLM_GEMV_ROWMAP glue, default 1 = previous behavior): slot s
+// reads activation row s / row_div, so the caller can pass the compact
+// [T, K] token activations with row_div = top_k instead of materializing
+// x.repeat_interleave(top_k, dim=0). The staged bytes are identical to the
+// expanded tensor's, so outputs are bit-identical; only the per-block base
+// pointer changes (one integer divide per block).
 // ---------------------------------------------------------------------------
 template <int BOOKS, bool BF16IN = false>
 __global__ void HybridMatVecMoE(
@@ -377,7 +384,8 @@ __global__ void HybridMatVecMoE(
     const int4* __restrict__ packed, const uchar2* __restrict__ bscale,
     const float* __restrict__ scale2, const int s2n,
     const int* __restrict__ nv_ids, const int4* __restrict__ B_all,
-    half* __restrict__ C, const int prob_m, const int prob_k) {
+    half* __restrict__ C, const int prob_m, const int prob_k,
+    const int row_div) {
   const int slot = blockIdx.y;
   const int a_id = aqlm_ids[slot];
   const int n_id = nv_ids[slot];
@@ -385,7 +393,7 @@ __global__ void HybridMatVecMoE(
   const bool pred = row < prob_m;
   __shared__ int4 sh_b[32 * 9 + (NVFP4_SMEM_EXTRA + 3) / 4];
 
-  const int4* B = B_all + (int64_t)slot * (prob_k / 8);
+  const int4* B = B_all + (int64_t)(slot / row_div) * (prob_k / 8);
   half* C_slot = C + (int64_t)slot * prob_m;
 
   if (a_id >= 0) {
@@ -425,7 +433,14 @@ __device__ __forceinline__ void aqlm_multi_gemv(
     const half* __restrict__ scales, const int expert,
     const int4* __restrict__ B_all, half* __restrict__ C,
     const int* __restrict__ slots_u, const int U, const int prob_m,
-    const int prob_k, int4* sh_b, const int row0, const int G) {
+    const int prob_k, int4* sh_b, const int row0, const int G,
+    const int row_div) {
+  // Activation row per slot (ROWMAP: slot / row_div; row_div == 1 -> slot).
+  int brow[UMAX];
+#pragma unroll
+  for (int su = 0; su < UMAX; su++) {
+    brow[su] = su < U ? slots_u[su] / row_div : 0;
+  }
   const int lane = threadIdx.x % 32;
   const int g = lane / G;        // row group within the warp
   const int tt = lane - g * G;   // in-group lane
@@ -453,7 +468,7 @@ __device__ __forceinline__ void aqlm_multi_gemv(
       const int su = i / 256, ii = i - su * 256;
       if (su < U && b_gl_rd + ii < prob_k / 8) {
         sh_b[su * 288 + 9 * (ii / 8) + ii % 8] = stage_act<BF16IN>(
-            B_all[(int64_t)slots_u[su] * (prob_k / 8) + b_gl_rd + ii]);
+            B_all[(int64_t)brow[su] * (prob_k / 8) + b_gl_rd + ii]);
       }
     }
     __syncthreads();
@@ -526,7 +541,13 @@ __device__ __forceinline__ void nvfp4_multi_gemv(
     const float* __restrict__ scale2, const int s2n, const int expert,
     const int4* __restrict__ B_all, half* __restrict__ C,
     const int* __restrict__ slots_u, const int U, const int prob_m,
-    const int prob_k, int4* sh_b, const int row0, const int G) {
+    const int prob_k, int4* sh_b, const int row0, const int G,
+    const int row_div) {
+  int brow[UMAX];
+#pragma unroll
+  for (int su = 0; su < UMAX; su++) {
+    brow[su] = su < U ? slots_u[su] / row_div : 0;
+  }
   const int lane = threadIdx.x % 32;
   const int g = lane / G;
   const int tt = lane - g * G;
@@ -564,7 +585,7 @@ __device__ __forceinline__ void nvfp4_multi_gemv(
       const int su = i / 128, ii = i - su * 128;
       if (su < U && b_gl_rd + ii < prob_k / 8) {
         sh_b[su * 288 + ii] = stage_act<BF16IN>(
-            B_all[(int64_t)slots_u[su] * (prob_k / 8) + b_gl_rd + ii]);
+            B_all[(int64_t)brow[su] * (prob_k / 8) + b_gl_rd + ii]);
       }
     }
     __syncthreads();
@@ -622,7 +643,7 @@ __global__ void HybridMatVecMoEV3(
     const float* __restrict__ scale2, const int s2n,
     const int* __restrict__ nv_ids, const int4* __restrict__ B_all,
     half* __restrict__ C, const int prob_m, const int prob_k,
-    const int n_slots, const int G) {
+    const int n_slots, const int G, const int row_div) {
   const int slot = blockIdx.y;
   const int my_a = __ldg(&aqlm_ids[slot]);
   const int my_n = __ldg(&nv_ids[slot]);
@@ -677,10 +698,11 @@ __global__ void HybridMatVecMoEV3(
   if (fmt == 0) {
     aqlm_multi_gemv<BOOKS, UMAX, BF16IN>(codes, codebooks, scales, my_a, B_all,
                                          C, slots_u, U, prob_m, prob_k, sh_b,
-                                         row0, G);
+                                         row0, G, row_div);
   } else if (fmt == 1) {
     nvfp4_multi_gemv<UMAX, BF16IN>(packed, bscale, scale2, s2n, my_n, B_all, C,
-                                   slots_u, U, prob_m, prob_k, sh_b, row0, G);
+                                   slots_u, U, prob_m, prob_k, sh_b, row0, G,
+                                   row_div);
   } else {
     const int lane = threadIdx.x % 32;
     const int g = lane / G, tt = lane - g * G;
@@ -740,6 +762,23 @@ __device__ __forceinline__ void cp_async16(void* smem_dst,
 #if V4_CP_ASYNC
   const unsigned d = static_cast<unsigned>(__cvta_generic_to_shared(smem_dst));
   asm volatile("cp.async.cg.shared.global [%0], [%1], 16;\n" ::"r"(d),
+               "l"(gmem_src));
+#else
+  *reinterpret_cast<int4*>(smem_dst) =
+      *reinterpret_cast<const int4*>(gmem_src);
+#endif
+}
+
+// L1-allocating variant (.ca) for ROWMAP staging: when row_div > 1 several
+// co-resident blocks (different slots of the same token) read the SAME
+// activation row, so allocating it in the SM-local L1 turns the duplicate
+// L2 fan-in into L1 hits. Pointless at row_div == 1 (each row read once per
+// SM) — the default staging stays .cg, byte-identical to the shipped build.
+__device__ __forceinline__ void cp_async16_ca(void* smem_dst,
+                                              const void* gmem_src) {
+#if V4_CP_ASYNC
+  const unsigned d = static_cast<unsigned>(__cvta_generic_to_shared(smem_dst));
+  asm volatile("cp.async.ca.shared.global [%0], [%1], 16;\n" ::"r"(d),
                "l"(gmem_src));
 #else
   *reinterpret_cast<int4*>(smem_dst) =
@@ -1034,7 +1073,8 @@ __global__ void __launch_bounds__(256) HybridMatVecMoEV4(
     const int4* __restrict__ packed, const uchar2* __restrict__ bscale,
     const float* __restrict__ scale2, const int s2n,
     const int* __restrict__ nv_ids, const int4* __restrict__ B_all,
-    half* __restrict__ C, const int prob_m, const int prob_k, const int G) {
+    half* __restrict__ C, const int prob_m, const int prob_k, const int G,
+    const int row_div) {
   // TRANSPOSED grid vs V2/V3: slot on blockIdx.x (fastest dispatch dim), row
   // chunk on blockIdx.y. Blocks of all slots interleave in issue order, so
   // L2-bound AQLM blocks and DRAM-bound NVFP4 blocks overlap instead of
@@ -1054,14 +1094,27 @@ __global__ void __launch_bounds__(256) HybridMatVecMoEV4(
   extern __shared__ int4 sh_b[];
 
   const int n_b = prob_k / 8;
-  const int4* B = B_all + (int64_t)slot * n_b;
+  const int4* B = B_all + (int64_t)(slot / row_div) * n_b;
   half* C_slot = C + (int64_t)slot * prob_m;
+  // ROWMAP staging cache policy: with row_div > 1 every slot of a token
+  // reads the SAME activation row; blocks of different slots co-resident on
+  // one SM re-read it, so allocate it in L1 (.ca) to absorb the duplicate
+  // L2 fan-in (measured +4-7us on all-AQLM mixes at T=1 with .cg). The
+  // staged bytes are identical either way; row_div == 1 keeps the .cg path
+  // (byte-identical instruction stream to the shipped staging loop).
+  const bool stage_ca = row_div > 1;
 
   if (a_id >= 0) {
     // Padded layout (int4 j at j + j/8): lane-strided reads during compute
     // hit rotating banks, same as the V2/V3 32*9 tile.
-    for (int i = threadIdx.x; i < n_b; i += blockDim.x) {
-      cp_async16(&sh_b[i + (i >> 3)], &B[i]);
+    if (stage_ca) {
+      for (int i = threadIdx.x; i < n_b; i += blockDim.x) {
+        cp_async16_ca(&sh_b[i + (i >> 3)], &B[i]);
+      }
+    } else {
+      for (int i = threadIdx.x; i < n_b; i += blockDim.x) {
+        cp_async16(&sh_b[i + (i >> 3)], &B[i]);
+      }
     }
     cp_async_commit();
     // An AQLM chunk (code int4) covers 64 values = 2 NVFP4 chunks, so the
@@ -1074,8 +1127,14 @@ __global__ void __launch_bounds__(256) HybridMatVecMoEV4(
     half2* lut = reinterpret_cast<half2*>(sh_b + n_b);  // after flat acts
     nvfp4_fill_lut(lut);  // synced by cp_async_wait_all_sync in the body
 #endif
-    for (int i = threadIdx.x; i < n_b; i += blockDim.x) {
-      cp_async16(&sh_b[i], &B[i]);
+    if (stage_ca) {
+      for (int i = threadIdx.x; i < n_b; i += blockDim.x) {
+        cp_async16_ca(&sh_b[i], &B[i]);
+      }
+    } else {
+      for (int i = threadIdx.x; i < n_b; i += blockDim.x) {
+        cp_async16(&sh_b[i], &B[i]);
+      }
     }
     cp_async_commit();
     nvfp4_v4_gemv<RW, CPL, BF16IN>(packed, bscale, scale2, s2n, n_id, C_slot,
@@ -1243,6 +1302,62 @@ __global__ void MoECombine(const half* __restrict__ y,
 }
 
 // ---------------------------------------------------------------------------
+// Fused SwiGLU mid-tail (AQLM_FUSED_SILU=1 in the Python glue, default OFF):
+// out[t, j] = silu(x[t, j]) * x[t, m + j] over fp16 rows of width 2m,
+// replacing the per-layer eager  F.silu(x[..., :m]) -> * x[..., m:]  pair
+// (2 kernel launches). Numerics replicate torch's two kernels EXACTLY:
+//   silu: ATen silu_kernel fp16 opmath —
+//         __float2half(__fdiv_rn(xf, __fadd_rn(1.f, expf(-xf)))); probed
+//         bit-exact vs torch.nn.functional.silu over ALL 65536 fp16 bit
+//         patterns in the prod image (nvcc 12.9 JIT vs torch cu130 build:
+//         libdevice expf agrees on every input; the recip-sigmoid and
+//         exp2f-based forms are each 1 fp16 ulp off on isolated inputs).
+//   mul:  torch's fp16 binary mul is float-opmath — the silu result is
+//         rounded to fp16 FIRST (torch materializes the silu tensor), then
+//         __float2half(__fmul_rn(half2float(s), half2float(u))). fp16
+//         products are exact in fp32, so this equals torch's mul for every
+//         input pair; keeping the intermediate fp16 rounding is what makes
+//         the fusion bit-exact rather than "more accurate".
+// Gated in kbench/bench_gemv.py --silu (all-bit-pattern gate sweep incl
+// -0.0 / denormals / inf / nan, all-bit-pattern up sweep, prod shapes).
+// ---------------------------------------------------------------------------
+__device__ __forceinline__ half silu_mul_one(const half g, const half u) {
+  const float xf = __half2float(g);
+  const half s = __float2half(__fdiv_rn(xf, __fadd_rn(1.0f, expf(-xf))));
+  return __float2half(__fmul_rn(__half2float(s), __half2float(u)));
+}
+
+// Vectorized: one int4 (8 fp16) of gate + up per thread; m % 8 == 0.
+__global__ void SiluMulV8(const int4* __restrict__ x, int4* __restrict__ out,
+                          const int m8, const int n8) {
+  const int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx >= n8) return;
+  const int t = idx / m8;
+  const int j = idx - t * m8;
+  const int4* row = x + (int64_t)t * 2 * m8;
+  const int4 gv = row[j];
+  const int4 uv = row[j + m8];
+  const half* g = reinterpret_cast<const half*>(&gv);
+  const half* u = reinterpret_cast<const half*>(&uv);
+  int4 ov;
+  half* o = reinterpret_cast<half*>(&ov);
+#pragma unroll
+  for (int i = 0; i < 8; i++) o[i] = silu_mul_one(g[i], u[i]);
+  out[idx] = ov;
+}
+
+// Scalar fallback for m % 8 != 0.
+__global__ void SiluMul(const half* __restrict__ x, half* __restrict__ out,
+                        const int m, const int n_out) {
+  const int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx >= n_out) return;
+  const int t = idx / m;
+  const int j = idx - t * m;
+  const half* row = x + (int64_t)t * 2 * m;
+  out[idx] = silu_mul_one(row[j], row[j + m]);
+}
+
+// ---------------------------------------------------------------------------
 // Launch helpers
 // ---------------------------------------------------------------------------
 static void pick_grid_cap(int prob_m, int n_rows_out, dim3& blocks,
@@ -1286,7 +1401,7 @@ void launch_hybrid(const int4* codes, const int4* codebooks,
                    const half* scales, const int* aqlm_ids, const int4* packed,
                    const uchar2* bscale, const float* scale2, int s2n,
                    const int* nv_ids, const int4* B, half* C, int n_rows_out,
-                   int prob_m, int prob_k, cudaStream_t stream) {
+                   int prob_m, int prob_k, int row_div, cudaStream_t stream) {
   // V4 pipelined path (AQLM_GEMV_PIPELINE, default OFF; takes precedence
   // over GLM_MOE_DEDUP / GLM_MOE_LANE_ROWS, and subsumes lane-rows). Falls
   // back to the V2/V3 paths below when the shape doesn't fit the pipelined
@@ -1336,7 +1451,7 @@ void launch_hybrid(const int4* codes, const int4* codebooks,
           n_b + (n_b / 8 > lut_int4 ? n_b / 8 : lut_int4);
       kern<<<blocks_t, threads, smem_int4 * (int)sizeof(int4), stream>>>(
           codes, codebooks, scales, aqlm_ids, packed, bscale, scale2, s2n,
-          nv_ids, B, C, prob_m, prob_k, G);
+          nv_ids, B, C, prob_m, prob_k, G, row_div);
       return;
     }
   }
@@ -1375,13 +1490,13 @@ void launch_hybrid(const int4* codes, const int4* codebooks,
     }
     kern<<<blocks, threads, 0, stream>>>(
         codes, codebooks, scales, aqlm_ids, packed, bscale, scale2, s2n,
-        nv_ids, B, C, prob_m, prob_k, n_rows_out, G);
+        nv_ids, B, C, prob_m, prob_k, n_rows_out, G, row_div);
     return;
   }
   pick_grid(prob_m, n_rows_out, blocks, threads);
   HybridMatVecMoE<BOOKS, BF16IN><<<blocks, threads, 0, stream>>>(
       codes, codebooks, scales, aqlm_ids, packed, bscale, scale2, s2n, nv_ids,
-      B, C, prob_m, prob_k);
+      B, C, prob_m, prob_k, row_div);
 }
 
 template <int BOOKS>
@@ -1469,7 +1584,13 @@ torch::Tensor nvfp4_moe_gemv(const torch::Tensor& x,
 //               x.to(torch.float16)
 //   codes/codebooks/scales/aqlm_ids: AQLM set (aqlm_ids[slot] < 0 => not AQLM)
 //   packed/bscale/scale2/nv_ids:     NVFP4 set (may be empty when n_nvfp4=0)
-// returns [N, M] fp16; each slot row computed by exactly one path.
+//   row_div:    slot s reads x row s / row_div (AQLM_GEMV_ROWMAP glue;
+//               default 1 = previous behavior). With row_div = top_k and
+//               compact [T, K] activations the output is bit-identical to
+//               feeding x.repeat_interleave(top_k, dim=0) at row_div = 1,
+//               without materializing the expansion.
+// returns [n_slots, M] fp16 (n_slots = N * row_div = aqlm_ids/nv_ids length);
+// each slot row computed by exactly one path.
 torch::Tensor hybrid_moe_gemv(const torch::Tensor& x,
                               const torch::Tensor& codes,
                               const torch::Tensor& codebooks,
@@ -1478,19 +1599,22 @@ torch::Tensor hybrid_moe_gemv(const torch::Tensor& x,
                               const torch::Tensor& packed,
                               const torch::Tensor& bscale,
                               const torch::Tensor& scale2,
-                              const torch::Tensor& nv_ids) {
+                              const torch::Tensor& nv_ids,
+                              int64_t row_div = 1) {
   TORCH_CHECK(x.is_cuda() && x.is_contiguous() &&
               (x.dtype() == torch::kFloat16 || x.dtype() == torch::kBFloat16));
   TORCH_CHECK(codes.dim() == 4 && codes.dtype() == torch::kInt16);
   TORCH_CHECK(codebooks.size(1) == 65536 && codebooks.size(2) == 8);
   TORCH_CHECK(aqlm_ids.dtype() == torch::kInt32 && aqlm_ids.is_contiguous());
   TORCH_CHECK(nv_ids.dtype() == torch::kInt32 && nv_ids.is_contiguous());
-  const int64_t n = x.size(0);
+  TORCH_CHECK(row_div >= 1, "row_div must be >= 1");
+  const int64_t n = x.size(0) * row_div;  // slots
   const int64_t k = x.size(1);
   const int64_t m = codes.size(2);
   const int64_t books = codes.size(1);
   TORCH_CHECK(codes.size(3) * 8 == k, "codes K mismatch");
-  TORCH_CHECK(aqlm_ids.size(0) == n && nv_ids.size(0) == n);
+  TORCH_CHECK(aqlm_ids.size(0) == n && nv_ids.size(0) == n,
+              "slot ids must have x.size(0) * row_div rows");
   TORCH_CHECK(k % 64 == 0, "K must be a multiple of 64");
   const bool has_nv = packed.numel() > 0;
   int s2n = 1;
@@ -1521,7 +1645,38 @@ torch::Tensor hybrid_moe_gemv(const torch::Tensor& x,
       has_nv ? (const uchar2*)bscale.data_ptr() : nullptr,
       has_nv ? scale2.data_ptr<float>() : nullptr, s2n,
       nv_ids.data_ptr<int>(), (const int4*)x.data_ptr(),
-      (half*)out.data_ptr(), (int)n, (int)m, (int)k, stream);
+      (half*)out.data_ptr(), (int)n, (int)m, (int)k, (int)row_div, stream);
+  return out;
+}
+
+// Fused SwiGLU mid-tail: x [S, 2m] fp16 -> [S, m] fp16,
+// out[s, j] = silu(x[s, j]) * x[s, m + j]. Bit-exact vs torch's
+// F.silu(x[..., :m]) * x[..., m:] eager pair (see SiluMul kernel note).
+torch::Tensor silu_mul(const torch::Tensor& x) {
+  TORCH_CHECK(x.is_cuda() && x.dtype() == torch::kFloat16 &&
+              x.is_contiguous() && x.dim() == 2);
+  const int64_t s = x.size(0);
+  const int64_t m2 = x.size(1);
+  TORCH_CHECK(m2 % 2 == 0, "last dim must be even (gate|up)");
+  const int64_t m = m2 / 2;
+
+  const at::cuda::OptionalCUDAGuard guard(device_of(x));
+  auto out = torch::empty({s, m}, x.options());
+  const int64_t n_out = s * m;
+  if (n_out == 0) return out;
+  TORCH_CHECK(n_out <= INT32_MAX, "silu_mul output too large");
+  auto stream = at::cuda::getCurrentCUDAStream().stream();
+  const int threads = 256;
+  if (m % 8 == 0) {
+    const int n8 = (int)(n_out / 8);
+    aqlm_moe_v2::SiluMulV8<<<aqlm_moe_v2::ceildiv(n8, threads), threads, 0,
+                             stream>>>(
+        (const int4*)x.data_ptr(), (int4*)out.data_ptr(), (int)(m / 8), n8);
+  } else {
+    aqlm_moe_v2::SiluMul<<<aqlm_moe_v2::ceildiv((int)n_out, threads), threads,
+                           0, stream>>>(
+        (const half*)x.data_ptr(), (half*)out.data_ptr(), (int)m, (int)n_out);
+  }
   return out;
 }
 
@@ -1634,7 +1789,14 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("nvfp4_moe_dequant", &nvfp4_moe_dequant,
         "NVFP4 MoE batched expert dequant (prefill path)");
   m.def("hybrid_moe_gemv", &hybrid_moe_gemv,
-        "Fused AQLM+NVFP4 MoE gemv: one launch per projection");
+        "Fused AQLM+NVFP4 MoE gemv: one launch per projection",
+        py::arg("x"), py::arg("codes"), py::arg("codebooks"),
+        py::arg("scales"), py::arg("aqlm_ids"), py::arg("packed"),
+        py::arg("bscale"), py::arg("scale2"), py::arg("nv_ids"),
+        py::arg("row_div") = 1);
   m.def("moe_combine", &moe_combine,
         "Fused weighted top-k slot combine (decode epilogue)");
+  m.def("silu_mul", &silu_mul,
+        "Fused SwiGLU mid-tail: silu(x[:, :m]) * x[:, m:], bit-exact vs "
+        "torch's eager silu+mul pair");
 }

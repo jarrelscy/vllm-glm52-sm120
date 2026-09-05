@@ -4,6 +4,7 @@ import torch
 from torch.nn.parameter import Parameter
 
 import vllm._custom_ops as ops
+import vllm.envs as envs
 from vllm.model_executor.custom_op import PluggableLayer
 from vllm.model_executor.layers.linear import ReplicatedLinear
 from vllm.platforms import current_platform
@@ -51,14 +52,33 @@ class GateLinear(ReplicatedLinear):
     ):
         is_hopper = current_platform.is_device_capability((9, 0))
         is_blackwell = current_platform.is_device_capability_family(100)
+        # SM120 (RTX PRO 6000 Blackwell / GB202) runs the DSV3 router kernel
+        # and cuBLAS bf16->fp32 GEMMs fine, but is excluded by the family
+        # checks above. Opt-in via VLLM_SM120_ROUTER_GEMM=1 (default OFF).
+        is_sm120_opt_in = (
+            envs.VLLM_SM120_ROUTER_GEMM
+            and current_platform.is_device_capability_family(120)
+        )
         can_use_specialized_kernels = (
-            current_platform.is_cuda() and (is_hopper or is_blackwell) and not bias
+            current_platform.is_cuda()
+            and (is_hopper or is_blackwell or is_sm120_opt_in)
+            and not bias
         )
 
         # If fp32 compute is required and no specialized kernel is available,
         # store weights in fp32 so the fallback linear path computes in fp32.
         if force_fp32_compute and not can_use_specialized_kernels:
             params_dtype = torch.float32
+        elif force_fp32_compute and is_sm120_opt_in and not (is_hopper or is_blackwell):
+            # SM120 opt-in: keep the checkpoint's bf16 gate weight so the
+            # specialized tiers (DSV3 kernel M<=8, cuBLAS bf16xbf16->fp32
+            # otherwise) are eligible. Callers such as DeepseekV2MoE pass
+            # params_dtype=fp32 explicitly when moe_router_dtype is fp32;
+            # overriding to the model default here is lossless because the
+            # checkpoint weight is bf16 and both tiers accumulate in fp32
+            # (exact bf16 products), matching fp32-upcast SIMT math to
+            # within fp32 reduction-order noise.
+            params_dtype = None
 
         super().__init__(
             input_size,

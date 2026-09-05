@@ -114,6 +114,7 @@ if TYPE_CHECKING:
     VLLM_ALLOW_RUNTIME_LORA_UPDATING: bool = False
     VLLM_SKIP_P2P_CHECK: bool = False
     VLLM_FORCE_CUSTOM_ALLREDUCE: bool = False
+    VLLM_SM120_ROUTER_GEMM: bool = False
     VLLM_DISABLED_KERNELS: list[str] = []
     VLLM_ENABLE_FLA_PACKED_RECURRENT_DECODE: bool = True
     VLLM_DISABLE_PYNCCL: bool = False
@@ -1122,6 +1123,19 @@ environment_variables: dict[str, Callable[[], Any]] = {
     # the P2P check anyway.
     "VLLM_FORCE_CUSTOM_ALLREDUCE": lambda: (
         os.environ.get("VLLM_FORCE_CUSTOM_ALLREDUCE", "0").strip().lower()
+        in ("1", "true")
+    ),
+    # Opt-in (default OFF): allow the specialized MoE router GEMM tiers
+    # (DSV3 min-latency kernel / cuBLAS bf16xbf16->fp32) on SM120-family
+    # GPUs (RTX PRO 6000 Blackwell). Upstream GateLinear only enables them
+    # on SM90/SM100, so on SM120 a force_fp32_compute router falls through
+    # to an fp32 SIMT SGEMM (cutlass_80_simt_sgemm, ~25us/call at M=4 vs
+    # ~4us for the DSV3 kernel; ~79 router calls per decode step on
+    # GLM-5.3). Both replacement tiers compute exact bf16 products with
+    # fp32 accumulation, which is numerically equivalent to (and measured
+    # closer to fp64 than) the fp32 SIMT path for bf16 checkpoints.
+    "VLLM_SM120_ROUTER_GEMM": lambda: (
+        os.environ.get("VLLM_SM120_ROUTER_GEMM", "0").strip().lower()
         in ("1", "true")
     ),
     # List of quantization kernels that should be disabled, used for testing

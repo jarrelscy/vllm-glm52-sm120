@@ -75,6 +75,39 @@ logger = init_logger(__name__)
 
 _EXPERTS_PREFIX_RE = re.compile(r"(?:model\.)?layers\.(\d+)\.mlp\.experts")
 
+
+def _env_flag(name: str) -> bool:
+    return os.environ.get(name, "0") not in ("", "0")
+
+
+# Decode-tail micro-op fusions (tail-fusion branch), all default OFF; with
+# every flag off the op sequence is byte-identical to the previous build.
+#   AQLM_GEMV_BF16IN=1     feed bf16 activations straight into the fused
+#       hybrid gemv (converted to fp16 during smem staging in-kernel,
+#       bit-identical to the x.to(torch.float16) it replaces) — removes one
+#       full-hidden copy kernel per MoE layer.
+#   AQLM_FUSED_COMBINE=1   fused weighted top-k combine epilogue — replaces
+#       the .float() / *weights / .sum(dim=1) / .to(x.dtype) eager tail
+#       (4 kernels) with one kernel; same fp32 element math and torch's exact
+#       vec4 reduce order (validated bit-exact in kbench/bench_gemv.py
+#       --combine, incl the -0.0 zero-init edge).
+#   AQLM_GLUE_OPT=1        single stacked-table gather for the per-slot
+#       format-lookup ids (integer-exact) instead of 3 separate gathers.
+# Read once at import: the decode path is captured in CUDA graphs, so these
+# must be static branches.
+_BF16IN = _env_flag("AQLM_GEMV_BF16IN")
+# The in-kernel convert is re-done by every row-block of a slot, so its cost
+# grows with the slot count while the replaced cast kernel stays ~3.5us:
+# measured net-positive up to ~6 tokens (48 slots) on V4 w13, regressing
+# beyond (T=8: +17.6us > saved). Cap the pass-through; larger decode batches
+# keep the eager cast. num_tokens branches already exist on this path
+# (DECODE_MAX_TOKENS), so this is capture-safe.
+_BF16IN_MAXT = int(os.environ.get("AQLM_GEMV_BF16IN_MAXT", "6"))
+_FUSED_COMBINE = _env_flag("AQLM_FUSED_COMBINE")
+_GLUE_OPT = _env_flag("AQLM_GLUE_OPT")
+
+_COMBINE_MODE = {torch.float32: 0, torch.float16: 1, torch.bfloat16: 2}
+
 _ext = None
 
 
@@ -176,7 +209,24 @@ def _register_custom_ops() -> None:
     @hybrid_moe_gemv.register_fake
     def _(x, codes, codebooks, scales, aqlm_ids, packed, bscale, scale2,
           nv_ids):
-        return x.new_empty((x.shape[0], codes.shape[2]))
+        # Output is fp16 regardless of x dtype (x may be bf16 under
+        # AQLM_GEMV_BF16IN; the kernel converts during smem staging).
+        return x.new_empty((x.shape[0], codes.shape[2]),
+                           dtype=torch.float16)
+
+    @torch.library.custom_op("aqlm_hybrid::moe_combine", mutates_args=())
+    def moe_combine(
+        y: torch.Tensor,
+        weights: torch.Tensor,
+        top_k: int,
+        out_mode: int,
+    ) -> torch.Tensor:
+        return _get_ext().moe_combine(y, weights, top_k, out_mode)
+
+    @moe_combine.register_fake
+    def _(y, weights, top_k, out_mode):
+        dt = (torch.float32, torch.float16, torch.bfloat16)[out_mode]
+        return y.new_empty((y.shape[0] // top_k, y.shape[1]), dtype=dt)
 
     @torch.library.custom_op("aqlm_hybrid::aqlm_moe_dequant", mutates_args=())
     def aqlm_moe_dequant(
@@ -465,6 +515,13 @@ class HybridExpertsMoEMethod(FusedMoEMethodBase):
         layer._nv_globals = is_nv.nonzero().flatten().tolist()
         layer._base_globals = is_base.nonzero().flatten().tolist()
         layer._cold_globals = is_cold.nonzero().flatten().tolist()
+        # AQLM_GLUE_OPT: the fused (n_base==0) gemv path needs exactly three
+        # lookups (w13 AQLM array, w2 cold array, NVFP4 array); stacking them
+        # lets one gather kernel replace three. Rows of the gathered [3, S]
+        # result are contiguous views, as the gemv entry requires.
+        layer._gemv_lookups = torch.stack(
+            [layer._b_lookup, layer._w2c_lookup, layer._nv_lookup]
+        ).contiguous()
 
     def get_fused_moe_quant_config(self, layer: "RoutedExperts"):
         return None
@@ -531,12 +588,26 @@ class HybridExpertsMoEMethod(FusedMoEMethodBase):
         num_tokens, hidden = x.shape
         top_k = topk_ids.shape[1]
 
-        xf = x.to(torch.float16)
+        fused_fmt = self.n_base == 0
+        if (_BF16IN and fused_fmt and x.dtype == torch.bfloat16
+                and num_tokens <= _BF16IN_MAXT):
+            # hybrid_moe_gemv converts bf16 -> fp16 during smem staging
+            # (bit-identical to this cast); skip the per-layer copy kernel.
+            xf = x
+        else:
+            xf = x.to(torch.float16)
         flat = topk_ids.reshape(-1).long()
-        b_ids = layer._b_lookup[flat]
-        w2m_ids = layer._w2m_lookup[flat]
-        w2c_ids = layer._w2c_lookup[flat]
-        nv_ids = layer._nv_lookup[flat] if self.n_nvfp4 > 0 else None
+        if _GLUE_OPT and fused_fmt:
+            # One gather over the stacked [3, E] table instead of three.
+            ids = layer._gemv_lookups[:, flat]
+            b_ids, w2c_ids = ids[0], ids[1]
+            nv_ids = ids[2] if self.n_nvfp4 > 0 else None
+            w2m_ids = None  # unused on the fused path
+        else:
+            b_ids = layer._b_lookup[flat]
+            w2m_ids = layer._w2m_lookup[flat]
+            w2c_ids = layer._w2c_lookup[flat]
+            nv_ids = layer._nv_lookup[flat] if self.n_nvfp4 > 0 else None
         # Each token row repeated top_k times: rows of xr line up with slots.
         xr = xf.repeat_interleave(top_k, dim=0)
 
@@ -562,8 +633,8 @@ class HybridExpertsMoEMethod(FusedMoEMethodBase):
                 hact, layer.w2c_codes, layer.w2c_codebooks, layer.w2c_scales,
                 w2c_ids, *nv2, nv_ids,
             )
-            out = out.view(num_tokens, top_k, hidden).float()
-            return (out * topk_weights.unsqueeze(-1).float()).sum(dim=1)
+            return self._combine(out, topk_weights, num_tokens, top_k,
+                                 hidden, x.dtype)
 
         h13 = ops.aqlm_moe_gemv(
             xr, layer.w13_codes, layer.w13_codebooks, layer.w13_scales, b_ids
@@ -591,6 +662,31 @@ class HybridExpertsMoEMethod(FusedMoEMethodBase):
                 layer.nvfp4_w2_scale2, nv_ids,
             )
             out = y if out is None else out + y
+        return self._combine(out, topk_weights, num_tokens, top_k, hidden,
+                             x.dtype)
+
+    @staticmethod
+    def _combine(
+        out: torch.Tensor,
+        topk_weights: torch.Tensor,
+        num_tokens: int,
+        top_k: int,
+        hidden: int,
+        x_dtype: torch.dtype,
+    ) -> torch.Tensor:
+        """Weighted top-k slot combine: [T*K, H] fp16 -> [T, H].
+
+        Env off: the historical eager tail (fp32 upcast, weight multiply,
+        sum over slots, downcast in apply()). AQLM_FUSED_COMBINE=1: one
+        kernel with identical fp32 element math and torch's exact vec4
+        reduce order (validated bit-exact in kbench --combine), emitting
+        x_dtype directly so apply()'s .to(x.dtype) is a no-op.
+        """
+        if _FUSED_COMBINE:
+            ops = torch.ops.aqlm_hybrid
+            w = topk_weights.reshape(-1).to(torch.float32).contiguous()
+            return ops.moe_combine(out, w, top_k,
+                                   _COMBINE_MODE.get(x_dtype, 0))
         out = out.view(num_tokens, top_k, hidden).float()
         return (out * topk_weights.unsqueeze(-1).float()).sum(dim=1)
 

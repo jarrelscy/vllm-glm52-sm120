@@ -32,8 +32,10 @@
  * ~1e-3 relative (validated in bench.py).
  */
 
+#include <cstdint>
 #include <cstring>
 #include <cuda.h>
+#include <cuda_bf16.h>
 #include <cuda_fp16.h>
 #include <cuda_fp8.h>
 #include <cuda_fp4.h>
@@ -67,11 +69,34 @@ __device__ __forceinline__ uint4 ld_cb(const uint4* p) {
 }
 
 // ---------------------------------------------------------------------------
+// bf16 activation input (BF16IN template paths, host-selected by x.dtype):
+// activations arrive as bf16 raw bytes and are converted to fp16 while (V2/V3,
+// register round-trip staging) or right after (V4, cp.async) they land in
+// shared memory. __bfloat162float is exact and __float2half is the same
+// float->half RN conversion torch uses on CUDA, so the staged fp16 bits are
+// identical to the Python-side `x.to(torch.float16)` they replace; every
+// downstream FMA then matches the fp16 path bit-for-bit.
+// ---------------------------------------------------------------------------
+__device__ __forceinline__ int4 bf16x8_to_fp16x8(const int4 v) {
+  const __nv_bfloat16* s = reinterpret_cast<const __nv_bfloat16*>(&v);
+  int4 o;
+  half* d = reinterpret_cast<half*>(&o);
+#pragma unroll
+  for (int i = 0; i < 8; i++) d[i] = __float2half(__bfloat162float(s[i]));
+  return o;
+}
+
+template <bool BF16IN>
+__device__ __forceinline__ int4 stage_act(const int4 v) {
+  return BF16IN ? bf16x8_to_fp16x8(v) : v;
+}
+
+// ---------------------------------------------------------------------------
 // AQLM: per-(slot,row) warp gemv body. Call with all threads of the block
 // (contains __syncthreads); `expert` must be uniform within the block.
 // sh_b must hold >= 32*9 int4.
 // ---------------------------------------------------------------------------
-template <int BOOKS>
+template <int BOOKS, bool BF16IN = false>
 __device__ __forceinline__ void aqlm_slot_gemv(
     const int4* __restrict__ codes, const int4* __restrict__ codebooks,
     const half* __restrict__ scales, const int expert,
@@ -94,7 +119,9 @@ __device__ __forceinline__ void aqlm_slot_gemv(
   while (iters--) {
     __syncthreads();
     for (int i = threadIdx.x; i < 32 * 8; i += blockDim.x) {
-      if (b_gl_rd + i < prob_k / 8) sh_b[9 * (i / 8) + i % 8] = B[b_gl_rd + i];
+      if (b_gl_rd + i < prob_k / 8) {
+        sh_b[9 * (i / 8) + i % 8] = stage_act<BF16IN>(B[b_gl_rd + i]);
+      }
     }
     __syncthreads();
     b_gl_rd += 32 * 8;
@@ -211,6 +238,7 @@ __device__ __forceinline__ float nvfp4_chunk_dot_lut(
 
 // NVFP4 per-(slot,row) warp gemv body; same calling contract as
 // aqlm_slot_gemv. sh_b must hold >= 32*4 int4 (+ LUT extra when enabled).
+template <bool BF16IN = false>
 __device__ __forceinline__ void nvfp4_slot_gemv(
     const int4* __restrict__ packed, const uchar2* __restrict__ bscale,
     const float* __restrict__ scale2, const int s2n, const int expert,
@@ -246,7 +274,7 @@ __device__ __forceinline__ void nvfp4_slot_gemv(
   while (iters--) {
     __syncthreads();
     for (int i = threadIdx.x; i < 32 * 4; i += blockDim.x) {
-      if (b_gl_rd + i < prob_k / 8) sh_b[i] = B[b_gl_rd + i];
+      if (b_gl_rd + i < prob_k / 8) sh_b[i] = stage_act<BF16IN>(B[b_gl_rd + i]);
     }
     __syncthreads();
     b_gl_rd += 32 * 4;
@@ -342,7 +370,7 @@ __global__ void NvFp4MatVecMoE(const int4* __restrict__ packed,
 // active slot; both < 0 writes zeros. The branch is uniform per block
 // (blockIdx.y == slot), so the contained __syncthreads is safe.
 // ---------------------------------------------------------------------------
-template <int BOOKS>
+template <int BOOKS, bool BF16IN = false>
 __global__ void HybridMatVecMoE(
     const int4* __restrict__ codes, const int4* __restrict__ codebooks,
     const half* __restrict__ scales, const int* __restrict__ aqlm_ids,
@@ -361,11 +389,11 @@ __global__ void HybridMatVecMoE(
   half* C_slot = C + (int64_t)slot * prob_m;
 
   if (a_id >= 0) {
-    aqlm_slot_gemv<BOOKS>(codes, codebooks, scales, a_id, B, C_slot, prob_m,
-                          prob_k, sh_b, row, pred);
+    aqlm_slot_gemv<BOOKS, BF16IN>(codes, codebooks, scales, a_id, B, C_slot,
+                                  prob_m, prob_k, sh_b, row, pred);
   } else if (n_id >= 0) {
-    nvfp4_slot_gemv(packed, bscale, scale2, s2n, n_id, B, C_slot, prob_m,
-                    prob_k, sh_b, row, pred);
+    nvfp4_slot_gemv<BF16IN>(packed, bscale, scale2, s2n, n_id, B, C_slot,
+                            prob_m, prob_k, sh_b, row, pred);
   } else if (pred && threadIdx.x % 32 == 0) {
     C_slot[row] = __float2half(0.f);
   }
@@ -391,7 +419,7 @@ __global__ void HybridMatVecMoE(
 // never -0.0 since it accumulates from +0.0). Dedup only shares loaded
 // bytes, never arithmetic between slots.
 // ---------------------------------------------------------------------------
-template <int BOOKS, int UMAX>
+template <int BOOKS, int UMAX, bool BF16IN = false>
 __device__ __forceinline__ void aqlm_multi_gemv(
     const int4* __restrict__ codes, const int4* __restrict__ codebooks,
     const half* __restrict__ scales, const int expert,
@@ -424,8 +452,8 @@ __device__ __forceinline__ void aqlm_multi_gemv(
     for (int i = threadIdx.x; i < 32 * 8 * UMAX; i += blockDim.x) {
       const int su = i / 256, ii = i - su * 256;
       if (su < U && b_gl_rd + ii < prob_k / 8) {
-        sh_b[su * 288 + 9 * (ii / 8) + ii % 8] =
-            B_all[(int64_t)slots_u[su] * (prob_k / 8) + b_gl_rd + ii];
+        sh_b[su * 288 + 9 * (ii / 8) + ii % 8] = stage_act<BF16IN>(
+            B_all[(int64_t)slots_u[su] * (prob_k / 8) + b_gl_rd + ii]);
       }
     }
     __syncthreads();
@@ -492,7 +520,7 @@ __device__ __forceinline__ void aqlm_multi_gemv(
   }
 }
 
-template <int UMAX>
+template <int UMAX, bool BF16IN = false>
 __device__ __forceinline__ void nvfp4_multi_gemv(
     const int4* __restrict__ packed, const uchar2* __restrict__ bscale,
     const float* __restrict__ scale2, const int s2n, const int expert,
@@ -535,8 +563,8 @@ __device__ __forceinline__ void nvfp4_multi_gemv(
     for (int i = threadIdx.x; i < 32 * 4 * UMAX; i += blockDim.x) {
       const int su = i / 128, ii = i - su * 128;
       if (su < U && b_gl_rd + ii < prob_k / 8) {
-        sh_b[su * 288 + ii] =
-            B_all[(int64_t)slots_u[su] * (prob_k / 8) + b_gl_rd + ii];
+        sh_b[su * 288 + ii] = stage_act<BF16IN>(
+            B_all[(int64_t)slots_u[su] * (prob_k / 8) + b_gl_rd + ii]);
       }
     }
     __syncthreads();
@@ -586,7 +614,7 @@ __device__ __forceinline__ void nvfp4_multi_gemv(
   }
 }
 
-template <int BOOKS, int UMAX>
+template <int BOOKS, int UMAX, bool BF16IN = false>
 __global__ void HybridMatVecMoEV3(
     const int4* __restrict__ codes, const int4* __restrict__ codebooks,
     const half* __restrict__ scales, const int* __restrict__ aqlm_ids,
@@ -647,11 +675,12 @@ __global__ void HybridMatVecMoEV3(
   __shared__ int4 sh_b[UMAX * 288 + (NVFP4_SMEM_EXTRA + 3) / 4];
 
   if (fmt == 0) {
-    aqlm_multi_gemv<BOOKS, UMAX>(codes, codebooks, scales, my_a, B_all, C,
-                                 slots_u, U, prob_m, prob_k, sh_b, row0, G);
+    aqlm_multi_gemv<BOOKS, UMAX, BF16IN>(codes, codebooks, scales, my_a, B_all,
+                                         C, slots_u, U, prob_m, prob_k, sh_b,
+                                         row0, G);
   } else if (fmt == 1) {
-    nvfp4_multi_gemv<UMAX>(packed, bscale, scale2, s2n, my_n, B_all, C,
-                           slots_u, U, prob_m, prob_k, sh_b, row0, G);
+    nvfp4_multi_gemv<UMAX, BF16IN>(packed, bscale, scale2, s2n, my_n, B_all, C,
+                                   slots_u, U, prob_m, prob_k, sh_b, row0, G);
   } else {
     const int lane = threadIdx.x % 32;
     const int g = lane / G, tt = lane - g * G;
@@ -765,12 +794,12 @@ __device__ __forceinline__ float nvfp4_chunk_dot_v4(
 // AQLM V4 body. sh_b holds the FULL activation row, padded (int4 j at
 // sh_b[j + j/8]); staging must have been issued (commit'ed) by the caller,
 // this function waits on it AFTER issuing its own global loads.
-template <int BOOKS, int RW, int CPL>
+template <int BOOKS, int RW, int CPL, bool BF16IN = false>
 __device__ __forceinline__ void aqlm_v4_gemv(
     const int4* __restrict__ codes, const int4* __restrict__ codebooks,
     const half* __restrict__ scales, const int expert,
     half* __restrict__ C_slot, const int prob_m, const int prob_k,
-    const int4* __restrict__ sh_b, const int base_row, const int G,
+    int4* __restrict__ sh_b, const int base_row, const int G,
     const int tt) {
   const int R = 32 / G;
   const int stride = prob_k / 64;  // code int4s per row
@@ -874,6 +903,16 @@ __device__ __forceinline__ void aqlm_v4_gemv(
   AQLM_V4_ISSUE(0, gbuf[0]);
   if (GDEPTH > 2 && NSB > 1) AQLM_V4_ISSUE(1, gbuf[1 % GDEPTH]);
   cp_async_wait_all_sync();  // activations resident from here on
+  if (BF16IN) {
+    // Staged bytes are bf16: convert to fp16 in place (padded layout: int4
+    // j lives at j + j/8) before any lane touches them. The weight/code
+    // loads above are already in flight, so the copy/convert still overlap.
+    for (int i = threadIdx.x; i < prob_k / 8; i += blockDim.x) {
+      const int p = i + (i >> 3);
+      sh_b[p] = bf16x8_to_fp16x8(sh_b[p]);
+    }
+    __syncthreads();
+  }
 #pragma unroll
   for (int sb = 0; sb < NSB; sb++) {
     if (sb + GDEPTH - 1 < NSB)
@@ -899,12 +938,12 @@ __device__ __forceinline__ void aqlm_v4_gemv(
 
 // NVFP4 V4 body. sh_b holds the FULL activation row, flat (int4 j at
 // sh_b[j]); same staging contract as aqlm_v4_gemv.
-template <int RW, int CPL>
+template <int RW, int CPL, bool BF16IN = false>
 __device__ __forceinline__ void nvfp4_v4_gemv(
     const int4* __restrict__ packed, const uchar2* __restrict__ bscale,
     const float* __restrict__ scale2, const int s2n, const int expert,
     half* __restrict__ C_slot, const int prob_m, const int prob_k,
-    const int4* __restrict__ sh_b, const int base_row, const int G,
+    int4* __restrict__ sh_b, const int base_row, const int G,
     const int tt
 #if NVFP4_LUT256
     , const half2* __restrict__ lut
@@ -940,6 +979,14 @@ __device__ __forceinline__ void nvfp4_v4_gemv(
   }
 
   cp_async_wait_all_sync();  // activations resident from here on
+  if (BF16IN) {
+    // Staged bytes are bf16: convert to fp16 in place (flat layout; the
+    // LUT region beyond prob_k/8 is untouched).
+    for (int i = threadIdx.x; i < prob_k / 8; i += blockDim.x) {
+      sh_b[i] = bf16x8_to_fp16x8(sh_b[i]);
+    }
+    __syncthreads();
+  }
 
   float resA[RW], resB[RW];
 #pragma unroll
@@ -980,7 +1027,7 @@ __device__ __forceinline__ void nvfp4_v4_gemv(
   }
 }
 
-template <int BOOKS, int RW, int CPL>
+template <int BOOKS, int RW, int CPL, bool BF16IN = false>
 __global__ void __launch_bounds__(256) HybridMatVecMoEV4(
     const int4* __restrict__ codes, const int4* __restrict__ codebooks,
     const half* __restrict__ scales, const int* __restrict__ aqlm_ids,
@@ -1019,9 +1066,9 @@ __global__ void __launch_bounds__(256) HybridMatVecMoEV4(
     cp_async_commit();
     // An AQLM chunk (code int4) covers 64 values = 2 NVFP4 chunks, so the
     // AQLM path needs only ceil(CPL/2) batches per lane.
-    aqlm_v4_gemv<BOOKS, RW, (CPL + 1) / 2>(codes, codebooks, scales, a_id,
-                                           C_slot, prob_m, prob_k, sh_b,
-                                           base_row, G, tt);
+    aqlm_v4_gemv<BOOKS, RW, (CPL + 1) / 2, BF16IN>(
+        codes, codebooks, scales, a_id, C_slot, prob_m, prob_k, sh_b,
+        base_row, G, tt);
   } else if (n_id >= 0) {
 #if NVFP4_LUT256
     half2* lut = reinterpret_cast<half2*>(sh_b + n_b);  // after flat acts
@@ -1031,8 +1078,8 @@ __global__ void __launch_bounds__(256) HybridMatVecMoEV4(
       cp_async16(&sh_b[i], &B[i]);
     }
     cp_async_commit();
-    nvfp4_v4_gemv<RW, CPL>(packed, bscale, scale2, s2n, n_id, C_slot, prob_m,
-                           prob_k, sh_b, base_row, G, tt
+    nvfp4_v4_gemv<RW, CPL, BF16IN>(packed, bscale, scale2, s2n, n_id, C_slot,
+                                   prob_m, prob_k, sh_b, base_row, G, tt
 #if NVFP4_LUT256
                            , lut
 #endif
@@ -1152,6 +1199,50 @@ __global__ void NvFp4DequantMoE(const int4* __restrict__ packed,
 }
 
 // ---------------------------------------------------------------------------
+// Fused expert-combine epilogue (AQLM_FUSED_COMBINE=1 in the Python glue,
+// default OFF): out[t, j] = sum_k float(y[t*top_k + k, j]) * w[t*top_k + k],
+// replacing the per-layer eager tail  y.float() -> * w -> .sum(dim=1) ->
+// .to(dtype)  (4 kernel launches). Numerics: each product is a rounded fp32
+// multiply (__fmul_rn, never FMA-contracted) and the reduction replicates
+// torch's TensorIterator vec4 order for this [T, K, M] shape exactly: four
+// zero-initialized fp32 accumulators, acc[k % 4] += p_k in ascending k, then
+// the sequential merge ((a0 + a1) + a2) + a3 — probed bit-exact against
+// (y.float() * w).sum(dim=1) for T = 1..512 at K = 8, M = 6144, and gated in
+// kbench/bench_gemv.py --combine (plain ascending order differs by 1 fp32
+// ulp; the zero init also reproduces torch's -0.0 -> +0.0 sums). Output
+// converts fp32 -> half/bf16 with the same __float2half / __float2bfloat16
+// intrinsics c10 uses on CUDA.
+// ---------------------------------------------------------------------------
+__device__ __forceinline__ void combine_store(float* p, float v) { *p = v; }
+__device__ __forceinline__ void combine_store(half* p, float v) {
+  *p = __float2half(v);
+}
+__device__ __forceinline__ void combine_store(__nv_bfloat16* p, float v) {
+  *p = __float2bfloat16(v);
+}
+
+template <typename OutT>
+__global__ void MoECombine(const half* __restrict__ y,
+                           const float* __restrict__ w,
+                           OutT* __restrict__ out, const int top_k,
+                           const int m, const int n_out) {
+  const int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx >= n_out) return;
+  const int t = idx / m;
+  const int j = idx - t * m;
+  const half* yp = y + (int64_t)t * top_k * m + j;
+  const float* wp = w + (int64_t)t * top_k;
+  float acc[4] = {0.f, 0.f, 0.f, 0.f};
+  for (int k = 0; k < top_k; k++) {
+    acc[k & 3] = __fadd_rn(
+        acc[k & 3], __fmul_rn(__half2float(yp[(int64_t)k * m]), wp[k]));
+  }
+  combine_store(out + idx,
+                __fadd_rn(__fadd_rn(__fadd_rn(acc[0], acc[1]), acc[2]),
+                          acc[3]));
+}
+
+// ---------------------------------------------------------------------------
 // Launch helpers
 // ---------------------------------------------------------------------------
 static void pick_grid_cap(int prob_m, int n_rows_out, dim3& blocks,
@@ -1190,7 +1281,7 @@ static bool env_flag(const char* name) {
   return e && e[0] && e[0] != '0';
 }
 
-template <int BOOKS>
+template <int BOOKS, bool BF16IN = false>
 void launch_hybrid(const int4* codes, const int4* codebooks,
                    const half* scales, const int* aqlm_ids, const int4* packed,
                    const uchar2* bscale, const float* scale2, int s2n,
@@ -1211,11 +1302,13 @@ void launch_hybrid(const int4* codes, const int4* codebooks,
     int G = 32;                   // lane-rows grouping, same rule as V3
     if (s_n >= 2 && s_n <= 16 && (s_n & (s_n - 1)) == 0) G = s_n;
     const int cpl = ceildiv(s_n, G);  // NVFP4 chunks per lane
-    auto kern = HybridMatVecMoEV4<BOOKS, 1, 6>;  // large K: all chunks in
-    int RW = 1;                                  // flight, 1 row per warp
+    // large K: all chunks in flight, 1 row per warp
+    auto kern = HybridMatVecMoEV4<BOOKS, 1, 6, BF16IN>;
+    int RW = 1;
     bool ok = true;
     if (cpl == 1) {
-      kern = HybridMatVecMoEV4<BOOKS, 4, 1>;  // small K: 4 rows per warp
+      // small K: 4 rows per warp
+      kern = HybridMatVecMoEV4<BOOKS, 4, 1, BF16IN>;
       RW = 4;
       if (strcmp(pipe_env, "w13") == 0) ok = false;
     } else if (cpl > 6) {
@@ -1274,11 +1367,11 @@ void launch_hybrid(const int4* codes, const int4* codebooks,
     }
     const int R = 32 / G;
     pick_grid(ceildiv(prob_m, R), n_rows_out, blocks, threads);
-    auto kern = HybridMatVecMoEV3<BOOKS, 1>;
+    auto kern = HybridMatVecMoEV3<BOOKS, 1, BF16IN>;
     if (kDedup == 2) {
-      kern = HybridMatVecMoEV3<BOOKS, 2>;
+      kern = HybridMatVecMoEV3<BOOKS, 2, BF16IN>;
     } else if (kDedup) {
-      kern = HybridMatVecMoEV3<BOOKS, 4>;
+      kern = HybridMatVecMoEV3<BOOKS, 4, BF16IN>;
     }
     kern<<<blocks, threads, 0, stream>>>(
         codes, codebooks, scales, aqlm_ids, packed, bscale, scale2, s2n,
@@ -1286,7 +1379,7 @@ void launch_hybrid(const int4* codes, const int4* codebooks,
     return;
   }
   pick_grid(prob_m, n_rows_out, blocks, threads);
-  HybridMatVecMoE<BOOKS><<<blocks, threads, 0, stream>>>(
+  HybridMatVecMoE<BOOKS, BF16IN><<<blocks, threads, 0, stream>>>(
       codes, codebooks, scales, aqlm_ids, packed, bscale, scale2, s2n, nv_ids,
       B, C, prob_m, prob_k);
 }
@@ -1371,7 +1464,9 @@ torch::Tensor nvfp4_moe_gemv(const torch::Tensor& x,
 }
 
 // Fused per-projection gemv over both storage formats.
-//   x:          [N, K] fp16
+//   x:          [N, K] fp16 — or bf16 (AQLM_GEMV_BF16IN glue): converted to
+//               fp16 in-kernel during smem staging, bit-identical to feeding
+//               x.to(torch.float16)
 //   codes/codebooks/scales/aqlm_ids: AQLM set (aqlm_ids[slot] < 0 => not AQLM)
 //   packed/bscale/scale2/nv_ids:     NVFP4 set (may be empty when n_nvfp4=0)
 // returns [N, M] fp16; each slot row computed by exactly one path.
@@ -1384,7 +1479,8 @@ torch::Tensor hybrid_moe_gemv(const torch::Tensor& x,
                               const torch::Tensor& bscale,
                               const torch::Tensor& scale2,
                               const torch::Tensor& nv_ids) {
-  TORCH_CHECK(x.is_cuda() && x.dtype() == torch::kFloat16 && x.is_contiguous());
+  TORCH_CHECK(x.is_cuda() && x.is_contiguous() &&
+              (x.dtype() == torch::kFloat16 || x.dtype() == torch::kBFloat16));
   TORCH_CHECK(codes.dim() == 4 && codes.dtype() == torch::kInt16);
   TORCH_CHECK(codebooks.size(1) == 65536 && codebooks.size(2) == 8);
   TORCH_CHECK(aqlm_ids.dtype() == torch::kInt32 && aqlm_ids.is_contiguous());
@@ -1408,12 +1504,16 @@ torch::Tensor hybrid_moe_gemv(const torch::Tensor& x,
   }
 
   const at::cuda::OptionalCUDAGuard guard(device_of(x));
-  auto out = torch::empty({n, m}, x.options());
+  auto out = torch::empty({n, m}, x.options().dtype(torch::kFloat16));
   auto stream = at::cuda::getCurrentCUDAStream().stream();
   if (n == 0) return out;
 
-  auto run = books == 1 ? aqlm_moe_v2::launch_hybrid<1>
-                        : aqlm_moe_v2::launch_hybrid<2>;
+  const bool bf16in = x.dtype() == torch::kBFloat16;
+  auto run = books == 1
+                 ? (bf16in ? aqlm_moe_v2::launch_hybrid<1, true>
+                           : aqlm_moe_v2::launch_hybrid<1, false>)
+                 : (bf16in ? aqlm_moe_v2::launch_hybrid<2, true>
+                           : aqlm_moe_v2::launch_hybrid<2, false>);
   TORCH_CHECK(books == 1 || books == 2, "books must be 1 or 2");
   run((const int4*)codes.data_ptr(), (const int4*)codebooks.data_ptr(),
       (const half*)scales.data_ptr(), aqlm_ids.data_ptr<int>(),
@@ -1479,6 +1579,53 @@ torch::Tensor nvfp4_moe_dequant(const torch::Tensor& packed,
   return out;
 }
 
+// Fused weighted top-k combine (decode epilogue).
+//   y:       [S, M] fp16, S = tokens * top_k, slot-major (token t's slots at
+//            rows t*top_k .. t*top_k+top_k-1)
+//   weights: [S] fp32, same slot order
+//   out_mode: 0 = fp32, 1 = fp16, 2 = bf16 output
+// returns [S / top_k, M]; ascending-slot fp32 accumulation (see kernel note).
+torch::Tensor moe_combine(const torch::Tensor& y,
+                          const torch::Tensor& weights, int64_t top_k,
+                          int64_t out_mode) {
+  TORCH_CHECK(y.is_cuda() && y.dtype() == torch::kFloat16 &&
+              y.is_contiguous() && y.dim() == 2);
+  TORCH_CHECK(weights.is_cuda() && weights.dtype() == torch::kFloat32 &&
+              weights.is_contiguous());
+  const int64_t s = y.size(0);
+  const int64_t m = y.size(1);
+  TORCH_CHECK(top_k >= 1 && s % top_k == 0, "S must be divisible by top_k");
+  TORCH_CHECK(weights.numel() == s, "weights/slots mismatch");
+  TORCH_CHECK(out_mode >= 0 && out_mode <= 2, "out_mode must be 0/1/2");
+  const int64_t t = s / top_k;
+  const auto dt = out_mode == 0   ? torch::kFloat32
+                  : out_mode == 1 ? torch::kFloat16
+                                  : torch::kBFloat16;
+
+  const at::cuda::OptionalCUDAGuard guard(device_of(y));
+  auto out = torch::empty({t, m}, y.options().dtype(dt));
+  const int64_t n_out = t * m;
+  if (n_out == 0) return out;
+  TORCH_CHECK(n_out <= INT32_MAX, "combine output too large");
+  auto stream = at::cuda::getCurrentCUDAStream().stream();
+  const int threads = 256;
+  const int blocks = aqlm_moe_v2::ceildiv((int)n_out, threads);
+  const half* yp = (const half*)y.data_ptr();
+  const float* wp = weights.data_ptr<float>();
+  if (out_mode == 0) {
+    aqlm_moe_v2::MoECombine<float><<<blocks, threads, 0, stream>>>(
+        yp, wp, out.data_ptr<float>(), (int)top_k, (int)m, (int)n_out);
+  } else if (out_mode == 1) {
+    aqlm_moe_v2::MoECombine<half><<<blocks, threads, 0, stream>>>(
+        yp, wp, (half*)out.data_ptr(), (int)top_k, (int)m, (int)n_out);
+  } else {
+    aqlm_moe_v2::MoECombine<__nv_bfloat16><<<blocks, threads, 0, stream>>>(
+        yp, wp, (__nv_bfloat16*)out.data_ptr(), (int)top_k, (int)m,
+        (int)n_out);
+  }
+  return out;
+}
+
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("aqlm_moe_gemv", &aqlm_moe_gemv, "AQLM MoE gemv v2 (decode path)");
   m.def("aqlm_moe_dequant", &aqlm_moe_dequant,
@@ -1488,4 +1635,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         "NVFP4 MoE batched expert dequant (prefill path)");
   m.def("hybrid_moe_gemv", &hybrid_moe_gemv,
         "Fused AQLM+NVFP4 MoE gemv: one launch per projection");
+  m.def("moe_combine", &moe_combine,
+        "Fused weighted top-k slot combine (decode epilogue)");
 }

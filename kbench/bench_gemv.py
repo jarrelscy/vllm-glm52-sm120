@@ -15,6 +15,12 @@ Args: --tokens N (default 4 = 1+ns3 verify) --hot-frac F --iters --compile-only
       --pipeline (time the AQLM_GEMV_PIPELINE=1 V4 path; with --check, also
                   validates it against an fp32 dequant reference at the same
                   tolerance as the env-off kernel)
+      --bf16in  (tail-fusion: validate bf16-activation gemv input against the
+                 fp16-cast path — must be BIT-exact on V2, V3 and V4, incl an
+                 all-65536-bf16-bit-pattern activation sweep — and time it)
+      --combine (tail-fusion: validate moe_combine against the eager
+                 .float()*w -> sum(dim=1) -> .to(dtype) tail — bit-exact in
+                 all three output modes — and time both)
 """
 import argparse, os, pathlib, sys
 
@@ -143,6 +149,111 @@ def set_pipeline(on):
     os.environ["AQLM_GEMV_PIPELINE"] = "1" if on else "0"
 
 
+def set_v3(on):
+    os.environ["GLM_MOE_DEDUP"] = "4" if on else "0"
+    os.environ["GLM_MOE_LANE_ROWS"] = "1" if on else "0"
+
+
+def check_bf16in(ext, w, a_ids, n_ids, x13, x2, iters):
+    """bf16 activations must be BIT-identical to feeding x.to(fp16)."""
+    dev = x13.device
+    failed = False
+    cases = [("w13", x13, "w13"), ("w2 ", x2, "w2")]
+    # all-65536-bit-pattern sweep (covers every bf16 value incl inf/nan and
+    # values that overflow fp16): staging conversion must match torch's cast
+    # for every input bit pattern, so the outputs stay bit-identical.
+    npat = min(65536, x13.numel())  # full coverage needs >= 11 tokens
+    pat13 = torch.zeros(x13.numel(), dtype=torch.int16)
+    pat13[:npat] = torch.arange(npat, dtype=torch.int32).to(torch.int16)
+    pat13 = pat13.view(torch.bfloat16).reshape(x13.shape).to(dev)
+    for path, pre, post in (
+        ("V2", lambda: (set_pipeline(False), set_v3(False)), None),
+        ("V3", lambda: (set_pipeline(False), set_v3(True)),
+         lambda: set_v3(False)),
+        ("V4", lambda: (set_pipeline(True), set_v3(False)),
+         lambda: set_pipeline(False)),
+    ):
+        pre()
+        for nm, x, k in cases:
+            for tag, xb in (("rand", x.to(torch.bfloat16)),
+                            ("bitsweep", pat13 if k == "w13" else
+                             pat13.reshape(-1)[: x.numel()].reshape(x.shape))):
+                args = (w[f"{k}_codes"], w[f"{k}_cbs"], w[f"{k}_scales"],
+                        a_ids, w[f"{k}_packed"], w[f"{k}_bscale"],
+                        w[f"{k}_scale2"], n_ids)
+                got = ext.hybrid_moe_gemv(xb, *args)
+                ref = ext.hybrid_moe_gemv(xb.to(torch.float16), *args)
+                same = torch.equal(got.view(torch.int16),
+                                   ref.view(torch.int16))
+                print(f"  BF16IN {path} {nm} [{tag}]: bit-exact={same}")
+                failed |= not same
+        if post:
+            post()
+    if failed:
+        sys.exit("BF16IN NOT BIT-EXACT")
+    # timing: V4 w13 fp16-in vs bf16-in, plus the eliminated cast kernel
+    set_pipeline(True)
+    xb13 = x13.to(torch.bfloat16)
+    args13 = (w["w13_codes"], w["w13_cbs"], w["w13_scales"], a_ids,
+              w["w13_packed"], w["w13_bscale"], w["w13_scale2"], n_ids)
+    t_fp16 = timed(lambda: ext.hybrid_moe_gemv(x13, *args13), iters)
+    t_bf16 = timed(lambda: ext.hybrid_moe_gemv(xb13, *args13), iters)
+    t_cast = timed(lambda: xb13.to(torch.float16), iters)
+    set_pipeline(False)
+    print(f"  BF16IN V4 w13: fp16-in {t_fp16:.2f} us  bf16-in {t_bf16:.2f} us"
+          f"  (in-kernel convert {t_bf16 - t_fp16:+.2f})  saved cast kernel "
+          f"{t_cast:.2f} us")
+
+
+def check_combine(ext, tokens, iters, dev):
+    """moe_combine must match the eager tail bit-for-bit in every mode."""
+    g = torch.Generator().manual_seed(7)
+    K, M = TOPK, H
+    failed = False
+    for T in (1, 2, 3, tokens, 64, 512):
+        y = (torch.randn(T * K, M, generator=g) / 4).to(torch.float16).to(dev)
+        wts = torch.randn(T, K, generator=g).float().to(dev)  # both signs
+        ref32 = (y.view(T, K, M).float() * wts.view(T, K, 1)).sum(dim=1)
+        # order probe: torch's reduce is the vec4-strided tree the kernel
+        # replicates (acc[k % 4] += p_k, then ((a0+a1)+a2)+a3)
+        tmp = y.view(T, K, M).float() * wts.view(T, K, 1)
+        a = [tmp[:, i, :] + tmp[:, i + 4, :] for i in range(4)]
+        man = ((a[0] + a[1]) + a[2]) + a[3]
+        probe = torch.equal(ref32, man)
+        wflat = wts.reshape(-1).contiguous()
+        for mode, dt in ((0, torch.float32), (1, torch.float16),
+                         (2, torch.bfloat16)):
+            got = ext.moe_combine(y, wflat, K, mode)
+            ref = ref32.to(dt)
+            bits = {torch.float32: torch.int32}.get(dt, torch.int16)
+            same = torch.equal(got.view(bits), ref.view(bits))
+            md = (got.float() - ref.float()).abs().max().item()
+            print(f"  COMBINE T={T:3d} mode={dt}: bit-exact={same} "
+                  f"maxdiff={md}" + ("" if mode else f"  (order probe "
+                                     f"{'PASS' if probe else 'FAIL'})"))
+            failed |= not same
+    # -0.0 edge: torch's zero-init flips an all-negative-zero sum to +0.0
+    yz = torch.full((K, M), -0.0, dtype=torch.float16, device=dev)
+    wz = torch.ones(K, dtype=torch.float32, device=dev)
+    gz = ext.moe_combine(yz, wz, K, 0)
+    rz = (yz.view(1, K, M).float() * wz.view(1, K, 1)).sum(dim=1)
+    zsame = torch.equal(gz.view(torch.int32), rz.view(torch.int32))
+    print(f"  COMBINE -0.0 edge: bit-exact={zsame}")
+    failed |= not zsame
+    if failed:
+        sys.exit("COMBINE NOT BIT-EXACT vs torch tail")
+    T = tokens
+    y = (torch.randn(T * K, M, generator=g) / 4).to(torch.float16).to(dev)
+    wts = torch.randn(T, K, generator=g).float().to(dev)
+    wflat = wts.reshape(-1).contiguous()
+    t_k = timed(lambda: ext.moe_combine(y, wflat, K, 2), iters)
+    t_e = timed(
+        lambda: (y.view(T, K, M).float()
+                 * wts.view(T, K, 1)).sum(dim=1).to(torch.bfloat16), iters)
+    print(f"  COMBINE kernel {t_k:.2f} us   eager tail {t_e:.2f} us   "
+          f"({t_e - t_k:+.2f} us/layer)")
+
+
 def timed(fn, iters, warmup=50):
     for _ in range(warmup):
         fn()
@@ -171,6 +282,10 @@ def main():
                     help="single pass per shape (for ncu -c N capture)")
     ap.add_argument("--pipeline", action="store_true",
                     help="run/validate the AQLM_GEMV_PIPELINE=1 V4 path")
+    ap.add_argument("--bf16in", action="store_true",
+                    help="validate/time bf16-activation gemv input")
+    ap.add_argument("--combine", action="store_true",
+                    help="validate/time the fused top-k combine epilogue")
     args = ap.parse_args()
     set_pipeline(False)  # bit-exact V2/V3 default unless --pipeline
 
@@ -194,6 +309,13 @@ def main():
     g = torch.Generator().manual_seed(2)
     x13 = ((torch.randn(S, H, generator=g) / 8).to(torch.float16).to(dev))
     x2 = ((torch.randn(S, I, generator=g) / 8).to(torch.float16).to(dev))
+
+    if args.bf16in:
+        check_bf16in(ext, w, a_ids, n_ids, x13, x2, args.iters)
+    if args.combine:
+        check_combine(ext, args.tokens, args.iters, dev)
+    if (args.bf16in or args.combine) and not (args.check or args.prof):
+        return
 
     runs = []
     if args.shape in ("w13", "both"):

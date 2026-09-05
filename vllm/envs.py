@@ -259,6 +259,7 @@ if TYPE_CHECKING:
     VLLM_GC_DEBUG: str = ""
     VLLM_DEBUG_WORKSPACE: bool = False
     VLLM_DISABLE_SHARED_EXPERTS_STREAM: bool = False
+    VLLM_GLM_COMM_OVERLAP: bool = False
     VLLM_SHARED_EXPERTS_STREAM_TOKEN_THRESHOLD: int = 256
     VLLM_MULTI_STREAM_GEMM_TOKEN_THRESHOLD: int = 1024
     VLLM_COMPILE_CACHE_SAVE_FORMAT: Literal["binary", "unpacked"] = "binary"
@@ -1856,6 +1857,15 @@ environment_variables: dict[str, Callable[[], Any]] = {
     # Disables parallel execution of shared_experts via separate cuda stream
     "VLLM_DISABLE_SHARED_EXPERTS_STREAM": lambda: bool(
         int(os.getenv("VLLM_DISABLE_SHARED_EXPERTS_STREAM", "0"))
+    ),
+    # GLM/DSA decode comm overlap: issue the DCP all-gathers (indexer top-k
+    # candidates, MQA query heads) asynchronously and run the independent
+    # index-conversion work on the compute stream while the collective is in
+    # flight. Purely a scheduling change: the collectives, kernels and their
+    # inputs are identical, so results are bit-exact vs the serial order.
+    # Default OFF; the env-off path is untouched.
+    "VLLM_GLM_COMM_OVERLAP": lambda: bool(
+        int(os.getenv("VLLM_GLM_COMM_OVERLAP", "0"))
     ),
     # Limits when we run shared_experts in a separate stream.
     # We found out that for large batch sizes, the separate stream

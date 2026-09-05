@@ -19,6 +19,7 @@ from vllm.v1.attention.backends.mla.sparse_utils import (
     triton_convert_req_index_to_global_index,
     triton_filter_and_convert_dcp_index,
 )
+from vllm.v1.attention.ops.dcp_comm_overlap import consume_pending_dcp_merge
 
 if TYPE_CHECKING:
     from vllm.model_executor.models.deepseek_v2 import Indexer
@@ -109,21 +110,47 @@ class FlashInferMLASparseSM120Impl(SparseMLAAttentionImpl[FlashInferMLASparseMet
         self.supports_quant_query_input = False
         self._workspace_buffer: torch.Tensor | None = None
 
-    def forward_mqa(
+    def precompute_mqa_indices(
         self,
-        q: torch.Tensor | tuple[torch.Tensor, torch.Tensor],
-        kv_c_and_k_pe_cache: torch.Tensor,
         attn_metadata: FlashInferMLASparseMetadata,
-        layer: AttentionLayer,
-    ) -> tuple[torch.Tensor, torch.Tensor | None]:
-        if isinstance(q, tuple):
-            q = torch.cat(q, dim=-1)
+        num_actual_toks: int,
+    ) -> tuple[torch.Tensor, torch.Tensor | None, torch.Tensor | None]:
+        """VLLM_GLM_COMM_OVERLAP: run the top-k index conversion early.
 
-        num_actual_toks = q.shape[0]
+        Everything here depends only on the attention metadata and the
+        (final) ``topk_indices_buffer`` -- not on the gathered query -- so the
+        caller can issue it on the compute stream while the DCP query
+        all-gather is in flight. If the sparse indexer of this layer deferred
+        its DCP top-k merge (see ``_merge_dcp_topk_global_async``), it is
+        completed first, so the query all-gather also overlaps the merge
+        kernel.
+
+        The kernels and inputs are identical to the in-``forward_mqa`` path,
+        so the produced indices (and thus the attention output) are bit-exact.
+
+        Returns (topk_indices_physical, seq_lens, empty_rows).
+        """
+        # Complete a deferred indexer top-k merge (writes topk_indices_buffer).
+        consume_pending_dcp_merge()
 
         assert self.topk_indices_buffer is not None
         topk_indices = self.topk_indices_buffer[:num_actual_toks]
+        topk_indices_physical, seq_lens = self._convert_topk_indices(
+            attn_metadata, topk_indices, num_actual_toks
+        )
+        empty_rows = None
+        if self.need_to_return_lse_for_decode:
+            # Hoisted from the post-attention epilogue: depends only on the
+            # converted indices, so it also hides under the query all-gather.
+            empty_rows = (topk_indices_physical == -1).all(dim=-1)
+        return topk_indices_physical, seq_lens, empty_rows
 
+    def _convert_topk_indices(
+        self,
+        attn_metadata: FlashInferMLASparseMetadata,
+        topk_indices: torch.Tensor,
+        num_actual_toks: int,
+    ) -> tuple[torch.Tensor, torch.Tensor | None]:
         # Under DCP the sequence KV is sharded across the DCP ranks: filter the
         # global top-k indices to this rank's shard (and get per-token valid
         # counts as seq_lens). Otherwise keep the single-rank global mapping.
@@ -153,6 +180,39 @@ class FlashInferMLASparseSM120Impl(SparseMLAAttentionImpl[FlashInferMLASparseMet
                 ),
             )
             seq_lens = None
+        return topk_indices_physical, seq_lens
+
+    def forward_mqa(
+        self,
+        q: torch.Tensor | tuple[torch.Tensor, torch.Tensor],
+        kv_c_and_k_pe_cache: torch.Tensor,
+        attn_metadata: FlashInferMLASparseMetadata,
+        layer: AttentionLayer,
+        precomputed_indices: (
+            tuple[torch.Tensor, torch.Tensor | None, torch.Tensor | None] | None
+        ) = None,
+    ) -> tuple[torch.Tensor, torch.Tensor | None]:
+        if isinstance(q, tuple):
+            q = torch.cat(q, dim=-1)
+
+        num_actual_toks = q.shape[0]
+
+        if precomputed_indices is not None:
+            # VLLM_GLM_COMM_OVERLAP: conversion already ran while the query
+            # all-gather was in flight (see precompute_mqa_indices).
+            topk_indices_physical, seq_lens, empty_rows = precomputed_indices
+        else:
+            # Safety net: if a deferred indexer merge is somehow still
+            # pending (overlap engaged in the indexer but not here), complete
+            # it before reading the top-k buffer. No-op when overlap is off.
+            consume_pending_dcp_merge()
+
+            assert self.topk_indices_buffer is not None
+            topk_indices = self.topk_indices_buffer[:num_actual_toks]
+            topk_indices_physical, seq_lens = self._convert_topk_indices(
+                attn_metadata, topk_indices, num_actual_toks
+            )
+            empty_rows = None
 
         # Size the output from the query's actual head count, not the cached
         # self.num_heads: under DCP the query carries all heads (KV is sharded
@@ -195,7 +255,8 @@ class FlashInferMLASparseSM120Impl(SparseMLAAttentionImpl[FlashInferMLASparseMet
             _, lse = res if isinstance(res, tuple) else (res, None)
             out = output.squeeze(1)
             lse = self._normalize_lse(lse, out.shape[0], out.shape[1])
-            empty_rows = (topk_indices_physical == -1).all(dim=-1)
+            if empty_rows is None:
+                empty_rows = (topk_indices_physical == -1).all(dim=-1)
             out.masked_fill_(empty_rows.view(-1, 1, 1), 0.0)
             lse.masked_fill_(empty_rows.view(-1, 1), float("-inf"))
             return out, lse

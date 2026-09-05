@@ -271,6 +271,11 @@ from vllm.v1.attention.backends.utils import (
 )
 from vllm.v1.attention.ops.common import cp_lse_ag_out_rs
 from vllm.v1.attention.ops.dcp_alltoall import dcp_a2a_lse_reduce
+from vllm.v1.attention.ops.dcp_comm_overlap import (
+    AsyncAllGather,
+    consume_pending_dcp_merge,
+    dcp_comm_overlap_enabled,
+)
 from vllm.v1.attention.ops.merge_attn_states import merge_attn_states
 from vllm.v1.attention.selector import get_attn_backend
 from vllm.v1.kv_cache_interface import (
@@ -799,17 +804,48 @@ class MLAAttention(nn.Module, AttentionLayerBase):
                 )
             else:
                 mqa_q = (mqa_ql_nope, mqa_q_pe)
+            precomputed_indices = None
             if self.impl.dcp_world_size > 1:
                 if isinstance(mqa_q, tuple):
                     # concatenate mqa_ql_nope and mqa_q_pe -> (B, N, L + P)
                     mqa_q = torch.cat(mqa_q, dim=-1)
                 # mqa_q do allgather in head dim.
-                mqa_q = get_dcp_group().all_gather(mqa_q, dim=1)
+                if dcp_comm_overlap_enabled() and hasattr(
+                    self.impl, "precompute_mqa_indices"
+                ):
+                    # VLLM_GLM_COMM_OVERLAP: launch the query all-gather
+                    # asynchronously and run the (query-independent) top-k
+                    # index conversion -- plus a deferred indexer top-k
+                    # merge, if any -- on the compute stream while the
+                    # collective is in flight. Identical collective and
+                    # kernels with identical inputs => bit-exact vs the
+                    # serial order below.
+                    ag_q = AsyncAllGather(get_dcp_group(), mqa_q, dim=1)
+                    precomputed_indices = self.impl.precompute_mqa_indices(  # type: ignore[attr-defined]
+                        attn_metadata, num_mqa_tokens
+                    )
+                    mqa_q = ag_q.wait()
+                else:
+                    # If the indexer deferred its DCP top-k merge but this
+                    # impl cannot consume it via precompute_mqa_indices,
+                    # complete it here so forward_mqa reads a final top-k
+                    # buffer. No-op unless VLLM_GLM_COMM_OVERLAP deferred one.
+                    consume_pending_dcp_merge()
+                    mqa_q = get_dcp_group().all_gather(mqa_q, dim=1)
 
             # call decode attn
             if not is_sparse_impl:
                 assert attn_metadata.decode is not None
-            attn_out, lse = self.impl.forward_mqa(mqa_q, kv_cache, attn_metadata, self)  # type: ignore[attr-defined]
+            if precomputed_indices is not None:
+                attn_out, lse = self.impl.forward_mqa(  # type: ignore[attr-defined]
+                    mqa_q,
+                    kv_cache,
+                    attn_metadata,
+                    self,
+                    precomputed_indices=precomputed_indices,
+                )
+            else:
+                attn_out, lse = self.impl.forward_mqa(mqa_q, kv_cache, attn_metadata, self)  # type: ignore[attr-defined]
 
             # correct dcp attn_out with lse.
             if self.impl.dcp_world_size > 1:

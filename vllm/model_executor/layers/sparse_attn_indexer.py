@@ -141,6 +141,64 @@ def _merge_dcp_topk_global(
     )
 
 
+def _merge_dcp_topk_global_async(
+    logits: torch.Tensor,
+    topk_indices: torch.Tensor,
+    topk_tokens: int,
+    dcp_rank: int,
+    dcp_world_size: int,
+    cp_interleave: int,
+) -> None:
+    """VLLM_GLM_COMM_OVERLAP variant of :func:`_merge_dcp_topk_global`.
+
+    Packs the candidates and launches the DCP all-gather asynchronously,
+    deferring the wait + CuteDSL stable-topk merge to the consuming MLA
+    attention op (via the pending-merge slot in dcp_comm_overlap). This lets
+    the candidates all-gather overlap the query-side compute between the
+    indexer and the attention core, and lets the query all-gather overlap the
+    merge kernel. The collective and every kernel are identical to the sync
+    path (same inputs, just later), so the result is bit-exact.
+
+    Decode-only (row_starts=None); callers must not defer for prefill chunks.
+    """
+    assert dcp_world_size > 1
+    _assert_cutedsl_dcp_merge_supported(logits, topk_indices, topk_tokens)
+    from vllm.model_executor.kernels.attention.dsa.dcp_indexer_cutedsl import (
+        pack_dcp_topk_candidates_cutedsl,
+        stable_topk_from_gathered_candidates_cutedsl,
+    )
+    from vllm.v1.attention.ops.dcp_comm_overlap import (
+        AsyncAllGather,
+        stash_pending_dcp_merge,
+    )
+
+    packed = torch.empty(
+        (*topk_indices.shape, 2),
+        dtype=torch.float32,
+        device=topk_indices.device,
+    )
+    pack_dcp_topk_candidates_cutedsl(
+        logits,
+        topk_indices,
+        packed,
+        dcp_rank,
+        dcp_world_size,
+        cp_interleave,
+        None,
+    )
+    ag = AsyncAllGather(get_dcp_group(), packed, dim=1)
+
+    def _finish(
+        ag=ag, topk_tokens=topk_tokens, topk_indices=topk_indices
+    ) -> None:
+        gathered = ag.wait()
+        stable_topk_from_gathered_candidates_cutedsl(
+            gathered, topk_tokens, out=topk_indices
+        )
+
+    stash_pending_dcp_merge(_finish)
+
+
 @triton.jit
 def _fused_indexer_q_rope_quant_kernel(
     positions,
@@ -662,14 +720,40 @@ def sparse_attn_indexer(
             )
 
         if decode_metadata.global_seq_lens is not None:
-            _merge_dcp_topk_global(
-                logits,
-                topk_indices,
-                topk_tokens,
-                dcp_rank,
-                dcp_world_size,
-                cp_kv_cache_interleave_size,
+            # VLLM_GLM_COMM_OVERLAP: for pure-decode unpadded batches (the
+            # cudagraph decode case), launch the candidates all-gather async
+            # and defer the stable-topk merge to the consuming attention op,
+            # exposing the collective to overlap with the query-side compute.
+            # Prefill and padded batches keep the serial path: they post-
+            # process topk_indices inside this op (unpack below / per-chunk
+            # merges above), so the buffer must be final before returning.
+            from vllm.v1.attention.ops.dcp_comm_overlap import (
+                dcp_comm_overlap_enabled,
             )
+
+            if (
+                dcp_comm_overlap_enabled()
+                and dcp_world_size > 1
+                and not has_prefill
+                and not decode_metadata.requires_padding
+            ):
+                _merge_dcp_topk_global_async(
+                    logits,
+                    topk_indices,
+                    topk_tokens,
+                    dcp_rank,
+                    dcp_world_size,
+                    cp_kv_cache_interleave_size,
+                )
+            else:
+                _merge_dcp_topk_global(
+                    logits,
+                    topk_indices,
+                    topk_tokens,
+                    dcp_rank,
+                    dcp_world_size,
+                    cp_kv_cache_interleave_size,
+                )
 
         if decode_metadata.requires_padding:
             # if padded, we need to unpack

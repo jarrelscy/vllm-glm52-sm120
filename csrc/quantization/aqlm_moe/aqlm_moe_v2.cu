@@ -17,6 +17,14 @@
  *  - Fused HybridMatVecMoE kernel: per-slot uniform dispatch between the
  *    AQLM and NVFP4 paths, so one launch per projection replaces
  *    2 gemv launches + 1 eltwise add + masked-slot zero-fill traffic.
+ *  - V4 pipelined kernel (AQLM_GEMV_PIPELINE=1, default OFF -> V2/V3
+ *    behavior unchanged): full-K activation staging via cp.async (one
+ *    barrier pair instead of 2 per K-tile), all per-lane weight/code loads
+ *    issued up front (register multi-buffering, 4-6 16B loads in flight),
+ *    AQLM codebook gathers double-buffered across batches, fp16 FMA chains
+ *    split 8 -> 4x4 with fp32 block combine, and 4-rows-per-warp streaming
+ *    for small-K projections (w2). Targets the latency/ILP bound of the
+ *    tokens<=8 decode gemv (~25% DRAM util at 90%+ occupancy).
  *
  * Numerics are kept bit-identical in accumulation order to the baseline for
  * the AQLM path; the NVFP4 path accumulates each 16-value scale block in
@@ -659,6 +667,385 @@ __global__ void HybridMatVecMoEV3(
 }
 
 // ---------------------------------------------------------------------------
+// V4 pipelined kernel (AQLM_GEMV_PIPELINE=1, env-gated, default OFF):
+// decode gemv restructured for latency/ILP (measured: V3 runs at ~25% DRAM
+// utilization with 90-98% SM occupancy, i.e. bound by dependent-load and
+// dependent-FMA chains, not bandwidth).
+//
+//   1. Full-K activation staging. Production K (6144 / 512) fits entirely in
+//      shared memory (<= 12 KiB as int4), so the per-128-int4 staging loop
+//      with its 2 __syncthreads per K-tile collapses to ONE cp.async
+//      (LDGSTS) stage + one barrier for the whole gemv. cp.async writes
+//      smem directly (no register round-trip) and the copy overlaps the
+//      weight/code loads issued between commit and wait.
+//   2. Load-all-then-compute weight pipelining. Each lane owns at most
+//      CPL (<=6) 16B weight chunks per row (w13 NVFP4: exactly 6; AQLM: 3
+//      code int4s); ALL of them are issued as independent loads before any
+//      FMA, so one memory round-trip covers the row instead of one per
+//      chunk. AQLM codebook gathers are double-buffered: batch i+1's 8
+//      gathers are in flight while batch i's FMAs run.
+//   3. Split accumulators. The 8-deep dependent __hfma2 chains become 4
+//      independent 4-deep chains combined in fp32 (shorter fp16 chains:
+//      accuracy >= V2/V3), and chunks alternate between two fp32
+//      accumulators. Not bit-identical to V2/V3 (fp reassociation) --
+//      validated against the fp32 reference in kbench/bench_gemv.py.
+//   4. Multi-row warps for small K. w2 (K=512) has ONE chunk per lane, so
+//      V3 blocks are pure latency; V4 gives each warp RW=4 row-groups with
+//      every row's loads in flight together.
+//
+// Grid/output contract is identical to V2/V3 (one launch, same C layout);
+// the host falls back to the V2/V3 path when the shape doesn't fit
+// (prob_k/8 > 1024 int4 of smem or > 6 chunks/lane).
+// ---------------------------------------------------------------------------
+constexpr int V4_MAX_ACT_INT4 = 1024;  // prob_k <= 8192
+
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800)
+#define V4_CP_ASYNC 1
+#else
+#define V4_CP_ASYNC 0
+#endif
+
+__device__ __forceinline__ void cp_async16(void* smem_dst,
+                                           const void* gmem_src) {
+#if V4_CP_ASYNC
+  const unsigned d = static_cast<unsigned>(__cvta_generic_to_shared(smem_dst));
+  asm volatile("cp.async.cg.shared.global [%0], [%1], 16;\n" ::"r"(d),
+               "l"(gmem_src));
+#else
+  *reinterpret_cast<int4*>(smem_dst) =
+      *reinterpret_cast<const int4*>(gmem_src);
+#endif
+}
+
+__device__ __forceinline__ void cp_async_commit() {
+#if V4_CP_ASYNC
+  asm volatile("cp.async.commit_group;\n");
+#endif
+}
+
+__device__ __forceinline__ void cp_async_wait_all_sync() {
+#if V4_CP_ASYNC
+  asm volatile("cp.async.wait_group 0;\n");
+#endif
+  __syncthreads();
+}
+
+// One 16B NVFP4 chunk (32 fp4) dot 32 staged activations: 4 independent
+// 4-deep half2 FMA chains, combined per fp8-scale block in fp32.
+__device__ __forceinline__ float nvfp4_chunk_dot_v4(
+    const uint4 w, const uchar2 bs, const half2* __restrict__ bb
+#if NVFP4_LUT256
+    , const half2* __restrict__ lut
+#endif
+) {
+  const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&w);
+#if NVFP4_LUT256
+#define V4_CVT(b) lut[b]
+#else
+#define V4_CVT(b) fp4x2_to_half2(b)
+#endif
+  half2 a0 = {}, a1 = {}, a2 = {}, a3 = {};
+#pragma unroll
+  for (int i = 0; i < 4; i++) a0 = __hfma2(V4_CVT(bytes[i]), bb[i], a0);
+#pragma unroll
+  for (int i = 4; i < 8; i++) a1 = __hfma2(V4_CVT(bytes[i]), bb[i], a1);
+#pragma unroll
+  for (int i = 8; i < 12; i++) a2 = __hfma2(V4_CVT(bytes[i]), bb[i], a2);
+#pragma unroll
+  for (int i = 12; i < 16; i++) a3 = __hfma2(V4_CVT(bytes[i]), bb[i], a3);
+#undef V4_CVT
+  const float lo = __half2float(a0.x) + __half2float(a0.y) +
+                   __half2float(a1.x) + __half2float(a1.y);
+  const float hi = __half2float(a2.x) + __half2float(a2.y) +
+                   __half2float(a3.x) + __half2float(a3.y);
+  return fp8_e4m3_to_float(bs.x) * lo + fp8_e4m3_to_float(bs.y) * hi;
+}
+
+// AQLM V4 body. sh_b holds the FULL activation row, padded (int4 j at
+// sh_b[j + j/8]); staging must have been issued (commit'ed) by the caller,
+// this function waits on it AFTER issuing its own global loads.
+template <int BOOKS, int RW, int CPL>
+__device__ __forceinline__ void aqlm_v4_gemv(
+    const int4* __restrict__ codes, const int4* __restrict__ codebooks,
+    const half* __restrict__ scales, const int expert,
+    half* __restrict__ C_slot, const int prob_m, const int prob_k,
+    const int4* __restrict__ sh_b, const int base_row, const int G,
+    const int tt) {
+  const int R = 32 / G;
+  const int stride = prob_k / 64;  // code int4s per row
+  const uint4* cb = reinterpret_cast<const uint4*>(codebooks);
+  const int4* a_base[BOOKS];
+#pragma unroll
+  for (int b = 0; b < BOOKS; b++) {
+    a_base[b] = codes + ((int64_t)expert * BOOKS + b) * prob_m * stride;
+  }
+
+  // Preload ALL code int4s for this warp's rows (independent 16B loads).
+  union alignas(16) EncT {
+    int4 raw;
+    uint16_t u16[8];
+  };
+  EncT enc[RW][CPL][BOOKS];
+  bool val[RW][CPL];
+#pragma unroll
+  for (int j = 0; j < RW; j++) {
+    const int row = base_row + j * R;
+    const bool rok = row < prob_m;
+#pragma unroll
+    for (int c = 0; c < CPL; c++) {
+      const int p = tt + c * G;
+      val[j][c] = rok && p < stride;
+      if (val[j][c]) {
+#pragma unroll
+        for (int b = 0; b < BOOKS; b++) {
+          enc[j][c][b].raw = __ldg(&a_base[b][stride * row + p]);
+        }
+      }
+    }
+  }
+
+  float resA[RW], resB[RW];
+#pragma unroll
+  for (int j = 0; j < RW; j++) resA[j] = resB[j] = 0.f;
+
+  // Codebook-gather pipeline over sub-batches of 4 codes (half a code int4).
+  // Sub-batch sb+1's 4*BOOKS gathers are issued while sb's FMAs run, so the
+  // L2 round-trip is hidden without the 64-register cost of double-buffering
+  // whole 8-gather batches (which drops occupancy to 2 blocks/SM and starves
+  // the L2 gather pipeline of warps).
+  // Gather width (codes per sub-batch): 4 for the large-K kernel (deeper
+  // in-flight gather window wins there: 222us -> 218us aqlm w13), 2 for the
+  // small-K multi-row kernel (register/occupancy relief wins: 108.8 -> 106.9
+  // aqlm w2). Both measured on 4x RTX PRO 6000 SM120.
+  constexpr int GW = (RW == 1) ? 8 : 2;
+  constexpr int NSPC = 8 / GW;            // sub-batches per code int4
+  constexpr int NSB = RW * CPL * NSPC;    // total sub-batches
+  constexpr int GDEPTH = 2;  // depth-3 measured neutral-to-worse
+  uint4 gbuf[GDEPTH][GW * BOOKS];
+
+#define AQLM_V4_ISSUE(sb, buf)                                              \
+  {                                                                         \
+    const int j_ = (sb) / (NSPC * CPL), c_ = ((sb) / NSPC) % CPL;           \
+    const int h_ = (sb) % NSPC;                                             \
+    if (val[j_][c_]) {                                                      \
+      _Pragma("unroll") for (int u = 0; u < GW; u++) {                      \
+        _Pragma("unroll") for (int b = 0; b < BOOKS; b++) {                 \
+          (buf)[u * BOOKS + b] = ld_cb(                                     \
+              cb + (int64_t)b * 65536 + enc[j_][c_][b].u16[GW * h_ + u]);   \
+        }                                                                   \
+      }                                                                     \
+    }                                                                       \
+  }
+
+#define AQLM_V4_COMPUTE(sb, buf)                                            \
+  {                                                                         \
+    const int j_ = (sb) / (NSPC * CPL), c_ = ((sb) / NSPC) % CPL;           \
+    const int h_ = (sb) % NSPC;                                             \
+    if (val[j_][c_]) {                                                      \
+      const int p_ = tt + c_ * G;                                           \
+      const int4* bvec = &sh_b[p_ * 9 + GW * h_];                           \
+      _Pragma("unroll") for (int u = 0; u < GW; u++) {                      \
+        half2 wsum[4];                                                      \
+        const half2* a0 = reinterpret_cast<const half2*>(&(buf)[u * BOOKS]);\
+        _Pragma("unroll") for (int q = 0; q < 4; q++) wsum[q] = a0[q];      \
+        if (BOOKS == 2) {                                                   \
+          const half2* a1 =                                                 \
+              reinterpret_cast<const half2*>(&(buf)[u * BOOKS + 1]);        \
+          _Pragma("unroll") for (int q = 0; q < 4; q++) {                   \
+            wsum[q] = __hadd2(wsum[q], a1[q]);                              \
+          }                                                                 \
+        }                                                                   \
+        const half2* bb = reinterpret_cast<const half2*>(&bvec[u]);         \
+        half2 r2 = {};                                                      \
+        _Pragma("unroll") for (int q = 0; q < 4; q++) {                     \
+          r2 = __hfma2(wsum[q], bb[q], r2);                                 \
+        }                                                                   \
+        const float d_ = __half2float(r2.x) + __half2float(r2.y);           \
+        if (u & 1) {                                                        \
+          resB[j_] += d_;                                                   \
+        } else {                                                            \
+          resA[j_] += d_;                                                   \
+        }                                                                   \
+      }                                                                     \
+    }                                                                       \
+  }
+
+  AQLM_V4_ISSUE(0, gbuf[0]);
+  if (GDEPTH > 2 && NSB > 1) AQLM_V4_ISSUE(1, gbuf[1 % GDEPTH]);
+  cp_async_wait_all_sync();  // activations resident from here on
+#pragma unroll
+  for (int sb = 0; sb < NSB; sb++) {
+    if (sb + GDEPTH - 1 < NSB)
+      AQLM_V4_ISSUE(sb + GDEPTH - 1, gbuf[(sb + GDEPTH - 1) % GDEPTH]);
+    AQLM_V4_COMPUTE(sb, gbuf[sb % GDEPTH]);
+  }
+#undef AQLM_V4_ISSUE
+#undef AQLM_V4_COMPUTE
+
+#pragma unroll
+  for (int j = 0; j < RW; j++) {
+    float r = resA[j] + resB[j];
+    for (int off = G / 2; off > 0; off /= 2) {
+      r += __shfl_down_sync(0xffffffff, r, off);
+    }
+    const int row = base_row + j * R;
+    if (row < prob_m && tt == 0) {
+      const float s = __half2float(scales[(int64_t)expert * prob_m + row]);
+      C_slot[row] = __float2half(r * s);
+    }
+  }
+}
+
+// NVFP4 V4 body. sh_b holds the FULL activation row, flat (int4 j at
+// sh_b[j]); same staging contract as aqlm_v4_gemv.
+template <int RW, int CPL>
+__device__ __forceinline__ void nvfp4_v4_gemv(
+    const int4* __restrict__ packed, const uchar2* __restrict__ bscale,
+    const float* __restrict__ scale2, const int s2n, const int expert,
+    half* __restrict__ C_slot, const int prob_m, const int prob_k,
+    const int4* __restrict__ sh_b, const int base_row, const int G,
+    const int tt
+#if NVFP4_LUT256
+    , const half2* __restrict__ lut
+#endif
+) {
+  const int R = 32 / G;
+  const int stride = prob_k / 32;  // uint4s (32 fp4) per row
+
+  // Preload ALL weight chunks + block scales for this warp's rows.
+  uint4 w[RW][CPL];
+  uchar2 bs[RW][CPL];
+  bool val[RW][CPL];
+#pragma unroll
+  for (int j = 0; j < RW; j++) {
+    const int row = base_row + j * R;
+    const bool rok = row < prob_m;
+    const uint4* a_row = reinterpret_cast<const uint4*>(
+        packed + ((int64_t)expert * prob_m + row) * stride);
+    const uchar2* s_row =
+        bscale + ((int64_t)expert * prob_m + row) * stride;
+#pragma unroll
+    for (int c = 0; c < CPL; c++) {
+      const int p = tt + c * G;
+      val[j][c] = rok && p < stride;
+      if (val[j][c]) {
+        // NOTE: __ldcs (evict-first streaming) was measured HERE and LOST
+        // (prod-mix w13 112->123us): NVFP4 weight reuse via L2 outweighs
+        // protecting the AQLM codebook's residency.
+        w[j][c] = a_row[p];
+        bs[j][c] = s_row[p];
+      }
+    }
+  }
+
+  cp_async_wait_all_sync();  // activations resident from here on
+
+  float resA[RW], resB[RW];
+#pragma unroll
+  for (int j = 0; j < RW; j++) resA[j] = resB[j] = 0.f;
+#pragma unroll
+  for (int j = 0; j < RW; j++) {
+#pragma unroll
+    for (int c = 0; c < CPL; c++) {
+      if (val[j][c]) {
+        const int p = tt + c * G;
+        const half2* bb = reinterpret_cast<const half2*>(&sh_b[p * 4]);
+        const float d = nvfp4_chunk_dot_v4(w[j][c], bs[j][c], bb
+#if NVFP4_LUT256
+                                           , lut
+#endif
+        );
+        if (c & 1) {
+          resB[j] += d;
+        } else {
+          resA[j] += d;
+        }
+      }
+    }
+  }
+
+#pragma unroll
+  for (int j = 0; j < RW; j++) {
+    float r = resA[j] + resB[j];
+    for (int off = G / 2; off > 0; off /= 2) {
+      r += __shfl_down_sync(0xffffffff, r, off);
+    }
+    const int row = base_row + j * R;
+    if (row < prob_m && tt == 0) {
+      const float g =
+          scale2[expert * s2n + (int)(((int64_t)row * s2n) / prob_m)];
+      C_slot[row] = __float2half(r * g);
+    }
+  }
+}
+
+template <int BOOKS, int RW, int CPL>
+__global__ void __launch_bounds__(256) HybridMatVecMoEV4(
+    const int4* __restrict__ codes, const int4* __restrict__ codebooks,
+    const half* __restrict__ scales, const int* __restrict__ aqlm_ids,
+    const int4* __restrict__ packed, const uchar2* __restrict__ bscale,
+    const float* __restrict__ scale2, const int s2n,
+    const int* __restrict__ nv_ids, const int4* __restrict__ B_all,
+    half* __restrict__ C, const int prob_m, const int prob_k, const int G) {
+  // TRANSPOSED grid vs V2/V3: slot on blockIdx.x (fastest dispatch dim), row
+  // chunk on blockIdx.y. Blocks of all slots interleave in issue order, so
+  // L2-bound AQLM blocks and DRAM-bound NVFP4 blocks overlap instead of
+  // running as per-slot bursts that serialize on one resource at a time.
+  const int slot = blockIdx.x;
+  const int a_id = __ldg(&aqlm_ids[slot]);
+  const int n_id = __ldg(&nv_ids[slot]);
+  const int lane = threadIdx.x % 32;
+  const int g = lane / G;
+  const int tt = lane - g * G;
+  const int R = 32 / G;
+  const int warp = (blockDim.x / 32) * blockIdx.y + threadIdx.x / 32;
+  const int base_row = warp * (R * RW) + g;
+  // Dynamic smem, sized by the host to the ACTUAL activation length (plus
+  // LUT) instead of the V4_MAX_ACT_INT4 worst case: 18.4KB static would cap
+  // residency at 5 blocks/SM; prod w13 needs only 13.9KB.
+  extern __shared__ int4 sh_b[];
+
+  const int n_b = prob_k / 8;
+  const int4* B = B_all + (int64_t)slot * n_b;
+  half* C_slot = C + (int64_t)slot * prob_m;
+
+  if (a_id >= 0) {
+    // Padded layout (int4 j at j + j/8): lane-strided reads during compute
+    // hit rotating banks, same as the V2/V3 32*9 tile.
+    for (int i = threadIdx.x; i < n_b; i += blockDim.x) {
+      cp_async16(&sh_b[i + (i >> 3)], &B[i]);
+    }
+    cp_async_commit();
+    // An AQLM chunk (code int4) covers 64 values = 2 NVFP4 chunks, so the
+    // AQLM path needs only ceil(CPL/2) batches per lane.
+    aqlm_v4_gemv<BOOKS, RW, (CPL + 1) / 2>(codes, codebooks, scales, a_id,
+                                           C_slot, prob_m, prob_k, sh_b,
+                                           base_row, G, tt);
+  } else if (n_id >= 0) {
+#if NVFP4_LUT256
+    half2* lut = reinterpret_cast<half2*>(sh_b + n_b);  // after flat acts
+    nvfp4_fill_lut(lut);  // synced by cp_async_wait_all_sync in the body
+#endif
+    for (int i = threadIdx.x; i < n_b; i += blockDim.x) {
+      cp_async16(&sh_b[i], &B[i]);
+    }
+    cp_async_commit();
+    nvfp4_v4_gemv<RW, CPL>(packed, bscale, scale2, s2n, n_id, C_slot, prob_m,
+                           prob_k, sh_b, base_row, G, tt
+#if NVFP4_LUT256
+                           , lut
+#endif
+    );
+  } else {  // masked slot: zero-fill this warp's rows
+#pragma unroll
+    for (int j = 0; j < RW; j++) {
+      const int row = base_row + j * R;
+      if (row < prob_m && tt == 0) C_slot[row] = __float2half(0.f);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Prefill dequant kernels: copied unchanged from baseline (not decode-hot).
 // ---------------------------------------------------------------------------
 template <int BOOKS>
@@ -766,7 +1153,8 @@ __global__ void NvFp4DequantMoE(const int4* __restrict__ packed,
 // ---------------------------------------------------------------------------
 // Launch helpers
 // ---------------------------------------------------------------------------
-static void pick_grid(int prob_m, int n_rows_out, dim3& blocks, int& threads) {
+static void pick_grid_cap(int prob_m, int n_rows_out, dim3& blocks,
+                          int& threads, int max_tm) {
   int dev, sms;
   cudaGetDevice(&dev);
   cudaDeviceGetAttribute(&sms, cudaDevAttrMultiProcessorCount, dev);
@@ -775,9 +1163,13 @@ static void pick_grid(int prob_m, int n_rows_out, dim3& blocks, int& threads) {
   do {
     waves++;
     thread_m = ceildiv(prob_m, waves * sms);
-  } while (thread_m > THREAD_M);
+  } while (thread_m > max_tm);
   blocks = dim3(ceildiv(prob_m, thread_m), n_rows_out);
   threads = 32 * thread_m;
+}
+
+static void pick_grid(int prob_m, int n_rows_out, dim3& blocks, int& threads) {
+  pick_grid_cap(prob_m, n_rows_out, blocks, threads, THREAD_M);
 }
 
 template <int BOOKS>
@@ -803,6 +1195,48 @@ void launch_hybrid(const int4* codes, const int4* codebooks,
                    const uchar2* bscale, const float* scale2, int s2n,
                    const int* nv_ids, const int4* B, half* C, int n_rows_out,
                    int prob_m, int prob_k, cudaStream_t stream) {
+  // V4 pipelined path (AQLM_GEMV_PIPELINE=1, default OFF; takes precedence
+  // over GLM_MOE_DEDUP / GLM_MOE_LANE_ROWS, and subsumes lane-rows). Falls
+  // back to the V2/V3 paths below when the shape doesn't fit the pipelined
+  // kernel (activations > smem budget, or > 6 weight chunks per lane).
+  if (env_flag("AQLM_GEMV_PIPELINE") && prob_k / 8 <= V4_MAX_ACT_INT4) {
+    const int s_n = prob_k / 32;  // NVFP4 uint4s per row
+    int G = 32;                   // lane-rows grouping, same rule as V3
+    if (s_n >= 2 && s_n <= 16 && (s_n & (s_n - 1)) == 0) G = s_n;
+    const int cpl = ceildiv(s_n, G);  // NVFP4 chunks per lane
+    auto kern = HybridMatVecMoEV4<BOOKS, 1, 6>;  // large K: all chunks in
+    int RW = 1;                                  // flight, 1 row per warp
+    bool ok = true;
+    if (cpl == 1) {
+      kern = HybridMatVecMoEV4<BOOKS, 4, 1>;  // small K: 4 rows per warp
+      RW = 4;
+    } else if (cpl > 6) {
+      ok = false;
+    }
+    if (ok) {
+      static bool logged4 = false;
+      if (!logged4) {
+        logged4 = true;
+        fprintf(stderr,
+                "[aqlm_moe_v2] V4 pipelined gemv active (G=%d RW=%d cpl=%d)\n",
+                G, RW, cpl);
+      }
+      const int R = 32 / G;
+      dim3 blocks;
+      int threads;
+      pick_grid_cap(ceildiv(prob_m, R * RW), n_rows_out, blocks, threads, 8);
+      // Transposed grid: slots on x (see kernel comment).
+      dim3 blocks_t(blocks.y, blocks.x);
+      const int n_b = prob_k / 8;
+      const int lut_int4 = (NVFP4_SMEM_EXTRA + 3) / 4;
+      const int smem_int4 =
+          n_b + (n_b / 8 > lut_int4 ? n_b / 8 : lut_int4);
+      kern<<<blocks_t, threads, smem_int4 * (int)sizeof(int4), stream>>>(
+          codes, codebooks, scales, aqlm_ids, packed, bscale, scale2, s2n,
+          nv_ids, B, C, prob_m, prob_k, G);
+      return;
+    }
+  }
   // DECODE-K features, env-gated per launch (cheap; also lets the tier-1
   // variant harness A/B within one process), default OFF -> V2 kernel.
   // GLM_MOE_DEDUP: 0/off | 2 = dedup pairs (UMAX=2, half the smem/regs) |

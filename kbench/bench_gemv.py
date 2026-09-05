@@ -12,6 +12,9 @@ Env:
   KB_NAME     extension name suffix
 Args: --tokens N (default 4 = 1+ns3 verify) --hot-frac F --iters --compile-only
       --shape w13|w2|both --mix prod|aqlm|nv --check (vs shipped kernel)
+      --pipeline (time the AQLM_GEMV_PIPELINE=1 V4 path; with --check, also
+                  validates it against an fp32 dequant reference at the same
+                  tolerance as the env-off kernel)
 """
 import argparse, os, pathlib, sys
 
@@ -99,6 +102,47 @@ def make_slots(tokens, hot_frac, mix, dev, seed=1):
     return a_ids.to(dev), n_ids.to(dev)
 
 
+FP4_LUT = [0.0, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0,
+           -0.0, -0.5, -1.0, -1.5, -2.0, -3.0, -4.0, -6.0]
+
+
+def fp32_reference(x, w, a_ids, n_ids, key):
+    """fp32 dequant + fp32 matmul reference for one projection.
+
+    Matches the kernel's math (scale applied after the dot) but with all
+    arithmetic in fp32, so both the shipped kernel and the V4 path can be
+    held to the same tolerance against it.
+    """
+    dev = x.device
+    S, K = x.shape
+    M = w[f"{key}_codes"].shape[2]
+    cb = w[f"{key}_cbs"][0].float()                       # [65536, 8]
+    scales = w[f"{key}_scales"].float()                   # [nC, M]
+    scale2 = w[f"{key}_scale2"]                           # [nH, s2n]
+    s2n = scale2.shape[1]
+    lut = torch.tensor(FP4_LUT, dtype=torch.float32, device=dev)
+    xf = x.float()
+    out = torch.zeros(S, M, dtype=torch.float32, device=dev)
+    rows = (torch.arange(M, device=dev) * s2n) // M
+    for s in range(S):
+        a, nv = int(a_ids[s]), int(n_ids[s])
+        if a >= 0:
+            idx = (w[f"{key}_codes"][a, 0].int() & 0xFFFF).long()  # [M, K/8]
+            W = cb[idx.reshape(-1)].reshape(M, K)
+            out[s] = (W @ xf[s]) * scales[a]
+        elif nv >= 0:
+            p = w[f"{key}_packed"][nv].int()              # [M, K/2]
+            W = torch.stack([lut[p & 0xF], lut[p >> 4]], -1).reshape(M, K)
+            bs = w[f"{key}_bscale"][nv].view(torch.float8_e4m3fn).float()
+            Wb = (W.reshape(M, K // 16, 16) * bs[:, :, None]).reshape(M, K)
+            out[s] = (Wb @ xf[s]) * scale2[nv][rows]
+    return out
+
+
+def set_pipeline(on):
+    os.environ["AQLM_GEMV_PIPELINE"] = "1" if on else "0"
+
+
 def timed(fn, iters, warmup=50):
     for _ in range(warmup):
         fn()
@@ -125,7 +169,10 @@ def main():
                     help="bit-compare vs the shipped kernel (cudagraphs-v2)")
     ap.add_argument("--prof", action="store_true",
                     help="single pass per shape (for ncu -c N capture)")
+    ap.add_argument("--pipeline", action="store_true",
+                    help="run/validate the AQLM_GEMV_PIPELINE=1 V4 path")
     args = ap.parse_args()
+    set_pipeline(False)  # bit-exact V2/V3 default unless --pipeline
 
     src = os.environ.get(
         "KB_SRC", str(REPO / "csrc/quantization/aqlm_moe/aqlm_moe_v2.cu"))
@@ -167,7 +214,7 @@ def main():
                        "aqlm_moe/aqlm_moe_v2.cu")
         ref = build(ref_src, "kb_ref_shipped", [])
         for nm, fn in runs:
-            got = fn()
+            got = fn()  # env-off path: must stay bit-exact vs shipped
             x = x13 if nm.strip() == "w13" else x2
             k = "w13" if nm.strip() == "w13" else "w2"
             r = ref.hybrid_moe_gemv(
@@ -178,7 +225,37 @@ def main():
             print(f"  CHECK {nm}: bit-exact={same} maxdiff={md}")
             if not same:
                 sys.exit(f"NOT BIT-EXACT on {nm}")
+            if args.pipeline:
+                f32 = fp32_reference(x, w, a_ids, n_ids, k)
+                # Two-part tolerance, anchored to the CURRENT kernel's own
+                # deviation from the fp32 reference:
+                #  - RMS error must not degrade (statistical quality gate;
+                #    single-element max metrics are dominated by rounding
+                #    jitter on the largest / most-cancelled outputs).
+                #  - max-abs error bounded by old * 1.25 + 2 fp16 ULP of the
+                #    largest output (guards against localized indexing /
+                #    format bugs, which produce O(magnitude) errors).
+                d_old = got.float() - f32
+                set_pipeline(True)
+                new = fn()
+                set_pipeline(False)
+                d_new = new.float() - f32
+                rms_old = d_old.pow(2).mean().sqrt().item()
+                rms_new = d_new.pow(2).mean().sqrt().item()
+                a_old = d_old.abs().max().item()
+                a_new = d_new.abs().max().item()
+                ulp_max = 2.0 ** (torch.floor(torch.log2(
+                    f32.abs().max().clamp(min=2 ** -14))).item() - 10)
+                ok = (rms_new <= rms_old * 1.05 + 1e-6 and
+                      a_new <= a_old * 1.25 + 2 * ulp_max)
+                print(f"  CHECK {nm} V4 vs fp32 ref: "
+                      f"rms {rms_old:.6f}->{rms_new:.6f} "
+                      f"max {a_old:.4f}->{a_new:.4f} "
+                      f"{'PASS' if ok else 'FAIL'}")
+                if not ok:
+                    sys.exit(f"V4 EXCEEDS TOLERANCE on {nm}")
 
+    set_pipeline(args.pipeline)
     if args.prof:
         for nm, fn in runs:
             fn()
@@ -187,7 +264,7 @@ def main():
 
     n_aqlm = int((a_ids >= 0).sum())
     print(f"tokens={args.tokens} slots={S} (aqlm={n_aqlm} nv={S - n_aqlm}) "
-          f"mix={args.mix}")
+          f"mix={args.mix} path={'V4-pipeline' if args.pipeline else 'env'}")
     for nm, fn in runs:
         us = timed(fn, args.iters)
         # DRAM bytes: codes for aqlm slots + packed/bscale for nv slots

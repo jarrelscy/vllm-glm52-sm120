@@ -44,7 +44,11 @@ def _prepare_uniform_decode_kernel(
     expanded_bt_stride,
     decode_lens_ptr,
     max_decode_len,
+    dcp_world_size,
+    dcp_rank,
+    cp_interleave,
     BLOCK_SIZE: tl.constexpr,
+    DCP_LOCALIZE: tl.constexpr = False,
 ):
     idx = tl.program_id(0)
     req_id = idx // max_decode_len
@@ -53,6 +57,18 @@ def _prepare_uniform_decode_kernel(
     # Compute number of KVs attended to by this token.
     seq_len = tl.load(seq_lens_ptr + req_id)
     per_token_seq_len = seq_len - max_decode_len + local_idx + 1
+    if DCP_LOCALIZE:
+        # VLLM_GLM_IDX_FUSED_LOCALIZE: fold get_dcp_local_seq_lens() into this
+        # kernel (same integer formula, applied per expanded token exactly as
+        # the eager path applies it to the expanded buffer afterwards).
+        # All values are non-negative here (decode implies seq_len >=
+        # max_decode_len), so Triton's truncating integer division matches
+        # torch.floor_divide bit-for-bit.
+        base = per_token_seq_len // cp_interleave // dcp_world_size * cp_interleave
+        remainder = per_token_seq_len - base * dcp_world_size
+        remainder = remainder - dcp_rank * cp_interleave
+        remainder = tl.minimum(tl.maximum(remainder, 0), cp_interleave)
+        per_token_seq_len = base + remainder
     tl.store(decode_seq_lens_ptr + idx, per_token_seq_len)
 
     # Copy block table row.
@@ -274,6 +290,9 @@ class DeepseekV32IndexerMetadataBuilder(AttentionMetadataBuilder):
         self.use_fp4_indexer_cache = (
             self.vllm_config.attention_config.use_fp4_indexer_cache
         )
+        # Round-4 tail: fuse DCP seq_lens localization into the uniform
+        # decode expansion kernel (host-launch reduction; bit-identical).
+        self._fuse_dcp_localize = envs.VLLM_GLM_IDX_FUSED_LOCALIZE
 
         assert (
             current_platform.is_device_capability_family(100)
@@ -411,7 +430,8 @@ class DeepseekV32IndexerMetadataBuilder(AttentionMetadataBuilder):
         use_native: bool,
         next_n: int,
         max_decode_len: int,
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, int, bool]:
+        fuse_dcp_localize: bool = False,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, int, bool, bool]:
         """Expand seq_lens/block_table/decode_lens for the decode kernels.
 
         Flatten path (not use_native, max_decode_len > 1):
@@ -421,9 +441,13 @@ class DeepseekV32IndexerMetadataBuilder(AttentionMetadataBuilder):
         Native path (use_native or max_decode_len == 1):
           Plain decode or spec-decode with 2D per-token context lengths.
 
-        Returns (seq_lens, block_table, decode_lens, batch_size, requires_padding).
+        Returns (seq_lens, block_table, decode_lens, batch_size,
+        requires_padding, dcp_localized).
         seq_lens is 1D (batch_size,) for flatten/plain, 2D (B, max_decode_len)
-        for native MTP.
+        for native MTP. When `fuse_dcp_localize` is set and the uniform flatten
+        path is taken, the DCP localization of seq_lens is folded into the
+        expansion kernel and `dcp_localized=True` is returned so the caller
+        skips the eager get_dcp_local_seq_lens pass.
         """
         min_decode_len = int(decode_lens_cpu.min().item())
         if not use_native and max_decode_len > 1:
@@ -440,13 +464,24 @@ class DeepseekV32IndexerMetadataBuilder(AttentionMetadataBuilder):
                     self.expanded_block_table_buffer.stride(0),
                     self.decode_lens_buffer,
                     max_decode_len,
+                    self.dcp_world_size,
+                    self.dcp_rank,
+                    self.cp_kv_cache_interleave_size,
                     BLOCK_SIZE=1024,
+                    DCP_LOCALIZE=fuse_dcp_localize,
                 )
                 self.decode_seq_lens_buffer[num_decode_tokens:] = 0
                 seq_lens = self.decode_seq_lens_buffer[:num_decode_tokens]
                 block_table = self.expanded_block_table_buffer[:num_decode_tokens]
                 decode_lens = self.decode_lens_buffer[:num_decode_tokens]
-                return seq_lens, block_table, decode_lens, num_decode_tokens, False
+                return (
+                    seq_lens,
+                    block_table,
+                    decode_lens,
+                    num_decode_tokens,
+                    False,
+                    fuse_dcp_localize,
+                )
             else:
                 # Variable decode lengths.
                 # Assume 4 requests with seq_lens [10, 7, 12, 0] (the final req is
@@ -493,7 +528,14 @@ class DeepseekV32IndexerMetadataBuilder(AttentionMetadataBuilder):
                 # All reqs now have decode_len=1
                 self.decode_lens_buffer[:num_decode_tokens] = 1
                 decode_lens = self.decode_lens_buffer[:num_decode_tokens]
-                return seq_lens, block_table, decode_lens, num_decode_tokens, False
+                return (
+                    seq_lens,
+                    block_table,
+                    decode_lens,
+                    num_decode_tokens,
+                    False,
+                    False,
+                )
         else:
             # Native path: plain decode (next_n==1) or spec decode
             # with 2D per-token context lengths (next_n > 1).
@@ -517,7 +559,14 @@ class DeepseekV32IndexerMetadataBuilder(AttentionMetadataBuilder):
                     + self.offsets_buffer[:max_decode_len]
                 )
                 seq_lens = seq_lens_buffer
-            return seq_lens, block_table, decode_lens, num_decodes, requires_padding
+            return (
+                seq_lens,
+                block_table,
+                decode_lens,
+                num_decodes,
+                requires_padding,
+                False,
+            )
 
     def _prepare_global_decode_seq_lens(
         self,
@@ -677,19 +726,38 @@ class DeepseekV32IndexerMetadataBuilder(AttentionMetadataBuilder):
                 max_decode_len=max_decode_len,
             )
 
-            seq_lens, block_table, decode_lens, batch_size, requires_padding = (
-                self._prepare_decode_tensors(
-                    seq_lens=seq_lens,
-                    block_table=block_table,
-                    decode_lens=decode_lens,
-                    decode_lens_cpu=decode_lens_cpu,
-                    query_start_loc=common_attn_metadata.query_start_loc[:num_decodes],
-                    num_decodes=num_decodes,
-                    num_decode_tokens=num_decode_tokens,
-                    use_native=use_native,
-                    next_n=next_n,
-                    max_decode_len=max_decode_len,
-                )
+            # VLLM_GLM_IDX_FUSED_LOCALIZE: fold the eager DCP localization
+            # (get_dcp_local_seq_lens: ~11 aten launches + a pageable HtoD for
+            # torch.tensor(dcp_rank) + a copy back into the buffer) into the
+            # uniform expansion Triton kernel. Integer math is identical, so
+            # the resulting seq_lens are bit-identical; only when DCP is
+            # active and no KV compression rescaling follows (DCP already
+            # implies compress_ratio == 1, enforced in __init__).
+            fuse_dcp_localize = (
+                self._fuse_dcp_localize
+                and dcp_local_seq_lens is not None
+                and self.compress_ratio == 1
+            )
+
+            (
+                seq_lens,
+                block_table,
+                decode_lens,
+                batch_size,
+                requires_padding,
+                dcp_localized,
+            ) = self._prepare_decode_tensors(
+                seq_lens=seq_lens,
+                block_table=block_table,
+                decode_lens=decode_lens,
+                decode_lens_cpu=decode_lens_cpu,
+                query_start_loc=common_attn_metadata.query_start_loc[:num_decodes],
+                num_decodes=num_decodes,
+                num_decode_tokens=num_decode_tokens,
+                use_native=use_native,
+                next_n=next_n,
+                max_decode_len=max_decode_len,
+                fuse_dcp_localize=fuse_dcp_localize,
             )
 
             seq_lens_is_buffer_view = (use_native and next_n > 1) or (
@@ -699,7 +767,7 @@ class DeepseekV32IndexerMetadataBuilder(AttentionMetadataBuilder):
             # DCP: localize the now-expanded per-token global bounds to this
             # rank's owned KV. Done here (after expansion) so each token's global
             # causal length is localized individually; see the comment above.
-            if dcp_local_seq_lens is not None:
+            if dcp_local_seq_lens is not None and not dcp_localized:
                 seq_lens = self._dcp_localize_decode_seq_lens(
                     seq_lens, num_decodes, seq_lens_is_buffer_view
                 )

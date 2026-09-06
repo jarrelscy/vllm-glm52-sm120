@@ -262,6 +262,7 @@ if TYPE_CHECKING:
     VLLM_GLM_COMM_OVERLAP: bool = False
     VLLM_DCP_A2A_EXACT: bool = False
     VLLM_GLM_COMM_COALESCE: bool = False
+    VLLM_GLM_IDX_FUSED_LOCALIZE: bool = False
     VLLM_SHARED_EXPERTS_STREAM_TOKEN_THRESHOLD: int = 256
     VLLM_MULTI_STREAM_GEMM_TOKEN_THRESHOLD: int = 1024
     VLLM_COMPILE_CACHE_SAVE_FORMAT: Literal["binary", "unpacked"] = "binary"
@@ -1882,6 +1883,14 @@ environment_variables: dict[str, Callable[[], Any]] = {
     # are bit-identical. Requires VLLM_GLM_COMM_OVERLAP=1. Default OFF.
     "VLLM_GLM_COMM_COALESCE": lambda: bool(
         int(os.getenv("VLLM_GLM_COMM_COALESCE", "0"))
+    ),
+    # Round-4 step tail: fold the eager DCP seq_lens localization
+    # (get_dcp_local_seq_lens + copy-back, ~11 aten launches and a pageable
+    # HtoD per decode step) into the sparse-indexer uniform decode expansion
+    # Triton kernel. Same integer formula evaluated per expanded token, so
+    # outputs are bit-identical. Default OFF.
+    "VLLM_GLM_IDX_FUSED_LOCALIZE": lambda: bool(
+        int(os.getenv("VLLM_GLM_IDX_FUSED_LOCALIZE", "0"))
     ),
     # Limits when we run shared_experts in a separate stream.
     # We found out that for large batch sizes, the separate stream

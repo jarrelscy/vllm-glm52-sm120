@@ -40,7 +40,7 @@ docker run --gpus all --ipc=host -p 8001:8001 \
   -e MODEL_DIR=/data/huggingface/hub/models--jarrelscy--GLM-5.3-Vision-NVFP4-AQLM-hybrid-1m/snapshots/<sha> \
   -e SERVED_NAME=glm-5.3 \
   -e PARALLEL=tp4-1m-mtp \
-  -e MAXLEN=950000 -e UTIL=0.96 -e MAX_NUM_SEQS=2 \
+  -e MAXLEN=950000 -e UTIL=0.96 -e MAX_NUM_SEQS=4 \
   -e CUDAGRAPH_MODE=FULL_AND_PIECEWISE \
   -e TRITON_CACHE_DIR=/data/triton_cache \
   glm52-vision-sm120 \
@@ -48,6 +48,14 @@ docker run --gpus all --ipc=host -p 8001:8001 \
 ```
 
 `VLLM_API_KEY` (if you want auth) comes from the environment; never bake it in.
+
+`MAX_NUM_SEQS=4` is the default (raised from 2 once the indexer off-by-one was
+fixed). It leaves single-stream B=1 decode untouched (~42.2 ms/step) while
+lifting peak aggregate throughput from ~106 to ~113 tok/s at 4 concurrent
+streams — this box is memory-bandwidth-bound, so concurrency scales sub-linearly
+(per-stream drops from ~50 to ~28 tok/s) but the aggregate still gains. The
+decode CUDA graph for the full batch (4 seqs x next_n 4 = size 16) is in the
+capture list, so there is no extra warmup cost.
 
 ## Performance/determinism flags — all gated lossless, recommended ON
 
@@ -101,7 +109,12 @@ inside FULL cudagraphs despite winning eager microbenches), `LOCAL_ARGMAX`
   JIT finish; persist `TRITON_CACHE_DIR` to a volume and send a ~15K-token
   warmup request.
 - UTIL above 0.96 can OOM in the fp32 MoE dequant transient under long
-  prefills on this checkpoint. Keep 0.96.
-- Rare (~once/10h under 2-concurrent MTP): off-by-one crash in
-  `mla/indexer.py _prepare_decode_tensors` at a length boundary; the engine
-  auto-restarts. Mitigation if it bites: `MAX_NUM_SEQS=1`.
+  prefills on this checkpoint. Keep 0.96. At `MAX_NUM_SEQS=4` the worst case
+  (a >200K-token chunked prefill co-batched with 3 concurrent decodes) peaks
+  at ~1.3 GiB free/GPU — tight but gated safe; do not raise UTIL past 0.96.
+- The off-by-one crash in `mla/indexer.py _prepare_decode_tensors` at a length
+  boundary (formerly ~once/10h under concurrent MTP, engine auto-restarted) is
+  FIXED as of 91bb50936 — the variable-decode-lengths path now truncates the
+  runner's manager-rounded block-table row (one kernel-block wider) to the
+  indexer buffer width, which is provably lossless. This is what makes
+  `MAX_NUM_SEQS=4` the default; no `MAX_NUM_SEQS=1` mitigation is needed.

@@ -475,6 +475,11 @@ class GPUModelRunner(
         # These will be overridden in load_model()
         self.is_multimodal_pruning_enabled = False
         self.requires_sequential_video_encoding = False
+        # Round-4 step tail (VLLM_GLM_MM_MASK_REUSE): persistent all-False
+        # is_mm_embed mask for text-only steps; lazily allocated, never
+        # written after creation.
+        self._mm_mask_reuse = envs.VLLM_GLM_MM_MASK_REUSE
+        self._mm_false_mask: torch.Tensor | None = None
         # Set to True after init_routed_experts_capturer() completes.
         # Prevents routed experts code from running during profiling/dummy run.
         self.routed_experts_initialized = False
@@ -3137,12 +3142,47 @@ class GPUModelRunner(
 
         return encoder_outputs
 
+    def _get_persistent_false_mm_mask(self, num_tokens: int) -> torch.Tensor:
+        """All-False is_mm_embed mask on GPU, allocated once and never written.
+
+        Semantically identical to the fresh pinned all-False CPU mask the
+        eager path builds (consumers only `.to(device)` it and use it for a
+        no-op masked_fill), but avoids the per-step pinned allocation and
+        HtoD copy. Also provides the stable device address required by
+        VLLM_GLM_EMBED_GRAPH.
+        """
+        buf = self._mm_false_mask
+        if buf is None or buf.numel() < num_tokens:
+            buf = torch.zeros(
+                max(num_tokens, self.max_num_tokens),
+                dtype=torch.bool,
+                device=self.device,
+            )
+            self._mm_false_mask = buf
+        return buf[:num_tokens]
+
     def _gather_mm_embeddings(
         self,
         scheduler_output: "SchedulerOutput",
         shift_computed_tokens: int = 0,
     ) -> tuple[list[torch.Tensor], torch.Tensor]:
         total_num_scheduled_tokens = scheduler_output.total_num_scheduled_tokens
+
+        # VLLM_GLM_MM_MASK_REUSE fast path: when no scheduled request carries
+        # multimodal features, the eager loop below degenerates to returning
+        # ([], all-False mask). Reuse a persistent GPU mask instead of
+        # allocating + HtoD-copying a fresh pinned tensor every step.
+        # Guarded off when multimodal pruning + mrope resync could run inside
+        # the loop (it must observe every request).
+        if (
+            self._mm_mask_reuse
+            and not (self.is_multimodal_pruning_enabled and self.uses_mrope)
+            and all(
+                not self.requests[req_id].mm_features
+                for req_id in self.input_batch.req_ids
+            )
+        ):
+            return [], self._get_persistent_false_mm_mask(total_num_scheduled_tokens)
 
         mm_embeds = list[torch.Tensor]()
         is_mm_embed = torch.zeros(

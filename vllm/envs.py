@@ -263,6 +263,7 @@ if TYPE_CHECKING:
     VLLM_DCP_A2A_EXACT: bool = False
     VLLM_GLM_COMM_COALESCE: bool = False
     VLLM_GLM_IDX_FUSED_LOCALIZE: bool = False
+    VLLM_GLM_MM_MASK_REUSE: bool = False
     VLLM_SHARED_EXPERTS_STREAM_TOKEN_THRESHOLD: int = 256
     VLLM_MULTI_STREAM_GEMM_TOKEN_THRESHOLD: int = 1024
     VLLM_COMPILE_CACHE_SAVE_FORMAT: Literal["binary", "unpacked"] = "binary"
@@ -1891,6 +1892,14 @@ environment_variables: dict[str, Callable[[], Any]] = {
     # outputs are bit-identical. Default OFF.
     "VLLM_GLM_IDX_FUSED_LOCALIZE": lambda: bool(
         int(os.getenv("VLLM_GLM_IDX_FUSED_LOCALIZE", "0"))
+    ),
+    # Round-4 step tail: for steps that schedule no multimodal embeddings,
+    # reuse a persistent all-False is_mm_embed mask (GPU) instead of
+    # allocating a fresh pinned CPU tensor + HtoD copy every step. The mask
+    # value is identical (all False), so embeddings are bit-identical.
+    # Default OFF.
+    "VLLM_GLM_MM_MASK_REUSE": lambda: bool(
+        int(os.getenv("VLLM_GLM_MM_MASK_REUSE", "0"))
     ),
     # Limits when we run shared_experts in a separate stream.
     # We found out that for large batch sizes, the separate stream

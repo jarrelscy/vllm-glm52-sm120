@@ -2,8 +2,12 @@
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
 import torch
 
+import vllm.envs as envs
 from vllm.distributed.parallel_state import GroupCoordinator
+from vllm.logger import init_logger
 from vllm.triton_utils import tl, triton
+
+logger = init_logger(__name__)
 
 
 @triton.jit
@@ -95,6 +99,99 @@ def _correct_attn_cp_out_kernel(
     tl.store(new_output_ptr + output_offsets, output)
 
 
+@triton.jit
+def _correct_attn_cp_out_strided_kernel(
+    outputs_ptr,
+    new_output_ptr,
+    lses_ptr,
+    vlse_ptr,
+    outputs_stride_B,
+    outputs_stride_H,
+    outputs_stride_D,
+    new_output_stride_B,
+    new_output_stride_H,
+    new_output_stride_D,
+    lses_stride_N,
+    lses_stride_B,
+    lses_stride_H,
+    lse_idx,
+    HEAD_DIM: tl.constexpr,
+    N_ROUNDED: tl.constexpr,
+    IS_BASE_E: tl.constexpr,
+):
+    """VLLM_GLM_DCP_RS_STAGED variant of :func:`_correct_attn_cp_out_kernel`.
+
+    Identical math and load pattern; the ONLY difference is that the
+    corrected output is stored through its own stride set, so the caller can
+    point ``new_output`` at a rank-major [H, B, D] staging buffer (the exact
+    byte layout ``out.movedim(0, 1).contiguous()`` would produce) and skip
+    the post-hoc direct_copy before the DCP ReduceScatter. Every arithmetic
+    op matches the reference kernel, so the stored VALUES are bit-identical;
+    only the store addresses differ.
+    """
+    batch_idx = tl.program_id(axis=0).to(tl.int64)
+    head_idx = tl.program_id(axis=1).to(tl.int64)
+    d_offsets = tl.arange(0, HEAD_DIM)
+    num_n_offsets = tl.arange(0, N_ROUNDED)
+
+    # shape = [N]
+    lse_offsets = (
+        num_n_offsets * lses_stride_N
+        + batch_idx * lses_stride_B
+        + head_idx * lses_stride_H
+    )
+
+    # calc final lse
+    lse = tl.load(lses_ptr + lse_offsets)
+    lse = tl.where((lse != lse) | (lse == float("inf")), -float("inf"), lse)
+    lse_max = tl.max(lse, axis=0)
+    lse_max = tl.where(lse_max == -float("inf"), 0, lse_max)
+    lse -= lse_max
+    if IS_BASE_E:
+        lse_exp = tl.exp(lse)
+        lse_acc = tl.sum(lse_exp, axis=0)
+        lse = tl.log(lse_acc)
+    else:
+        lse_exp = tl.exp2(lse)
+        lse_acc = tl.sum(lse_exp, axis=0)
+        lse = tl.log2(lse_acc)
+    lse += lse_max
+
+    lse_offsets = batch_idx * lses_stride_B + head_idx * lses_stride_H
+    tl.store(vlse_ptr + lse_offsets, lse)
+
+    # input offsets, shape = [D]
+    output_offsets = (
+        batch_idx * outputs_stride_B
+        + head_idx * outputs_stride_H
+        + d_offsets * outputs_stride_D
+    )
+    # output (staging) offsets, shape = [D]
+    new_output_offsets = (
+        batch_idx * new_output_stride_B
+        + head_idx * new_output_stride_H
+        + d_offsets * new_output_stride_D
+    )
+
+    # correct output
+    lse_offset = (
+        lse_idx * lses_stride_N + batch_idx * lses_stride_B + head_idx * lses_stride_H
+    )
+    lse_tmp = tl.load(lses_ptr + lse_offset)
+    lse_finally = lse_tmp - lse
+    lse_finally = tl.where(
+        (lse_finally != lse_finally) | (lse_finally == float("inf")),
+        -float("inf"),
+        lse_finally,
+    )
+    factor = tl.exp(lse_finally) if IS_BASE_E else tl.exp2(lse_finally)
+    output = tl.load(outputs_ptr + output_offsets)
+    output = output * factor
+    output = tl.where(factor == 0.0, 0.0, output)
+
+    tl.store(new_output_ptr + new_output_offsets, output)
+
+
 class CPTritonContext:
     """The CPTritonContext is used to avoid recompilation of the Triton JIT."""
 
@@ -179,6 +276,75 @@ def correct_attn_out(
     return out, lse
 
 
+def _normalize_lse_out_views(
+    out: torch.Tensor, lses: torch.Tensor
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Same 3-D normalization `correct_attn_out` applies."""
+    if out.ndim == 4 and out.shape[1] == 1:
+        out = out.squeeze(1)
+    assert out.ndim == 3, f"expected out [B,H,D] or [B,1,H,D], got {tuple(out.shape)}"
+    if lses.ndim == 4 and lses.shape[-1] == 1:
+        lses = lses.squeeze(-1)
+    if lses.ndim == 4 and lses.shape[1] == 1:
+        lses = lses.squeeze(1)
+    assert lses.ndim == 3, (
+        f"expected lses [N,B,H] (optionally with a 1-sized extra dim), "
+        f"got {tuple(lses.shape)}"
+    )
+    return out, lses
+
+
+def correct_attn_out_staged(
+    out: torch.Tensor,
+    lses: torch.Tensor,
+    cp_rank: int,
+    staged: torch.Tensor,
+    is_lse_base_on_e: bool = True,
+) -> torch.Tensor:
+    """VLLM_GLM_DCP_RS_STAGED: LSE-correct `out` and store the corrected
+    values directly into `staged` (a [B, H, D]-shaped strided view -- in
+    practice the movedim(0, 1) view of a rank-major [H, B, D] contiguous
+    staging buffer), so no separate copy is needed before the ReduceScatter.
+
+    Returns the final LSE [B, H] (allocated with the same B/H strides as
+    `lses`, exactly like `correct_attn_out`). Values are bit-identical to
+    `correct_attn_out` followed by a copy into `staged`.
+    """
+    out, lses = _normalize_lse_out_views(out, lses)
+    assert staged.shape == out.shape
+
+    B, H, D = out.shape
+    N = lses.shape[0]
+    o_sB, o_sH, o_sD = out.stride()
+    n_sB, n_sH, n_sD = staged.stride()
+    l_sN, l_sB, l_sH = lses.stride()
+
+    lse = torch.empty_strided(
+        (B, H), (l_sB, l_sH), device=lses.device, dtype=lses.dtype
+    )
+
+    _correct_attn_cp_out_strided_kernel[(B, H, 1)](
+        out,
+        staged,
+        lses,
+        lse,
+        o_sB,
+        o_sH,
+        o_sD,
+        n_sB,
+        n_sH,
+        n_sD,
+        l_sN,
+        l_sB,
+        l_sH,
+        cp_rank,
+        HEAD_DIM=D,
+        N_ROUNDED=N,
+        IS_BASE_E=is_lse_base_on_e,
+    )
+    return lse
+
+
 def _cp_lse_common(
     cp_attn_out: torch.Tensor,
     cp_attn_lse: torch.Tensor,
@@ -210,6 +376,103 @@ def _cp_lse_common(
     return out, lse
 
 
+def _dcp_rs_copyfree_supported(cp_group: GroupCoordinator) -> bool:
+    """The round-5 copy-free RS path replicates the plain pynccl
+    ReduceScatter enqueue of ``CudaCommunicator.reduce_scatter``; it must not
+    engage when that path would have dispatched to NCCL symm-mem (different
+    collective) or when pynccl is unavailable."""
+    from vllm.distributed.device_communicators.all_reduce_utils import (
+        should_nccl_symm_mem_ag_rs,
+    )
+
+    comm = getattr(cp_group, "device_communicator", None)
+    pynccl = getattr(comm, "pynccl_comm", None)
+    if pynccl is None or pynccl.disabled or should_nccl_symm_mem_ag_rs():
+        logger.warning_once(
+            "VLLM_GLM_DCP_RS_STAGED/VIEW requested but the plain pynccl "
+            "ReduceScatter path is unavailable (symm-mem enabled or pynccl "
+            "disabled); falling back to the baseline copying path."
+        )
+        return False
+    return True
+
+
+def _cp_lse_ag_out_rs_copyfree(
+    cp_attn_out: torch.Tensor,
+    cp_attn_lse: torch.Tensor,
+    cp_group: GroupCoordinator,
+    is_lse_base_on_e: bool,
+    staged_write: bool,
+    view_out: bool,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Round-5 direct_copy elimination for the DCP attention epilogue.
+
+    Baseline (per attention call, inside the FULL decode graph):
+      correct-kernel (in place) -> movedim.contiguous() COPY ->
+      pynccl ReduceScatter -> movedim.contiguous() COPY -> _v_up_proj
+      (which transposes straight back).
+
+    staged_write (VLLM_GLM_DCP_RS_STAGED): the correct kernel stores into a
+    rank-major [H, B, D] staging buffer directly -- byte-identical to what
+    the first copy produced -- so the collective input is unchanged and the
+    first copy disappears.
+
+    view_out (VLLM_GLM_DCP_RS_VIEW): the collective's natural [H/ws, B, D]
+    output is returned as a movedim VIEW instead of being copied to
+    [B, H/ws, D]; the consumer transposes back to (N, B, L) anyway, and
+    cuBLAS bmm output is stride-invariant (proven bit-exact on the
+    deployment GPU by tools/round5/bitexact_rs_staged.py).
+
+    Both paths enqueue the exact same pynccl ReduceScatter on the same
+    communicator with byte-identical input as the baseline.
+    """
+    ws = cp_group.world_size
+    cp_attn_lse = cp_attn_lse.contiguous()
+    lses = cp_group.all_gather(cp_attn_lse, dim=0).reshape(
+        (ws,) + cp_attn_lse.shape
+    )
+    out, lses = _normalize_lse_out_views(cp_attn_out, lses)
+    B, H, D = out.shape
+    assert H % ws == 0, f"DCP RS requires H ({H}) divisible by ws ({ws})"
+
+    if staged_write:
+        # Rank-major staging buffer; the strided correct kernel writes the
+        # corrected values straight into it (bit-identical values, different
+        # store addresses). No copy.
+        staged = torch.empty((H, B, D), dtype=out.dtype, device=out.device)
+        lse = correct_attn_out_staged(
+            out,
+            lses,
+            cp_group.rank_in_group,
+            staged.movedim(0, 1),
+            is_lse_base_on_e=is_lse_base_on_e,
+        )
+    else:
+        out, lse = correct_attn_out(
+            out,
+            lses,
+            cp_group.rank_in_group,
+            CPTritonContext(),
+            is_lse_base_on_e=is_lse_base_on_e,
+        )
+        # Baseline staging copy (kept when only VLLM_GLM_DCP_RS_VIEW is set).
+        staged = out.movedim(0, 1).contiguous()
+
+    # Same enqueue as CudaCommunicator.reduce_scatter (plain pynccl path,
+    # symm-mem checked off by _dcp_rs_copyfree_supported): input is the
+    # rank-major contiguous staging buffer, output its natural [H/ws, B, D].
+    pynccl = cp_group.device_communicator.pynccl_comm
+    rs_out = torch.empty((H // ws, B, D), dtype=out.dtype, device=out.device)
+    pynccl.reduce_scatter(rs_out, staged)
+
+    if view_out:
+        final = rs_out.movedim(0, 1)
+    else:
+        # Baseline output copy (kept when only VLLM_GLM_DCP_RS_STAGED is set).
+        final = rs_out.movedim(0, 1).contiguous()
+    return final, lse
+
+
 def cp_lse_ag_out_rs(
     cp_attn_out: torch.Tensor,
     cp_attn_lse: torch.Tensor,
@@ -222,10 +485,30 @@ def cp_lse_ag_out_rs(
     cp_attn_out: [ B, H, D ]
     cp_attn_lse: [ B, H ]
     """
-    out, lse = _cp_lse_common(
-        cp_attn_out, cp_attn_lse, cp_group, ctx=ctx, is_lse_base_on_e=is_lse_base_on_e
-    )
-    out = cp_group.reduce_scatter(out, dim=1)
+    staged_write = envs.VLLM_GLM_DCP_RS_STAGED
+    view_out = envs.VLLM_GLM_DCP_RS_VIEW
+    if (
+        (staged_write or view_out)
+        and cp_group.world_size > 1
+        and _dcp_rs_copyfree_supported(cp_group)
+    ):
+        out, lse = _cp_lse_ag_out_rs_copyfree(
+            cp_attn_out,
+            cp_attn_lse,
+            cp_group,
+            is_lse_base_on_e=is_lse_base_on_e,
+            staged_write=staged_write,
+            view_out=view_out,
+        )
+    else:
+        out, lse = _cp_lse_common(
+            cp_attn_out,
+            cp_attn_lse,
+            cp_group,
+            ctx=ctx,
+            is_lse_base_on_e=is_lse_base_on_e,
+        )
+        out = cp_group.reduce_scatter(out, dim=1)
 
     if return_lse:
         cp_num_heads = lse.shape[1] // cp_group.world_size

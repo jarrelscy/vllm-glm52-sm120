@@ -265,6 +265,9 @@ if TYPE_CHECKING:
     VLLM_GLM_IDX_FUSED_LOCALIZE: bool = False
     VLLM_GLM_MM_MASK_REUSE: bool = False
     VLLM_GLM_EMBED_GRAPH: bool = False
+    VLLM_GLM_DCP_RS_STAGED: bool = False
+    VLLM_GLM_DCP_RS_VIEW: bool = False
+    VLLM_GLM_DCP_AG_RAW_TOPK: bool = False
     VLLM_SHARED_EXPERTS_STREAM_TOKEN_THRESHOLD: int = 256
     VLLM_MULTI_STREAM_GEMM_TOKEN_THRESHOLD: int = 1024
     VLLM_COMPILE_CACHE_SAVE_FORMAT: Literal["binary", "unpacked"] = "binary"
@@ -1911,6 +1914,43 @@ environment_variables: dict[str, Callable[[], Any]] = {
     # VLLM_GLM_MM_MASK_REUSE=1 (persistent mask address). Default OFF.
     "VLLM_GLM_EMBED_GRAPH": lambda: bool(
         int(os.getenv("VLLM_GLM_EMBED_GRAPH", "0"))
+    ),
+    # Round-5 copy elimination: in the DCP attention epilogue
+    # (cp_lse_ag_out_rs), have the LSE-correction Triton kernel store its
+    # corrected output DIRECTLY into a rank-major [H, B, D] staging buffer
+    # (the exact byte layout `out.movedim(0, 1).contiguous()` would produce)
+    # instead of correcting in place and copying afterwards. The ReduceScatter
+    # then consumes the staging buffer with a no-op `.contiguous()`. The
+    # collective sees byte-identical input, so every downstream value is
+    # bit-identical; one direct_copy kernel per attention call is removed.
+    # Default OFF.
+    "VLLM_GLM_DCP_RS_STAGED": lambda: bool(
+        int(os.getenv("VLLM_GLM_DCP_RS_STAGED", "0"))
+    ),
+    # Round-5 copy elimination: return the DCP ReduceScatter output as a
+    # transposed VIEW ([B, H_local, D] view of the collective's natural
+    # [H_local, B, D] buffer) instead of `.contiguous()`-copying it. The
+    # consumer (_v_up_proj) transposes right back to (N, B, L) for its bmm,
+    # so the copy is pure waste; the bmm then reads a contiguous batch
+    # layout instead of a strided view of the copied buffer. Gated on a
+    # kernel-level bit-exactness proof that cuBLAS bmm output is invariant
+    # to the input batch stride (verified on the deployment GPU; the lever
+    # must not ship where that proof fails). Requires the plain pynccl
+    # ReduceScatter path (no NCCL symm-mem); falls back to the copying path
+    # otherwise. Default OFF.
+    "VLLM_GLM_DCP_RS_VIEW": lambda: bool(
+        int(os.getenv("VLLM_GLM_DCP_RS_VIEW", "0"))
+    ),
+    # Round-5 copy elimination: the DCP indexer top-k merge kernel
+    # (StableTopKFromGatheredCandidates) reads the candidates all-gather
+    # output in its RAW rank-major layout [ws, rows, topk, 2] instead of
+    # first materializing the [rows, ws*topk, 2] concat view with a
+    # movedim+reshape copy. The kernel visits candidate (rank, j) at the
+    # same logical position ws*topk-index it previously read from the copy,
+    # so keys, selection, and the canonical in-kernel sort are bit-identical.
+    # Removes one direct_copy per DCP merge. Default OFF.
+    "VLLM_GLM_DCP_AG_RAW_TOPK": lambda: bool(
+        int(os.getenv("VLLM_GLM_DCP_AG_RAW_TOPK", "0"))
     ),
     # Limits when we run shared_experts in a separate stream.
     # We found out that for large batch sizes, the separate stream

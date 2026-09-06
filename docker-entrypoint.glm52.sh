@@ -36,7 +36,7 @@ NUM_SPEC_ENV="${NUM_SPEC:-}"   # user override only; per-mode default applied AF
 UTIL_DEFAULT=0.95   # per-mode default; env UTIL overrides
 DRAFT_TP="${DRAFT_TP:-}"   # non-empty -> draft_tensor_parallel_size in the spec config (env-overridable for speed hunt)
 DCP=""              # non-empty -> --decode-context-parallel-size (shard MLA KV across TP ranks -> ~1M at TP4)
-CGMODE=""           # per-mode cudagraph_mode override (empty -> FULL_AND_PIECEWISE); DCP+spec MUST use PIECEWISE
+CGMODE=""           # per-mode cudagraph_mode override (empty -> FULL_AND_PIECEWISE; DCP+spec included — gated 2026-09-05)
 NSDEF=""            # per-mode spec-token default override (empty -> MTP=2 / DSpark=5); env NUM_SPEC always wins
 
 case "$PARALLEL" in
@@ -68,8 +68,8 @@ case "$PARALLEL" in
     #     forced P2P needs ag_rs (a2a-over-P2P is pathological). +3-5% decode, +35% prefill
     #   - chunk 4096 + util 0.97: prefill +13%, still boots the 950K window (KV ~1.006M)
     # MEASURED (this stack): short 73/64/52 tok/s, @123K 44/41/32; fresh prefill ~1.2K tok/s.
-    # PIECEWISE cudagraphs remain the default (FULL_AND_PIECEWISE now boots under ag_rs —
-    # +2-9% more — but is opt-in pending soak: CUDAGRAPH_MODE=FULL_AND_PIECEWISE).
+    # FULL_AND_PIECEWISE promoted to default 2026-09-05: on 5.3-hybrid-1m it gated
+    # +45-70% decode vs PIECEWISE (coherence + acceptance + 920K needle PASS); rollback: CUDAGRAPH_MODE=PIECEWISE.
     #   - shared-experts _output slot SELF-HEAL (2026-07-13 crash fix, in
     #     shared_experts.py forward()): upstream leaves the shared-experts
     #     _output slot occasionally undrained under THIS mode (TP4+DCP4+MTP+
@@ -95,7 +95,7 @@ case "$PARALLEL" in
     export NCCL_P2P_LEVEL="${NCCL_P2P_LEVEL:-SYS}"
     DCP_BACKEND="${DCP_BACKEND:-ag_rs}"
     MAX_NUM_BATCHED_TOKENS="${MAX_NUM_BATCHED_TOKENS:-4096}"
-    PAR="--tensor-parallel-size 4"; SPEC=2; DEFLEN=950000; DCP=4; CGMODE=PIECEWISE; NSDEF=3; UTIL_DEFAULT=0.97 ;;
+    PAR="--tensor-parallel-size 4"; SPEC=2; DEFLEN=950000; DCP=4; CGMODE=FULL_AND_PIECEWISE; NSDEF=3; UTIL_DEFAULT=0.97 ;;
   pp4-dspark)  # PP4 + DSpark, ~130K (drafter co-locates on last rank; dominated by tp2pp2)
     export VLLM_PP_LAYER_PARTITION="${VLLM_PP_LAYER_PARTITION:-21,19,19,19}"
     PAR="--pipeline-parallel-size 4"; SPEC=1; DEFLEN=131072 ;;
@@ -173,7 +173,7 @@ ARGS=(vllm serve "$MODEL_DIR" $PAR
   --max-num-batched-tokens "${MAX_NUM_BATCHED_TOKENS:-2048}"
   --no-enable-flashinfer-autotune
   "${GRAPH_FLAGS[@]}"
-  --served-model-name "${SERVED_NAME:-glm-5.2}"
+  --served-model-name "${SERVED_NAME:-glm-5.2}" local
   --port "${PORT:-8001}")
 # Function/tool calling (GLM-5.2 = GLM-4.7 lineage -> glm47_moe parser; chat template
 # ships <tool_call> tags). Default on; set ENABLE_TOOLS=0 to disable, TOOL_PARSER to override.

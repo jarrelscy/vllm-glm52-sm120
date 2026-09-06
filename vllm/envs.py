@@ -264,6 +264,7 @@ if TYPE_CHECKING:
     VLLM_GLM_COMM_COALESCE: bool = False
     VLLM_GLM_IDX_FUSED_LOCALIZE: bool = False
     VLLM_GLM_MM_MASK_REUSE: bool = False
+    VLLM_GLM_EMBED_GRAPH: bool = False
     VLLM_SHARED_EXPERTS_STREAM_TOKEN_THRESHOLD: int = 256
     VLLM_MULTI_STREAM_GEMM_TOKEN_THRESHOLD: int = 1024
     VLLM_COMPILE_CACHE_SAVE_FORMAT: Literal["binary", "unpacked"] = "binary"
@@ -1900,6 +1901,16 @@ environment_variables: dict[str, Callable[[], Any]] = {
     # Default OFF.
     "VLLM_GLM_MM_MASK_REUSE": lambda: bool(
         int(os.getenv("VLLM_GLM_MM_MASK_REUSE", "0"))
+    ),
+    # Round-4 step tail: capture the decode embed prologue (spec placeholder
+    # clamp_, vocab-parallel embedding incl. its TP all-reduce, and the copy
+    # into the persistent inputs_embeds buffer) into a small CUDA graph,
+    # replayed on text-only steps whose token count matches a captured size.
+    # Replays the exact same kernels on the same persistent buffers, so
+    # outputs are bit-identical to the eager path. Requires
+    # VLLM_GLM_MM_MASK_REUSE=1 (persistent mask address). Default OFF.
+    "VLLM_GLM_EMBED_GRAPH": lambda: bool(
+        int(os.getenv("VLLM_GLM_EMBED_GRAPH", "0"))
     ),
     # Limits when we run shared_experts in a separate stream.
     # We found out that for large batch sizes, the separate stream

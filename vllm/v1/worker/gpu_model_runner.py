@@ -119,6 +119,7 @@ from vllm.utils.platform_utils import num_compute_units
 from vllm.utils.torch_utils import (
     PIN_MEMORY,
     async_tensor_h2d,
+    current_stream,
     get_dtype_size,
     is_quantized_kv_cache,
     kv_cache_dtype_str_to_dtype,
@@ -480,6 +481,14 @@ class GPUModelRunner(
         # written after creation.
         self._mm_mask_reuse = envs.VLLM_GLM_MM_MASK_REUSE
         self._mm_false_mask: torch.Tensor | None = None
+        # Round-4 step tail (VLLM_GLM_EMBED_GRAPH): per-size CUDA graphs of
+        # the decode embed prologue, keyed by
+        # (num_scheduled_tokens, num_input_tokens). None = flag off; {} =
+        # enabled, populated during capture_model(). Requires the persistent
+        # mask from VLLM_GLM_MM_MASK_REUSE for a stable capture address.
+        self._embed_graphs: dict[tuple[int, int], torch.cuda.CUDAGraph] | None = (
+            {} if envs.VLLM_GLM_EMBED_GRAPH and envs.VLLM_GLM_MM_MASK_REUSE else None
+        )
         # Set to True after init_routed_experts_capturer() completes.
         # Prevents routed experts code from running during profiling/dummy run.
         self.routed_experts_initialized = False
@@ -3477,6 +3486,128 @@ class GPUModelRunner(
         inputs_embeds = self.inputs_embeds.gpu[:num_tokens]
         return input_ids, inputs_embeds
 
+    def _run_embed_prologue(
+        self, num_scheduled_tokens: int, num_input_tokens: int
+    ) -> None:
+        """VLLM_GLM_EMBED_GRAPH: the exact op sequence of the eager decode
+        embed prologue for a text-only step (see _preprocess): spec
+        placeholder clamp_, vocab-parallel embedding of the persistent
+        input_ids buffer with the persistent all-False is_mm_embed mask
+        (incl. the TP all-reduce), and the copy into the persistent
+        inputs_embeds buffer. Runs only on persistent-address tensors so it
+        can be captured into a CUDA graph and replayed.
+        """
+        if self.speculative_config is not None:
+            self.input_ids.gpu[:num_input_tokens].clamp_(min=0)
+        assert self._mm_false_mask is not None
+        inputs_embeds_scheduled = self.model.embed_input_ids(
+            self.input_ids.gpu[:num_scheduled_tokens],
+            multimodal_embeddings=[],
+            is_multimodal=self._mm_false_mask[:num_scheduled_tokens],
+        )
+        self.inputs_embeds.gpu[:num_scheduled_tokens].copy_(inputs_embeds_scheduled)
+
+    def _capture_embed_prologue_graphs(self) -> None:
+        """VLLM_GLM_EMBED_GRAPH: capture per-size CUDA graphs of the decode
+        embed prologue. Called from capture_model() while cudagraph capturing
+        is still enabled (inside the same graph_capture() distributed
+        context used for the model graphs, so the captured TP all-reduce
+        uses the identical capture-safe communicator path as the FULL model
+        graphs). Replaying the graph re-executes the very same kernels on
+        the same persistent buffers as the eager path, so the resulting
+        inputs_embeds are bit-identical.
+        """
+        graphs = self._embed_graphs
+        if graphs is None:
+            return
+        if not (
+            self.supports_mm_inputs
+            and get_pp_group().is_first_rank
+            and not self.model_config.is_encoder_decoder
+        ):
+            return
+        if self.lora_config is not None or self.enable_prompt_embeds:
+            logger.warning_once(
+                "VLLM_GLM_EMBED_GRAPH disabled: LoRA/prompt-embeds configured."
+            )
+            self._embed_graphs = None
+            return
+
+        from vllm.distributed.device_communicators.pynccl_allocator import (
+            set_graph_pool_id,
+        )
+
+        # Persistent all-False mask must exist (and keep its address) before
+        # capture. Sized to max_num_tokens so it is never reallocated.
+        self._get_persistent_false_mm_mask(self.max_num_tokens)
+        # Ensure in-vocab ids under capture (values are irrelevant to the
+        # captured topology; the gather just needs to be in range).
+        self.input_ids.gpu.zero_()
+
+        pool = current_platform.get_global_graph_pool()
+        sizes = sorted(
+            s
+            for s in set(self.compilation_config.cudagraph_capture_sizes or [])
+            if 0 < s <= self.max_num_tokens
+        )
+        num_captured = 0
+        for n in sizes:
+            try:
+                # Warm up the exact sequence so lazy one-time work (dynamo
+                # compile, workspace allocs) happens outside capture.
+                self._run_embed_prologue(n, n)
+                torch.cuda.synchronize()
+                g = torch.cuda.CUDAGraph()
+                set_graph_pool_id(pool)
+                with torch.cuda.graph(g, pool=pool, stream=current_stream()):
+                    self._run_embed_prologue(n, n)
+                graphs[(n, n)] = g
+                num_captured += 1
+            except Exception:
+                logger.exception(
+                    "VLLM_GLM_EMBED_GRAPH: capture failed for size %d; "
+                    "disabling embed prologue graphs.",
+                    n,
+                )
+                self._embed_graphs = None
+                return
+        logger.info(
+            "VLLM_GLM_EMBED_GRAPH: captured %d embed prologue graphs "
+            "(sizes %s)",
+            num_captured,
+            sizes,
+        )
+
+    def _lookup_embed_prologue_graph(
+        self,
+        scheduler_output: "SchedulerOutput",
+        num_scheduled_tokens: int,
+        num_input_tokens: int,
+    ) -> torch.cuda.CUDAGraph | None:
+        """Return a captured embed prologue graph iff replaying it this step
+        is exactly equivalent to the eager path: text-only batch (no mm
+        features on any request, so _gather_mm_embeddings degenerates to the
+        persistent all-False mask), no scheduled encoder inputs, no EC
+        connector, no prompt embeds, and an exactly matching token count.
+        """
+        graphs = self._embed_graphs
+        if graphs is None:
+            return None
+        g = graphs.get((num_scheduled_tokens, num_input_tokens))
+        if g is None:
+            return None
+        if scheduler_output.scheduled_encoder_inputs or has_ec_transfer():
+            return None
+        if self.enable_prompt_embeds and self.input_batch.req_prompt_embeds:
+            return None
+        if self.is_multimodal_pruning_enabled and self.uses_mrope:
+            return None
+        if any(
+            self.requests[req_id].mm_features for req_id in self.input_batch.req_ids
+        ):
+            return None
+        return g
+
     def _preprocess(
         self,
         scheduler_output: "SchedulerOutput",
@@ -3494,15 +3625,34 @@ class GPUModelRunner(
         is_first_rank = get_pp_group().is_first_rank
         is_encoder_decoder = self.model_config.is_encoder_decoder
 
+        # VLLM_GLM_EMBED_GRAPH: replay the captured embed prologue (clamp_ +
+        # vocab-parallel embedding + TP all-reduce + copy into inputs_embeds)
+        # instead of launching it eagerly. The graph contains the identical
+        # kernels on the identical persistent buffers, so this is
+        # bit-identical to the eager path below.
+        embed_graph = None
+        if self._embed_graphs is not None and is_first_rank and not is_encoder_decoder:
+            embed_graph = self._lookup_embed_prologue_graph(
+                scheduler_output, num_scheduled_tokens, num_input_tokens
+            )
+
         # Clamp speculative scheduler placeholders (-1) before embedding lookup.
-        if self.speculative_config is not None:
+        # (Included inside the embed prologue graph when it replays.)
+        if self.speculative_config is not None and embed_graph is None:
             self.input_ids.gpu[:num_input_tokens].clamp_(min=0)
 
         # _prepare_inputs may reorder the batch, so we must gather multi
         # modal outputs after that to ensure the correct order
         ec_connector_output = None
 
-        if self.supports_mm_inputs and is_first_rank and not is_encoder_decoder:
+        if embed_graph is not None:
+            embed_graph.replay()
+            input_ids, inputs_embeds = self._prepare_mm_inputs(num_input_tokens)
+            model_kwargs = {
+                **self._init_model_kwargs(),
+                **self._extract_mm_kwargs(scheduler_output),
+            }
+        elif self.supports_mm_inputs and is_first_rank and not is_encoder_decoder:
             # Run the multimodal encoder if any.
             with self.maybe_get_ec_connector_output(
                 scheduler_output,
@@ -6690,6 +6840,10 @@ class GPUModelRunner(
             if self.encoder_cudagraph_manager is not None:
                 encoder_graph_pool = current_platform.graph_pool_handle()
                 self.encoder_cudagraph_manager.capture(graph_pool=encoder_graph_pool)
+
+            # VLLM_GLM_EMBED_GRAPH: capture the decode embed prologue graphs
+            # inside the same graph_capture() context as the model graphs.
+            self._capture_embed_prologue_graphs()
 
             torch.accelerator.synchronize()
             end_free_gpu_memory = torch.accelerator.get_memory_info()[0]

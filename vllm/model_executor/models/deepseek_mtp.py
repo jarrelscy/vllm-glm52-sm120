@@ -221,6 +221,26 @@ class DeepSeekMultiTokenPredictor(nn.Module):
         )
         return logits
 
+    def get_top_tokens(
+        self,
+        hidden_states: torch.Tensor,
+        spec_step_idx: int = 0,
+    ) -> torch.Tensor:
+        """Vocab-parallel greedy draft sampling without the full-vocab logits
+        all-gather (speculative_config.use_local_argmax_reduction).
+
+        Token-exact vs compute_logits().argmax(-1): each TP rank reduces its
+        contiguous vocab shard to (max value, first-max index) and only the
+        per-rank pairs are gathered; ties across ranks resolve to the lowest
+        rank = lowest vocab id, matching global argmax's first-occurrence
+        semantics. Communication: O(2 * tp) vs O(vocab).
+        """
+        current_step_idx = spec_step_idx % self.num_mtp_layers
+        mtp_layer = self.layers[str(self.mtp_start_layer_idx + current_step_idx)]
+        return self.logits_processor.get_top_tokens(
+            mtp_layer.shared_head.head, mtp_layer.shared_head(hidden_states)
+        )
+
 
 @support_torch_compile
 class DeepSeekMTP(nn.Module, SupportsPP, DeepseekV2MixtureOfExperts):
@@ -278,6 +298,16 @@ class DeepSeekMTP(nn.Module, SupportsPP, DeepseekV2MixtureOfExperts):
         spec_step_idx: int = 0,
     ) -> torch.Tensor | None:
         return self.model.compute_logits(hidden_states, spec_step_idx)
+
+    def get_top_tokens(
+        self,
+        hidden_states: torch.Tensor,
+        spec_step_idx: int = 0,
+    ) -> torch.Tensor:
+        """Greedy draft token via vocab-parallel local-argmax reduction
+        (speculative_config.use_local_argmax_reduction). Token-exact vs
+        compute_logits().argmax(-1); skips the full-vocab logits all-gather."""
+        return self.model.get_top_tokens(hidden_states, spec_step_idx)
 
     def load_weights(self, weights: Iterable[tuple[str, torch.Tensor]]) -> set[str]:
         rocm_aiter_moe_shared_expert_enabled = (

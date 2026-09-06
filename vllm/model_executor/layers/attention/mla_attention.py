@@ -270,7 +270,10 @@ from vllm.v1.attention.backends.utils import (
     split_decodes_and_prefills,
 )
 from vllm.v1.attention.ops.common import cp_lse_ag_out_rs
-from vllm.v1.attention.ops.dcp_alltoall import dcp_a2a_lse_reduce
+from vllm.v1.attention.ops.dcp_alltoall import (
+    dcp_a2a_lse_reduce,
+    dcp_a2a_lse_reduce_exact,
+)
 from vllm.v1.attention.ops.dcp_comm_overlap import (
     AsyncAllGather,
     consume_pending_dcp_merge,
@@ -511,7 +514,16 @@ class MLAAttention(nn.Module, AttentionLayerBase):
         self.use_sparse = use_sparse
 
         _vllm_config = get_current_vllm_config_or_none()
-        self.dcp_a2a = (
+        # VLLM_DCP_A2A_EXACT: single packed all-to-all whose combine is
+        # bit-identical to the ag_rs epilogue (runtime-probed NCCL reduction
+        # order + bitwise self-validation). Replaces the per-layer AG(lse) +
+        # ReduceScatter(out) pair with one collective. Default OFF.
+        self.dcp_a2a_exact = (
+            envs.VLLM_DCP_A2A_EXACT
+            and _vllm_config is not None
+            and _vllm_config.parallel_config.decode_context_parallel_size > 1
+        )
+        self.dcp_a2a = self.dcp_a2a_exact or (
             _vllm_config is not None
             and _vllm_config.parallel_config.decode_context_parallel_size > 1
             and _vllm_config.parallel_config.dcp_comm_backend == "a2a"
@@ -820,7 +832,12 @@ class MLAAttention(nn.Module, AttentionLayerBase):
                     # collective is in flight. Identical collective and
                     # kernels with identical inputs => bit-exact vs the
                     # serial order below.
-                    ag_q = AsyncAllGather(get_dcp_group(), mqa_q, dim=1)
+                    # flush_coalesce: under VLLM_GLM_COMM_COALESCE this
+                    # launches the layer's deferred indexer candidates
+                    # all-gather and this query all-gather in one NCCL group.
+                    ag_q = AsyncAllGather(
+                        get_dcp_group(), mqa_q, dim=1, flush_coalesce=True
+                    )
                     precomputed_indices = self.impl.precompute_mqa_indices(  # type: ignore[attr-defined]
                         attn_metadata, num_mqa_tokens
                     )
@@ -849,7 +866,14 @@ class MLAAttention(nn.Module, AttentionLayerBase):
 
             # correct dcp attn_out with lse.
             if self.impl.dcp_world_size > 1:
-                if self.dcp_a2a:
+                if self.dcp_a2a_exact:
+                    attn_out = dcp_a2a_lse_reduce_exact(
+                        attn_out,
+                        lse,
+                        get_dcp_group(),
+                        is_lse_base_on_e=self.impl.lse_base_on_e,
+                    )
+                elif self.dcp_a2a:
                     attn_out = dcp_a2a_lse_reduce(
                         attn_out,
                         lse,

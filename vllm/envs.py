@@ -260,6 +260,8 @@ if TYPE_CHECKING:
     VLLM_DEBUG_WORKSPACE: bool = False
     VLLM_DISABLE_SHARED_EXPERTS_STREAM: bool = False
     VLLM_GLM_COMM_OVERLAP: bool = False
+    VLLM_DCP_A2A_EXACT: bool = False
+    VLLM_GLM_COMM_COALESCE: bool = False
     VLLM_SHARED_EXPERTS_STREAM_TOKEN_THRESHOLD: int = 256
     VLLM_MULTI_STREAM_GEMM_TOKEN_THRESHOLD: int = 1024
     VLLM_COMPILE_CACHE_SAVE_FORMAT: Literal["binary", "unpacked"] = "binary"
@@ -1866,6 +1868,20 @@ environment_variables: dict[str, Callable[[], Any]] = {
     # Default OFF; the env-off path is untouched.
     "VLLM_GLM_COMM_OVERLAP": lambda: bool(
         int(os.getenv("VLLM_GLM_COMM_OVERLAP", "0"))
+    ),
+    # DCP decode epilogue: replace the per-layer AG(lse) + ReduceScatter(out)
+    # pair with a single packed All-to-All whose combine kernel reproduces the
+    # AG+RS numerics bit-exactly (per-rank LSE correction rounded to the output
+    # dtype, then summed in the NCCL ReduceScatter reduction order discovered
+    # by a one-time runtime probe on the same communicator/shape). Overrides
+    # dcp_comm_backend to the exact-a2a path when set. Default OFF.
+    "VLLM_DCP_A2A_EXACT": lambda: bool(int(os.getenv("VLLM_DCP_A2A_EXACT", "0"))),
+    # Launch the per-layer DCP AG(indexer top-k candidates) + AG(mqa query)
+    # in ONE NCCL group call (torch coalescing manager) instead of two
+    # enqueues. Pure launch coalescing of non-reducing collectives: outputs
+    # are bit-identical. Requires VLLM_GLM_COMM_OVERLAP=1. Default OFF.
+    "VLLM_GLM_COMM_COALESCE": lambda: bool(
+        int(os.getenv("VLLM_GLM_COMM_COALESCE", "0"))
     ),
     # Limits when we run shared_experts in a separate stream.
     # We found out that for large batch sizes, the separate stream

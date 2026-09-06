@@ -34,17 +34,42 @@ def stable_topk_from_gathered_candidates_cutedsl(
     out: torch.Tensor | None = None,
     canonical: bool | None = None,
 ) -> torch.Tensor:
+    """Select the global top-k from the gathered per-rank candidates.
+
+    ``gathered`` is either the concatenated view ``[rows, ws*topk, 2]``
+    (baseline; requires the movedim+reshape copy of the all-gather output)
+    or -- VLLM_GLM_DCP_AG_RAW_TOPK -- the collective's RAW rank-major output
+    viewed as ``[ws, rows, topk, 2]`` (4-D, no copy). The raw path reads
+    candidate ``(rank, j)`` at the same logical position ``rank*topk + j``
+    the 3-D path reads it from, so keys, selection and the canonical
+    in-kernel sort are bit-identical between the two layouts.
+    """
+    raw = gathered.ndim == 4
+    if raw and (gathered.shape[2] % StableTopKFromGatheredCandidatesKernel.tb_size):
+        # Per-rank candidate count not a tb_size multiple: fall back to the
+        # concat layout (materializes the copy the raw path avoids).
+        ws, rows, k, _ = gathered.shape
+        gathered = gathered.movedim(0, 1).reshape(rows, ws * k, 2)
+        raw = False
+    num_rows = gathered.shape[1] if raw else gathered.shape[0]
     if out is None:
         out = torch.empty(
-            (gathered.shape[0], topk),
+            (num_rows, topk),
             dtype=torch.int32,
             device=gathered.device,
         )
     if canonical is None:
         canonical = _CANONICAL_TOPK_INKERNEL
-    StableTopKFromGatheredCandidatesKernel.compile(
-        topk, gathered.shape[1], canonical
-    )(gathered, out)
+    if raw:
+        world_size = gathered.shape[0]
+        num_candidates = world_size * gathered.shape[2]
+        StableTopKFromGatheredCandidatesKernel.compile(
+            topk, num_candidates, canonical, world_size
+        )(gathered, out)
+    else:
+        StableTopKFromGatheredCandidatesKernel.compile(
+            topk, gathered.shape[1], canonical
+        )(gathered, out)
     return out
 
 
@@ -187,7 +212,13 @@ class StableTopKFromGatheredCandidatesKernel:
     hist_chunks = (hist_bins + tb_size - 1) // tb_size
     warps_per_block = tb_size // cute.arch.WARP_SIZE
 
-    def __init__(self, topk: int, num_candidates: int, canonical: bool = False):
+    def __init__(
+        self,
+        topk: int,
+        num_candidates: int,
+        canonical: bool = False,
+        raw_world_size: int = 0,
+    ):
         assert num_candidates % self.tb_size == 0, (
             "StableTopKFromGatheredCandidatesKernel requires candidate count "
             f"to be a multiple of {self.tb_size}, got {num_candidates}"
@@ -195,6 +226,25 @@ class StableTopKFromGatheredCandidatesKernel:
         self.topk = topk
         self.keys_per_thread = num_candidates // self.tb_size
         self.canonical = canonical
+        # VLLM_GLM_DCP_AG_RAW_TOPK: input is the raw rank-major all-gather
+        # output [ws, rows, per_rank, 2] instead of the concatenated
+        # [rows, ws*per_rank, 2] copy. Candidate (rank, j) is read at logical
+        # position rank*per_rank + j -- the identical (thread, key_idx) slot
+        # the 3-D path reads it from -- so the resulting keys array, and thus
+        # everything downstream, is bit-identical.
+        self.raw_world_size = raw_world_size
+        if raw_world_size:
+            assert num_candidates % raw_world_size == 0, (
+                num_candidates,
+                raw_world_size,
+            )
+            per_rank = num_candidates // raw_world_size
+            assert per_rank % self.tb_size == 0, (
+                "raw-layout stable topk requires per-rank candidate count "
+                f"to be a multiple of {self.tb_size}, got {per_rank}"
+            )
+            self.raw_per_rank = per_rank
+            self.raw_chunks_per_rank = per_rank // self.tb_size
         if canonical:
             # The canonical sort runs in the histogram smem after the radix
             # passes finish, so the row must fit in it; topk is also required
@@ -225,7 +275,9 @@ class StableTopKFromGatheredCandidatesKernel:
         out: cute.Tensor,
         stream: CUstream,
     ):
-        grid = (gathered.shape[0], 1, 1)
+        # One block per output row (out rows == gathered rows in both the
+        # 3-D concat layout and the 4-D raw rank-major layout).
+        grid = (out.shape[0], 1, 1)
         self.kernel(gathered, out).launch(
             grid=grid,
             block=(self.tb_size, 1, 1),
@@ -484,7 +536,12 @@ class StableTopKFromGatheredCandidatesKernel:
     ):
         row, _, _ = cute.arch.block_idx()
         tid, _, _ = cute.arch.thread_idx()
-        input_row = input[row, None, None]
+        if cutlass.const_expr(self.raw_world_size > 0):
+            # Raw rank-major layout [ws, rows, per_rank, 2]: slice this row
+            # across all ranks -> (ws, per_rank, 2).
+            input_row = input[None, row, None, None]
+        else:
+            input_row = input[row, None, None]
         output_row = out[row, None]
         keys = cute.make_rmem_tensor((self.keys_per_thread,), Uint64)
 
@@ -496,9 +553,21 @@ class StableTopKFromGatheredCandidatesKernel:
             output_row[i] = Int32(-1)
 
         for key_idx in cutlass.range_constexpr(self.keys_per_thread):
-            col = tid + Int32(key_idx * self.tb_size)
-            score = Float32(input_row[col, 0])
-            token_id = Int32(input_row[col, 1])
+            if cutlass.const_expr(self.raw_world_size > 0):
+                # Logical position col = tid + key_idx*tb_size = rank*per_rank
+                # + col_local: identical (thread, key_idx) -> candidate map
+                # as the 3-D concat layout, just addressed through the raw
+                # 4-D tensor. rank / chunk are compile-time per key_idx.
+                rank_c = key_idx // self.raw_chunks_per_rank
+                col_local = tid + Int32(
+                    (key_idx % self.raw_chunks_per_rank) * self.tb_size
+                )
+                score = Float32(input_row[rank_c, col_local, 0])
+                token_id = Int32(input_row[rank_c, col_local, 1])
+            else:
+                col = tid + Int32(key_idx * self.tb_size)
+                score = Float32(input_row[col, 0])
+                token_id = Int32(input_row[col, 1])
             keys[key_idx] = self._stable_key(score, token_id)
 
         if tid == Int32(0):
@@ -538,18 +607,37 @@ class StableTopKFromGatheredCandidatesKernel:
 
     @cache
     @staticmethod
-    def compile(topk: int, num_candidates: int, canonical: bool = False):
+    def compile(
+        topk: int,
+        num_candidates: int,
+        canonical: bool = False,
+        raw_world_size: int = 0,
+    ):
         num_rows = cute.sym_int()
 
-        gathered = cute.runtime.make_fake_tensor(
-            Float32,
-            (num_rows, num_candidates, 2),
-            stride=(cute.sym_int64(divisibility=2), 2, 1),
-            assumed_align=8,
-        )
+        if raw_world_size:
+            per_rank = num_candidates // raw_world_size
+            # Raw rank-major all-gather output: [ws, rows, per_rank, 2]
+            # contiguous. The rank stride (rows*per_rank*2) is symbolic; the
+            # row stride is the compile-time per-rank payload size.
+            gathered = cute.runtime.make_fake_tensor(
+                Float32,
+                (raw_world_size, num_rows, per_rank, 2),
+                stride=(cute.sym_int64(divisibility=2), per_rank * 2, 2, 1),
+                assumed_align=8,
+            )
+        else:
+            gathered = cute.runtime.make_fake_tensor(
+                Float32,
+                (num_rows, num_candidates, 2),
+                stride=(cute.sym_int64(divisibility=2), 2, 1),
+                assumed_align=8,
+            )
         out = make_fake_tensor(Int32, (num_rows, topk), divisibility=1)
 
-        kernel = StableTopKFromGatheredCandidatesKernel(topk, num_candidates, canonical)
+        kernel = StableTopKFromGatheredCandidatesKernel(
+            topk, num_candidates, canonical, raw_world_size
+        )
         stream = cute.runtime.make_fake_stream(use_tvm_ffi_env_stream=True)
         return cute.compile(
             kernel,

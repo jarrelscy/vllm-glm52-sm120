@@ -174,7 +174,7 @@ class AsyncAllGather:
         )
         self._deferred_input = None
 
-    def wait(self) -> torch.Tensor:
+    def _wait_collective(self) -> None:
         if self._deferred_input is not None:
             # Deferred but never coalesced (e.g. exception between indexer
             # and attention op): self-heal with a solo launch.
@@ -187,6 +187,9 @@ class AsyncAllGather:
         if self._work is not None:
             self._work.wait()
             self._work = None
+
+    def wait(self) -> torch.Tensor:
+        self._wait_collective()
         input_size = self._input_size
         dim = self._dim
         output_tensor = self._output.reshape((self._world_size,) + input_size)
@@ -197,6 +200,16 @@ class AsyncAllGather:
             + input_size[dim + 1 :]
         )
         return output_tensor
+
+    def wait_raw(self) -> torch.Tensor:
+        """VLLM_GLM_DCP_AG_RAW_TOPK: like :meth:`wait`, but return the
+        collective's RAW rank-major output viewed as
+        ``(world_size,) + input_size`` -- a zero-copy view, skipping the
+        movedim+reshape epilogue (which materializes a direct_copy kernel
+        for dim != 0). Same collective, same wait edge; only the epilogue
+        differs, for consumers that can address the rank-major layout."""
+        self._wait_collective()
+        return self._output.view((self._world_size,) + self._input_size)
 
 
 # ---------------------------------------------------------------------------

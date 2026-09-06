@@ -5,6 +5,7 @@
 import os
 
 import torch
+import torch.distributed
 
 import vllm.envs as envs
 from vllm import _custom_ops as ops
@@ -201,7 +202,24 @@ def _merge_dcp_topk_global(
         cp_interleave,
         row_starts,
     )
-    gathered = get_dcp_group().all_gather(packed, dim=1)
+    if envs.VLLM_GLM_DCP_AG_RAW_TOPK:
+        # Same all-gather enqueue the communicator's concat path issues
+        # (dist.all_gather_into_tensor on the device group), but the merge
+        # kernel consumes the RAW rank-major output [ws, rows, k, 2]
+        # directly -- no movedim+reshape direct_copy. The kernel reads
+        # candidate (rank, j) at the identical logical position, so the
+        # merged top-k (and its canonical order) is bit-identical.
+        flat = torch.empty(
+            (dcp_world_size * packed.shape[0], *packed.shape[1:]),
+            dtype=packed.dtype,
+            device=packed.device,
+        )
+        torch.distributed.all_gather_into_tensor(
+            flat, packed, group=get_dcp_group().device_group
+        )
+        gathered = flat.view((dcp_world_size, *packed.shape))
+    else:
+        gathered = get_dcp_group().all_gather(packed, dim=1)
     stable_topk_from_gathered_candidates_cutedsl(
         gathered, topk_tokens, out=topk_indices
     )
@@ -276,7 +294,13 @@ def _merge_dcp_topk_global_async(
     def _finish(
         ag=ag, topk_tokens=topk_tokens, topk_indices=topk_indices
     ) -> None:
-        gathered = ag.wait()
+        if envs.VLLM_GLM_DCP_AG_RAW_TOPK:
+            # Zero-copy rank-major view of the collective output; the merge
+            # kernel addresses it directly (bit-identical result, one
+            # direct_copy per merge removed).
+            gathered = ag.wait_raw()
+        else:
+            gathered = ag.wait()
         stable_topk_from_gathered_candidates_cutedsl(
             gathered, topk_tokens, out=topk_indices
         )

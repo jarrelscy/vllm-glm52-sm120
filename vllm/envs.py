@@ -268,6 +268,7 @@ if TYPE_CHECKING:
     VLLM_GLM_DCP_RS_STAGED: bool = False
     VLLM_GLM_DCP_RS_VIEW: bool = False
     VLLM_GLM_DCP_AG_RAW_TOPK: bool = False
+    VLLM_GLM_SKIP_EMPTY_FILL: bool = False
     VLLM_SHARED_EXPERTS_STREAM_TOKEN_THRESHOLD: int = 256
     VLLM_MULTI_STREAM_GEMM_TOKEN_THRESHOLD: int = 1024
     VLLM_COMPILE_CACHE_SAVE_FORMAT: Literal["binary", "unpacked"] = "binary"
@@ -1951,6 +1952,26 @@ environment_variables: dict[str, Callable[[], Any]] = {
     # Removes one direct_copy per DCP merge. Default OFF.
     "VLLM_GLM_DCP_AG_RAW_TOPK": lambda: bool(
         int(os.getenv("VLLM_GLM_DCP_AG_RAW_TOPK", "0"))
+    ),
+    # Round-6 step-tail: skip the two per-layer empty-row masked_fill_ calls in
+    # the SM120 sparse-MLA decode epilogue (out->0, lse->-inf for DCP rows whose
+    # entire top-k landed on other ranks). These are redundant on this stack: the
+    # flashinfer trtllm sparse-MLA sm120 merge kernel already writes out=0.0
+    # exactly for an empty row (its split-combine skips every split via the
+    # lse<=-1e29 guard, so uninitialized mid_out is never read; acc*inv_gsum=0)
+    # and emits out_lse=-1e30f. The downstream DCP correction kernel
+    # (_correct_attn_cp_out[_strided]_kernel in ops/common.py) then treats that
+    # -1e30 identically to -inf: for a token with any non-empty rank the empty
+    # rank's factor exp2(-1e30 - finite_max) underflows to 0.0 and
+    # `where(factor==0, 0, output)` forces an exact-0 contribution, leaving the
+    # merged output bit-identical; for an all-empty (padding) row out is already
+    # 0.0 so 0.0*factor stays 0.0 (only an internal, discarded lse differs). Net:
+    # removes 2 kernels/layer x 81 layers = 162 launches/step, bitwise-lossless.
+    # PROOF IS VERSION-SPECIFIC to the pinned flashinfer sparse-MLA sm120 build
+    # and the ag_rs DCP correction kernel above; re-gate if either is bumped.
+    # Requires VLLM_GLM_COMM_OVERLAP=1 (empty_rows precomputed). Default OFF.
+    "VLLM_GLM_SKIP_EMPTY_FILL": lambda: bool(
+        int(os.getenv("VLLM_GLM_SKIP_EMPTY_FILL", "0"))
     ),
     # Limits when we run shared_experts in a separate stream.
     # We found out that for large batch sizes, the separate stream

@@ -110,6 +110,14 @@ class FlashInferMLASparseSM120Impl(SparseMLAAttentionImpl[FlashInferMLASparseMet
         self.supports_quant_query_input = False
         self._workspace_buffer: torch.Tensor | None = None
 
+        import vllm.envs as envs
+
+        # Skip the redundant empty-row masked_fill_ epilogue (see
+        # VLLM_GLM_SKIP_EMPTY_FILL). Only meaningful under DCP with the
+        # comm-overlap precompute; harmless otherwise (empty_rows stays None
+        # and the epilogue is not reached without return_lse).
+        self._skip_empty_fill = envs.VLLM_GLM_SKIP_EMPTY_FILL
+
     def precompute_mqa_indices(
         self,
         attn_metadata: FlashInferMLASparseMetadata,
@@ -139,9 +147,11 @@ class FlashInferMLASparseSM120Impl(SparseMLAAttentionImpl[FlashInferMLASparseMet
             attn_metadata, topk_indices, num_actual_toks
         )
         empty_rows = None
-        if self.need_to_return_lse_for_decode:
+        if self.need_to_return_lse_for_decode and not self._skip_empty_fill:
             # Hoisted from the post-attention epilogue: depends only on the
             # converted indices, so it also hides under the query all-gather.
+            # Dead when VLLM_GLM_SKIP_EMPTY_FILL is on (the merge kernel +
+            # DCP correction already zero empty rows); skip the reduction.
             empty_rows = (topk_indices_physical == -1).all(dim=-1)
         return topk_indices_physical, seq_lens, empty_rows
 
@@ -255,6 +265,12 @@ class FlashInferMLASparseSM120Impl(SparseMLAAttentionImpl[FlashInferMLASparseMet
             _, lse = res if isinstance(res, tuple) else (res, None)
             out = output.squeeze(1)
             lse = self._normalize_lse(lse, out.shape[0], out.shape[1])
+            if self._skip_empty_fill:
+                # The trtllm merge kernel already emits out=0.0 / lse=-1e30f for
+                # empty rows, and the DCP correction kernel treats -1e30 like
+                # -inf (see VLLM_GLM_SKIP_EMPTY_FILL in vllm/envs.py). The two
+                # masked_fill_ launches below are redundant; skip them.
+                return out, lse
             if empty_rows is None:
                 empty_rows = (topk_indices_physical == -1).all(dim=-1)
             out.masked_fill_(empty_rows.view(-1, 1, 1), 0.0)

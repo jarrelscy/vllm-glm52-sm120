@@ -514,9 +514,31 @@ class DeepseekV32IndexerMetadataBuilder(AttentionMetadataBuilder):
 
                 # Give each of the flattened entries the same block table row as the
                 # original request.
+                #
+                # The runner's block-table rows can be one kernel-block WIDER
+                # than this buffer: BlockTable sizes rows as
+                #   cdiv(max_model_len, mgr_block * cp_world) * (mgr_block // kernel_block)
+                # (rounds up at KV-manager block granularity, then splits into
+                # kernel blocks), while expanded_block_table_buffer is
+                #   cdiv(max_model_len, kernel_block * cp_world).
+                # For max_model_len=950000, kernel=64, cp_world=4 that is 3712
+                # vs 3711, and the direct buffer[:n] = repeat_interleave(...)
+                # copy raises "expanded size must match existing size" — only
+                # on this non-uniform path (>=2-seq MTP batch where one row has
+                # decode_len < next_n). Truncate the source to the buffer
+                # width: per DCP rank at most cdiv(max_model_len,
+                # kernel_block * cp_world) blocks are ever addressable
+                # (nested-cdiv identity), so the runner's trailing column is
+                # allocation slack from manager-granularity rounding that no
+                # reachable seq_len can dereference. The uniform Triton path
+                # already truncates identically.
+                bt_width = self.expanded_block_table_buffer.shape[1]
                 self.expanded_block_table_buffer[:actual_expanded] = (
                     torch.repeat_interleave(
-                        block_table, decode_lens, dim=0, output_size=actual_expanded
+                        block_table[:, :bt_width],
+                        decode_lens,
+                        dim=0,
+                        output_size=actual_expanded,
                     )
                 )
                 if actual_expanded < num_decode_tokens:

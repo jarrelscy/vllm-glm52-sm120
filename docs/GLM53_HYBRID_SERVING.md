@@ -6,11 +6,11 @@ This fork serves `jarrelscy/GLM-5.3-Vision-NVFP4-AQLM-hybrid-1m` (274 GB, MoE wi
 single-stream code decode and bit-deterministic temp-0 output on 4x NVIDIA RTX
 PRO 6000 Blackwell (96 GB, SM120, PCIe Gen5, no NVLink).
 
-Branch: `v4-race-fix` is the integration tip (all rounds merged). Historical
-per-lever branches: `gemv-pipeline`, `dense-gemm`, `tail-fusion`,
-`tail-fusion-2`, `comm-overlap`, `canonical-inkernel`, `round3-comm`,
-`round4-tail`, `round5-copies`, `custom-ar-force` (rejected lever, kept for the
-record).
+Branch: `main` is the integration tip (all rounds merged; `v4-race-fix` is the
+same history under its original working name). Historical per-lever branches:
+`gemv-pipeline`, `dense-gemm`, `tail-fusion`, `tail-fusion-2`, `comm-overlap`,
+`canonical-inkernel`, `round3-comm`, `round4-tail`, `round5-copies`,
+`custom-ar-force` (rejected lever, kept for the record).
 
 ## Requirements
 
@@ -23,7 +23,7 @@ record).
 ## Build
 
 ```bash
-git clone -b v4-race-fix https://github.com/jarrelscy/vllm-glm52-sm120
+git clone -b main https://github.com/jarrelscy/vllm-glm52-sm120
 cd vllm-glm52-sm120
 docker build -f Dockerfile.glm52-sm120 -t glm52-vision-sm120 .
 ```

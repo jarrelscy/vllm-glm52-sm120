@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import functools
 import json
+import uuid
 from typing import TYPE_CHECKING
 
 import regex as re
@@ -29,6 +30,9 @@ from vllm.parser.engine.parser_engine_config import (
 )
 
 if TYPE_CHECKING:
+    from vllm.entrypoints.openai.engine.protocol import (
+        ExtractedToolCallInformation,
+    )
     from vllm.tokenizers import TokenizerLike
     from vllm.tool_parsers.abstract_tool_parser import Tool
 
@@ -52,6 +56,89 @@ _PARTIAL_ARG_RE = re.compile(
     re.DOTALL,
 )
 
+# GLM occasionally wraps args in hybrid/Anthropic XML forms the strict
+# grammar rejects; these regexes make conversion/repair tolerant of them.
+_HYBRID_ARG_RE = re.compile(
+    r"<parameter>"
+    r"(?P<key>.*?)</arg_key>\s*<arg_value>(?P<value>.*?)</arg_value>"
+    r"\s*</parameter>",
+    re.DOTALL,
+)
+_ANTHROPIC_PARAM_RE = re.compile(
+    r'<parameter\s+name="(?P<key>.*?)">(?P<value>.*?)</parameter>', re.DOTALL
+)
+_NAME_RE = re.compile(r"<name>\s*(?P<name>.*?)\s*</name>", re.DOTALL)
+_TOOL_MARKERS = ("<tool_call", "<function_calls", "<invoke", "<arg_key",
+                 "<arguments", "<parameter")
+
+
+def _json_value(value: str) -> object:
+    """Decode a value the model emitted as embedded JSON, else keep the str."""
+    v = value.strip()
+    if v and v[0] in "[{":
+        try:
+            return json.loads(v)
+        except ValueError:
+            return v
+    return v
+
+
+def _extract_parameters(raw_args: str) -> dict[str, object]:
+    """Best-effort extraction of keyword arguments from any supported form."""
+    params: dict[str, object] = {}
+    for match in _ARG_RE.finditer(raw_args):
+        params[match.group("key").strip()] = _json_value(match.group("value"))
+    for match in _HYBRID_ARG_RE.finditer(raw_args):
+        params[match.group("key").strip()] = _json_value(match.group("value"))
+    for match in _ANTHROPIC_PARAM_RE.finditer(raw_args):
+        params[match.group("key").strip()] = _json_value(match.group("value"))
+    return params
+
+
+def _recover_tool_call(
+    content: str,
+    request,
+) -> tuple[str, dict[str, object], str | None] | None:
+    """Recover a dropped tool call from leaked native-XML content.
+
+    When the structural state machine never enters tool state (because the
+    model emitted a non-conformant wrapper), tool extraction yields no calls
+    and leaves the raw XML in the content. If the content clearly contains a
+    tool call this rebuilds it so the client can execute it instead of showing
+    the raw XML.
+
+    Returns ``(name, arguments, prose)`` where ``prose`` is any genuine
+    assistant text that precedes the leaked tool markup (``None`` when the
+    content was purely the tool call), or ``None`` when not repairable.
+    """
+    if not content or not any(m in content for m in _TOOL_MARKERS):
+        return None
+
+    positions = [content.find(m) for m in _TOOL_MARKERS if m in content]
+    prose = content[:min(positions)].strip() if positions else None
+    if prose == "":
+        prose = None
+
+    name = None
+    match = _NAME_RE.search(content)
+    if match and match.group("name").strip():
+        name = match.group("name").strip()
+    params = _extract_parameters(content)
+    if not name:
+        # Wrapper forms may omit <name>: invent the single defined tool only
+        # when there is real argument evidence. A lone marker (e.g. prose
+        # merely mentioning "<parameter") must not fabricate an empty call.
+        defined = [
+            t.function.name for t in (getattr(request, "tools", None) or [])
+            if getattr(getattr(t, "function", None), "name", None)
+        ]
+        if len(defined) == 1 and params:
+            name = defined[0]
+        else:
+            return None
+
+    return name, params, prose
+
 
 def _glm47_arg_converter(raw_args: str, partial: bool) -> str:
     params: dict[str, object] = {}
@@ -66,6 +153,9 @@ def _glm47_arg_converter(raw_args: str, partial: bool) -> str:
             key = match.group("key").strip()
             if key:
                 params[key] = match.group("value")
+    else:
+        # Accept hybrid/Anthropic forms and JSON-decode nested values.
+        params.update(_extract_parameters(raw_args))
 
     return json.dumps(params, ensure_ascii=False)
 
@@ -194,6 +284,185 @@ class Glm47MoeParser(ParserEngine):
             glm47_moe_config(thinking=self.thinking_enabled),
         )
         super().__init__(tokenizer, tools, **kwargs)
+
+    def _refine_recovered_call(
+        self,
+        name: str,
+        arguments_json: str,
+    ) -> str | None:
+        """Mirror engine validation/type-coercion for a repaired call.
+
+        Same intent as :meth:`ParserEngine._build_extracted_result`: only
+        emit a call whose tool name is defined, and coerce scalar argument
+        types from the tool schema. Any internal uncertainty (e.g. schema
+        unavailable) falls back to the original JSON so the repair never
+        regresses a recoverable call. Returns ``None`` when the name is not
+        a defined tool and the call should be dropped.
+        """
+        try:
+            if not self._is_valid_tool_name(name):
+                return None
+        except Exception:
+            pass
+        try:
+            return self._fix_arg_types(arguments_json, name)
+        except Exception:
+            return arguments_json
+
+    def _repair_suppressed(self, request) -> bool:
+        """True when tool calls are suppressed (e.g. ``tool_choice="none"``).
+
+        Mirrors :meth:`ParserEngine._check_skip_tool_parsing`: when the caller
+        explicitly asked for no tool calls, a leaked marker must not be
+        re-injected as a call; the raw content is the correct output.
+        """
+        if getattr(self, "_suppress_tool_calls", False):
+            return True
+        return getattr(request, "tool_choice", None) == "none"
+
+    def extract_tool_calls_from_content(
+        self,
+        content: str,
+        request: ChatCompletionRequest,
+    ) -> ExtractedToolCallInformation:
+        """Non-streaming tool extraction used by the OpenAI serving path.
+
+        Serving drives `Glm47MoeParserToolAdapter.extract_tool_calls` here (via
+        a `DelegatingParser`), NOT through :meth:`parse`. This is therefore the
+        seam where a call dropped by the strict state machine must be repaired;
+        otherwise the raw tool XML leaks straight into assistant content.
+        """
+        from vllm.entrypoints.openai.engine.protocol import (
+            ExtractedToolCallInformation,
+            FunctionCall,
+            ToolCall,
+        )
+
+        info = super().extract_tool_calls_from_content(content, request)
+        if info.tools_called or self._repair_suppressed(request):
+            return info
+        recovered = _recover_tool_call(content, request)
+        if recovered is None:
+            return info
+        name, args, prose = recovered
+        from vllm.entrypoints.openai.engine.protocol import (
+            FunctionCall,
+            ToolCall,
+        )
+        arguments_json = json.dumps(args, ensure_ascii=False)
+        refined = self._refine_recovered_call(name, arguments_json)
+        if refined is None:
+            # Name isn't a defined tool; keep the original (leaked) content.
+            return info
+        return ExtractedToolCallInformation(
+            tools_called=True,
+            tool_calls=[
+                ToolCall(
+                    id=f"chatcmpl-tool-repair-{uuid.uuid4().hex[:12]}",
+                    function=FunctionCall(name=name, arguments=refined),
+                )
+            ],
+            content=prose,
+        )
+
+    def parse(
+        self,
+        model_output: str,
+        request,
+        enable_auto_tools: bool = False,
+        model_output_token_ids=(),
+    ) -> tuple[str | None, str | None, list | None]:
+        reasoning, content, tool_calls = super().parse(
+            model_output, request, enable_auto_tools, model_output_token_ids
+        )
+        if not tool_calls and content and not self._repair_suppressed(request):
+            from vllm.entrypoints.openai.engine.protocol import FunctionCall
+
+            recovered = _recover_tool_call(content, request)
+            if recovered is not None:
+                name, args, prose = recovered
+                arguments_json = json.dumps(args, ensure_ascii=False)
+                refined = self._refine_recovered_call(name, arguments_json)
+                if refined is not None:
+                    tool_calls = [
+                        FunctionCall(
+                            id=f"chatcmpl-tool-repair-{uuid.uuid4().hex[:12]}",
+                            name=name,
+                            arguments=refined,
+                        )
+                    ]
+                    content = prose
+        return reasoning, content, tool_calls
+
+    def extract_tool_calls_streaming(
+        self,
+        previous_text: str,
+        current_text: str,
+        delta_text: str,
+        previous_token_ids,
+        current_token_ids,
+        delta_token_ids,
+        request,
+    ):
+        # Retain last request/text so finish_streaming can repair undecoded calls.
+        self._repair_stream_text = current_text or getattr(
+            self, "_repair_stream_text", ""
+        )
+        self._repair_stream_request = request
+        return super().extract_tool_calls_streaming(
+            previous_text,
+            current_text,
+            delta_text,
+            previous_token_ids,
+            current_token_ids,
+            delta_token_ids,
+            request,
+        )
+
+    def finish_streaming(self):
+        from vllm.entrypoints.chat_utils import make_tool_call_id
+        from vllm.entrypoints.openai.engine.protocol import (
+            DeltaFunctionCall,
+            DeltaMessage,
+            DeltaToolCall,
+        )
+
+        delta = super().finish_streaming()
+        text = getattr(self, "_repair_stream_text", "") or ""
+        request = getattr(self, "_repair_stream_request", None)
+        if (
+            text
+            and request is not None
+            and not self._repair_suppressed(request)
+            and not (delta is not None and getattr(delta, "tool_calls", None))
+        ):
+            recovered = _recover_tool_call(text, request)
+            if recovered is not None:
+                name, args, prose = recovered
+                arguments_json = json.dumps(args, ensure_ascii=False)
+                refined = self._refine_recovered_call(name, arguments_json)
+                if refined is None:
+                    return delta
+                if delta is None:
+                    delta = DeltaMessage()
+                if not getattr(delta, "tool_calls", None):
+                    delta.tool_calls = [
+                        DeltaToolCall(
+                            index=0,
+                            id=make_tool_call_id(),
+                            type="function",
+                            function=DeltaFunctionCall(
+                                name=name,
+                                arguments=refined,
+                            ),
+                        )
+                    ]
+                if prose:
+                    delta.content = prose
+                elif hasattr(delta, "content"):
+                    delta.content = None
+                return delta
+        return delta
 
     def _emit_name_delta(self, idx: int, deltas, name: str | None) -> None:
         if name is not None:

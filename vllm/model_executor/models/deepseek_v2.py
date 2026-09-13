@@ -54,6 +54,11 @@ from vllm.model_executor.layers.fused_moe import (
     fused_moe_make_expert_params_mapping,
 )
 from vllm.model_executor.layers.layernorm import LayerNorm, RMSNorm
+from vllm.model_executor.layers.pcie_fused_ar_rms import (
+    defer_mlp_all_reduce,
+    fused_ar_rms_norm,
+    pcie_fused_ar_rms_enabled,
+)
 from vllm.model_executor.layers.linear import (
     ColumnParallelLinear,
     MergedColumnParallelLinear,
@@ -1260,6 +1265,12 @@ class DeepseekV2DecoderLayer(nn.Module):
             config.hidden_size, eps=config.rms_norm_eps
         )
         self.routed_scaling_factor = getattr(config, "routed_scaling_factor", 1.0)
+        # b12x PCIe fused AR+add+rmsnorm (lever #2, env-gated, default off).
+        # These stay False for standalone users of this layer class (MTP
+        # drafters, EAGLE heads); DeepseekV2Model enables them on ITS layers
+        # only, so any external consumer keeps the stock reduced outputs.
+        self.pcie_fused_ar_rms_attn = False  # o_proj AR fused w/ post-attn norm
+        self.pcie_fuse_input_norm = False  # prev layer's MLP AR fused w/ input norm
 
     def forward(
         self,
@@ -1279,6 +1290,13 @@ class DeepseekV2DecoderLayer(nn.Module):
         if residual is None:
             residual = hidden_states
             hidden_states = self.input_layernorm(hidden_states)
+        elif self.pcie_fuse_input_norm:
+            # Previous layer's MLP/MoE output was left un-reduced; fuse its
+            # all-reduce into this input_layernorm (b12x PCIe one-shot,
+            # fp32-accum; falls back to AR + stock norm inside the op).
+            hidden_states, residual = fused_ar_rms_norm(
+                hidden_states, residual, self.input_layernorm
+            )
         else:
             hidden_states, residual = self.input_layernorm(hidden_states, residual)
 
@@ -1315,7 +1333,16 @@ class DeepseekV2DecoderLayer(nn.Module):
                 residual = sequence_parallel_chunk(residual)
 
         # Fully Connected
-        hidden_states, residual = self.post_attention_layernorm(hidden_states, residual)
+        if self.pcie_fused_ar_rms_attn:
+            # o_proj ran with reduce_results=False; fuse its all-reduce into
+            # the post-attention norm.
+            hidden_states, residual = fused_ar_rms_norm(
+                hidden_states, residual, self.post_attention_layernorm
+            )
+        else:
+            hidden_states, residual = self.post_attention_layernorm(
+                hidden_states, residual
+            )
         if self.use_sequence_parallel_moe:
             hidden_states = self.mlp(
                 hidden_states,
@@ -1387,6 +1414,13 @@ class DeepseekV2Model(nn.Module):
             ["hidden_states", "residual"], self.hidden_size
         )
 
+        # b12x PCIe fused AR+add+rmsnorm (lever #2). Enabled ONLY on this
+        # model's own layers so standalone DeepseekV2DecoderLayer users (MTP
+        # drafters, EAGLE heads) keep stock reduced outputs.
+        self.pcie_fuse_final_norm = False
+        if pcie_fused_ar_rms_enabled():
+            self._enable_pcie_fused_ar_rms()
+
         self.aux_hidden_state_layers = tuple[int, ...]()
 
         # Needed by load_weights
@@ -1397,6 +1431,71 @@ class DeepseekV2Model(nn.Module):
         )
         self.num_redundant_experts = (
             vllm_config.parallel_config.eplb_config.num_redundant_experts
+        )
+
+    def _enable_pcie_fused_ar_rms(self) -> None:
+        """Wire the b12x fused AR+rmsnorm call sites (lever #2).
+
+        Two site families per layer:
+          A. attention o_proj AR + post_attention_layernorm (layer-internal);
+          B. MLP/MoE final AR deferred into the NEXT layer's input_layernorm
+             (or the model's final norm) — DSV4.1-precedent cross-layer
+             deferral (vllm/models/deepseek_v32/nvidia/model.py).
+        Guards: single PP stage, TP>1, no sequence-parallel MoE, no aux
+        hidden-state taps (EAGLE3/DSpark read hidden+residual mid-loop and
+        would observe partial sums).
+        """
+        if get_pp_group().world_size != 1:
+            logger.warning_once(
+                "VLLM_GLM_PCIE_FUSED_AR_RMS: disabled (needs a single PP stage)."
+            )
+            return
+        if get_tensor_model_parallel_world_size() <= 1:
+            return
+        layers = [
+            self.layers[i] for i in range(self.start_layer, self.end_layer)
+        ]
+        if any(layer.use_sequence_parallel_moe for layer in layers):
+            logger.warning_once(
+                "VLLM_GLM_PCIE_FUSED_AR_RMS: disabled (sequence-parallel MoE)."
+            )
+            return
+        if self.aux_hidden_state_layers:
+            logger.warning_once(
+                "VLLM_GLM_PCIE_FUSED_AR_RMS: disabled (aux hidden-state taps)."
+            )
+            return
+        n_attn = 0
+        n_mlp = 0
+        prev_deferred = False
+        for i, layer in enumerate(layers):
+            # Site B consumer: only valid when the PREVIOUS layer deferred.
+            if i > 0 and prev_deferred:
+                layer.pcie_fuse_input_norm = True
+            # Site A: attention o_proj AR + post-attention norm.
+            o_proj = getattr(layer.self_attn, "o_proj", None)
+            if (
+                o_proj is not None
+                and getattr(o_proj, "reduce_results", False)
+                and getattr(o_proj, "tp_size", 1) > 1
+            ):
+                o_proj.reduce_results = False
+                layer.pcie_fused_ar_rms_attn = True
+                n_attn += 1
+            # Site B producer: defer this layer's MLP/MoE all-reduce.
+            prev_deferred = defer_mlp_all_reduce(layer.mlp)
+            if prev_deferred:
+                n_mlp += 1
+        # Final norm consumes the last layer's deferred MLP all-reduce.
+        self.pcie_fuse_final_norm = prev_deferred
+        logger.info_once(
+            "VLLM_GLM_PCIE_FUSED_AR_RMS: fused AR+rmsnorm wired at %d "
+            "attention and %d MLP/MoE call sites across %d layers "
+            "(final-norm fusion: %s).",
+            n_attn,
+            n_mlp,
+            len(layers),
+            self.pcie_fuse_final_norm,
         )
 
     def embed_input_ids(self, input_ids: torch.Tensor) -> torch.Tensor:
@@ -1510,7 +1609,12 @@ class DeepseekV2Model(nn.Module):
         if self.end_layer in aux_slot_of:
             aux_slots[aux_slot_of[self.end_layer]] = hidden_states + residual
 
-        hidden_states, _ = self.norm(hidden_states, residual)
+        if self.pcie_fuse_final_norm:
+            # Last layer's MLP/MoE output was left un-reduced; fuse its
+            # all-reduce into the final norm.
+            hidden_states, _ = fused_ar_rms_norm(hidden_states, residual, self.norm)
+        else:
+            hidden_states, _ = self.norm(hidden_states, residual)
         if num_aux > 0:
             assert all(a is not None for a in aux_slots), (
                 "missing aux hidden state slot on last PP rank"

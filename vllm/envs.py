@@ -114,6 +114,14 @@ if TYPE_CHECKING:
     VLLM_ALLOW_RUNTIME_LORA_UPDATING: bool = False
     VLLM_SKIP_P2P_CHECK: bool = False
     VLLM_FORCE_CUSTOM_ALLREDUCE: bool = False
+    VLLM_ENABLE_PCIE_ALLREDUCE: bool = False
+    VLLM_PCIE_ALLREDUCE_BACKEND: str = "b12x"
+    VLLM_PCIE_ONESHOT_ALLREDUCE_MAX_SIZE: str = "84KB"
+    VLLM_PCIE_ONESHOT_FUSED_ADD_RMS_NORM_MAX_SIZE: str = "84KB"
+    VLLM_PCIE_TWOSHOT_ALLREDUCE_MAX_SIZE: str = "off"
+    VLLM_PCIE_DMA_MIN_BYTES: str = "off"
+    VLLM_PCIE_DMA_FP8: str | None = None
+    VLLM_GLM_PCIE_FUSED_AR_RMS: bool = False
     VLLM_SM120_ROUTER_GEMM: bool = False
     VLLM_DISABLED_KERNELS: list[str] = []
     VLLM_ENABLE_FLA_PACKED_RECURRENT_DECODE: bool = True
@@ -1134,6 +1142,47 @@ environment_variables: dict[str, Callable[[], Any]] = {
     "VLLM_FORCE_CUSTOM_ALLREDUCE": lambda: (
         os.environ.get("VLLM_FORCE_CUSTOM_ALLREDUCE", "0").strip().lower()
         in ("1", "true")
+    ),
+    # b12x PCIe push/store-based all-reduce graft (2026-09-13). Default OFF:
+    # with VLLM_ENABLE_PCIE_ALLREDUCE=0 the whole stack is a no-op. Unlike the
+    # rejected read-based custom AR (peer loads ~0.7 GB/s over the host
+    # bridge), the b12x kernels push stores to peer buffers with atomic
+    # generation flags — the store path this box's PCIe P2P actually sustains.
+    "VLLM_ENABLE_PCIE_ALLREDUCE": lambda: bool(
+        int(os.getenv("VLLM_ENABLE_PCIE_ALLREDUCE", "0"))
+    ),
+    "VLLM_PCIE_ALLREDUCE_BACKEND": lambda: os.getenv(
+        "VLLM_PCIE_ALLREDUCE_BACKEND", "b12x"
+    ),
+    # Largest payload routed to the PCIe one-shot all-reduce. 84KB default
+    # (= b12x recommended_max_bytes(4) = 86016); decode ARs on GLM-5.3 at
+    # B<=4 (4-16 tokens x hidden 6144 x bf16 = 48-196KB) mostly fit.
+    "VLLM_PCIE_ONESHOT_ALLREDUCE_MAX_SIZE": lambda: os.getenv(
+        "VLLM_PCIE_ONESHOT_ALLREDUCE_MAX_SIZE", "84KB"
+    ),
+    # Ceiling for the fused all-reduce+add+rmsnorm one-shot path (lever #2).
+    "VLLM_PCIE_ONESHOT_FUSED_ADD_RMS_NORM_MAX_SIZE": lambda: os.getenv(
+        "VLLM_PCIE_ONESHOT_FUSED_ADD_RMS_NORM_MAX_SIZE", "84KB"
+    ),
+    # Lossless bf16 two-shot for payloads above the one-shot ceiling.
+    # world_size==4 only (built for exactly this box). "off" disables.
+    "VLLM_PCIE_TWOSHOT_ALLREDUCE_MAX_SIZE": lambda: os.getenv(
+        "VLLM_PCIE_TWOSHOT_ALLREDUCE_MAX_SIZE", "off"
+    ),
+    # Minimum payload for the DMA all-reduce tier (large/prefill tensors).
+    # Default "off" (upstream b12x default is 6MB): the DMA tier plans fp32
+    # capacities over a bf16 wire, which is only lossless for bf16 inputs —
+    # keep it off until the calibration probe shows a win AND the lossless
+    # bar is re-verified for every dtype it would accept.
+    "VLLM_PCIE_DMA_MIN_BYTES": lambda: os.getenv("VLLM_PCIE_DMA_MIN_BYTES", "off"),
+    # Optional B12X DMA wire codec. Unset uses lossless transport. NEVER set
+    # fp8 here on the GLM-5.3 stack (lossless bar).
+    "VLLM_PCIE_DMA_FP8": lambda: os.getenv("VLLM_PCIE_DMA_FP8"),
+    # Lever #2: hand-wired fused all-reduce+add+rmsnorm at the GLM decoder
+    # layer call sites (b12x runtime API, fp32 accumulation — lossless-by-gate,
+    # not bit-exact). Requires VLLM_ENABLE_PCIE_ALLREDUCE=1; no-op otherwise.
+    "VLLM_GLM_PCIE_FUSED_AR_RMS": lambda: bool(
+        int(os.getenv("VLLM_GLM_PCIE_FUSED_AR_RMS", "0"))
     ),
     # Opt-in (default OFF): allow the specialized MoE router GEMM tiers
     # (DSV3 min-latency kernel / cuBLAS bf16xbf16->fp32) on SM120-family

@@ -48,16 +48,28 @@ class CudaCommunicator(DeviceCommunicatorBase):
             use_custom_allreduce = False
             use_torch_symm_mem = False
             use_flashinfer_allreduce = False
+            use_b12x_allreduce = False
         else:
             from vllm.distributed.parallel_state import _ENABLE_CUSTOM_ALL_REDUCE
 
             use_custom_allreduce = _ENABLE_CUSTOM_ALL_REDUCE
             use_torch_symm_mem = envs.VLLM_ALLREDUCE_USE_SYMM_MEM
             use_flashinfer_allreduce = envs.VLLM_ALLREDUCE_USE_FLASHINFER
+            # b12x PCIe push/store-based all-reduce graft (env-gated, default
+            # off). Takes dispatch priority over every other AR backend when
+            # enabled and its size/dtype gates accept the input.
+            use_b12x_allreduce = (
+                use_custom_allreduce
+                and envs.VLLM_ENABLE_PCIE_ALLREDUCE
+                and envs.VLLM_PCIE_ALLREDUCE_BACKEND == "b12x"
+            )
+            if use_b12x_allreduce:
+                use_flashinfer_allreduce = False
 
         self.use_custom_allreduce = use_custom_allreduce
         self.use_torch_symm_mem = use_torch_symm_mem
         self.use_flashinfer_allreduce = use_flashinfer_allreduce
+        self.use_b12x_allreduce = use_b12x_allreduce
 
         # lazy import to avoid documentation build error
         from vllm.distributed.device_communicators.custom_all_reduce import (
@@ -85,6 +97,16 @@ class CudaCommunicator(DeviceCommunicatorBase):
         self.qr_comm: QuickAllReduce | None = None
         self.symm_mem_comm: SymmMemCommunicator | None = None
         self.fi_ar_comm: FlashInferAllReduce | None = None
+        self.b12x_ar_comm = None
+
+        if self.use_b12x_allreduce and self.world_size > 1:
+            from .b12x_pcie_all_reduce import B12xPcieAllReduce
+
+            self.b12x_ar_comm = B12xPcieAllReduce(
+                group=self.cpu_group,
+                device_group=self.device_group,
+                device=self.device,
+            )
 
         if use_torch_symm_mem and current_platform.is_cuda():
             self.symm_mem_comm = SymmMemCommunicator(
@@ -98,7 +120,11 @@ class CudaCommunicator(DeviceCommunicatorBase):
                 device=self.device,
             )
 
-        if use_custom_allreduce and self.world_size > 1:
+        if (
+            use_custom_allreduce
+            and (self.b12x_ar_comm is None or self.b12x_ar_comm.disabled)
+            and self.world_size > 1
+        ):
             # Initialize a custom fast all-reduce implementation.
             self.ca_comm = CustomAllreduce(
                 group=self.cpu_group,
@@ -200,6 +226,7 @@ class CudaCommunicator(DeviceCommunicatorBase):
         depends on the input tensor.
         """
         all_potential_ar_backends = [
+            "B12X_PCIE",
             "NCCL_SYMM_MEM",
             "QUICK_REDUCE",
             "FLASHINFER",
@@ -208,6 +235,8 @@ class CudaCommunicator(DeviceCommunicatorBase):
             "PYNCCL",
         ]
         enabled_ar_backends: list[str] = []
+        if self.b12x_ar_comm is not None and not self.b12x_ar_comm.disabled:
+            enabled_ar_backends.append("B12X_PCIE")
         # Mirror the static preconditions of `should_nccl_symm_mem_allreduce`:
         # VLLM_BATCH_INVARIANT off, NCCL symm mem enabled, world_size meets
         # min_world_size, and world_size either has a tuned entry in
@@ -253,6 +282,17 @@ class CudaCommunicator(DeviceCommunicatorBase):
         )
 
     def all_reduce(self, input_):
+        # b12x PCIe AR takes priority when enabled and its gates accept the
+        # input (size ceiling, dtype, contiguity). Falls through otherwise.
+        b12x_ar_comm = self.b12x_ar_comm
+        if (
+            b12x_ar_comm is not None
+            and not b12x_ar_comm.disabled
+            and b12x_ar_comm.should_custom_ar(input_)
+        ):
+            out = b12x_ar_comm.custom_all_reduce(input_)
+            assert out is not None
+            return out
         # since currently we perform copy input -> symm_input -> out-of-place AR
         # return symm_output, we don't need to check if input is symmetric
         if self.pynccl_comm is not None and should_nccl_symm_mem_allreduce(
@@ -507,6 +547,9 @@ class CudaCommunicator(DeviceCommunicatorBase):
         if self.pynccl_comm is not None:
             self.pynccl_comm.destroy()
             self.pynccl_comm = None
+        if self.b12x_ar_comm is not None:
+            self.b12x_ar_comm.close()
+            self.b12x_ar_comm = None
         if self.ca_comm is not None:
             self.ca_comm = None
         if self.fi_ar_comm is not None:

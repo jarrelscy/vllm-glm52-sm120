@@ -1,0 +1,384 @@
+{
+  "scope": "Packaged kernel image, warm compilation cache, same initial8x8 weights. Cold prefixes have zero GPU/external hits. First initialization request retained, distinct from warmed-code throughput. Target3000 not achieved.",
+  "container_id": "2f93e027b8a4060c22c1bc88eaafd8d71ad35164c972f52eefb45fb0ff0a5167",
+  "image_id": "sha256:9ca66aa2707a2c30999f3234a406e7e64c9db02c5c5d8c5f04b6fcc8537b0f42",
+  "configuration": {
+    "context_limit": 1048576,
+    "request_slots": 8,
+    "kv_token_capacity": 1283584,
+    "mtp_draft_tokens": 3,
+    "vision": true,
+    "lmcache": true,
+    "all_four_cache_ranks_checked": true
+  },
+  "headline": [
+    {
+      "case": "cold8k_1",
+      "valid": true,
+      "gpu_cache_hits": 0.0,
+      "external_cache_hits": 0.0,
+      "cold_aggregate_prefill_wall_tps": 1217.5917996290973,
+      "server_prefill_histogram_tps": 1220.1690564424605,
+      "steady_decode": {
+        "valid": false,
+        "reason": "No common decode interval"
+      },
+      "speculative": {
+        "drafts": 0.0,
+        "accepted": 0.0,
+        "proposed": 0.0,
+        "expected_emitted_per_step": null,
+        "acceptance_rate": null
+      }
+    },
+    {
+      "case": "cold8k_2",
+      "valid": true,
+      "gpu_cache_hits": 0.0,
+      "external_cache_hits": 0.0,
+      "cold_aggregate_prefill_wall_tps": 2011.0202134575975,
+      "server_prefill_histogram_tps": 2014.5390997351199,
+      "steady_decode": {
+        "valid": false,
+        "reason": "No common decode interval"
+      },
+      "speculative": {
+        "drafts": 0.0,
+        "accepted": 0.0,
+        "proposed": 0.0,
+        "expected_emitted_per_step": null,
+        "acceptance_rate": null
+      }
+    },
+    {
+      "case": "cold128k",
+      "valid": true,
+      "gpu_cache_hits": 0.0,
+      "external_cache_hits": 0.0,
+      "cold_aggregate_prefill_wall_tps": 1881.8128584621988,
+      "server_prefill_histogram_tps": 1883.6652469341786,
+      "steady_decode": {
+        "valid": false,
+        "reason": "No common decode interval"
+      },
+      "speculative": {
+        "drafts": 0.0,
+        "accepted": 0.0,
+        "proposed": 0.0,
+        "expected_emitted_per_step": null,
+        "acceptance_rate": null
+      }
+    },
+    {
+      "case": "decode8k_c1",
+      "valid": true,
+      "gpu_cache_hits": 7680.0,
+      "external_cache_hits": 511.0,
+      "cold_aggregate_prefill_wall_tps": null,
+      "server_prefill_histogram_tps": 74849.72538208695,
+      "steady_decode": {
+        "valid": true,
+        "start_offset_s": 0.11536810081452131,
+        "end_offset_s": 3.728677620179951,
+        "duration_s": 3.61330951936543,
+        "tokens_per_stream": [
+          511
+        ],
+        "aggregate_decode_tps": 141.42159625720132
+      },
+      "speculative": {
+        "drafts": 130.0,
+        "accepted": 381.0,
+        "proposed": 390.0,
+        "expected_emitted_per_step": 3.9307692307692306,
+        "acceptance_rate": 0.9769230769230769
+      }
+    }
+  ],
+  "fixed_reference_decode": [
+    {
+      "case": "order_0_1_2_3",
+      "valid": true,
+      "gpu_cache_hits": 0.0,
+      "external_cache_hits": 32764.0,
+      "cold_aggregate_prefill_wall_tps": null,
+      "server_prefill_histogram_tps": 14317.115523328299,
+      "steady_decode": {
+        "valid": true,
+        "start_offset_s": 0.7365210670977831,
+        "end_offset_s": 6.909876852296293,
+        "duration_s": 6.17335578519851,
+        "tokens_per_stream": [
+          502,
+          500,
+          507,
+          502
+        ],
+        "aggregate_decode_tps": 325.75475478372005
+      },
+      "speculative": {
+        "drafts": 523.0,
+        "accepted": 1531.0,
+        "proposed": 1569.0,
+        "expected_emitted_per_step": 3.9273422562141493,
+        "acceptance_rate": 0.975780752071383
+      },
+      "output_comparisons": [
+        {
+          "case": "order_0_1_2_3",
+          "comparisons": [
+            {
+              "original": 0,
+              "equal": true,
+              "first_divergence": null,
+              "expected_first": [
+                13,
+                63957,
+                12427,
+                4625
+              ],
+              "actual_first": [
+                13,
+                63957,
+                12427,
+                4625
+              ]
+            },
+            {
+              "original": 1,
+              "equal": true,
+              "first_divergence": null,
+              "expected_first": [
+                12427,
+                4625,
+                50804,
+                323
+              ],
+              "actual_first": [
+                12427,
+                4625,
+                50804,
+                323
+              ]
+            },
+            {
+              "original": 2,
+              "equal": true,
+              "first_divergence": null,
+              "expected_first": [
+                30386,
+                13,
+                63957,
+                12427
+              ],
+              "actual_first": [
+                30386,
+                13,
+                63957,
+                12427
+              ]
+            },
+            {
+              "original": 3,
+              "equal": true,
+              "first_divergence": null,
+              "expected_first": [
+                63957,
+                12427,
+                4625,
+                50804
+              ],
+              "actual_first": [
+                63957,
+                12427,
+                4625,
+                50804
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": "order_0_1_2_3_0_1_2_3",
+      "valid": true,
+      "gpu_cache_hits": 0.0,
+      "external_cache_hits": 65528.0,
+      "cold_aggregate_prefill_wall_tps": null,
+      "server_prefill_histogram_tps": 48523.93190187225,
+      "steady_decode": {
+        "valid": true,
+        "start_offset_s": 0.21636324934661388,
+        "end_offset_s": 9.790852595120668,
+        "duration_s": 9.574489345774055,
+        "tokens_per_stream": [
+          506,
+          508,
+          511,
+          510,
+          510,
+          508,
+          507,
+          510
+        ],
+        "aggregate_decode_tps": 425.08794495618696
+      },
+      "speculative": {
+        "drafts": 1041.0,
+        "accepted": 3068.0,
+        "proposed": 3123.0,
+        "expected_emitted_per_step": 3.94716618635927,
+        "acceptance_rate": 0.9823887287864234
+      },
+      "output_comparisons": [
+        {
+          "case": "order_0_1_2_3_0_1_2_3",
+          "comparisons": [
+            {
+              "original": 0,
+              "equal": true,
+              "first_divergence": null,
+              "expected_first": [
+                13,
+                63957,
+                12427,
+                4625
+              ],
+              "actual_first": [
+                13,
+                63957,
+                12427,
+                4625
+              ]
+            },
+            {
+              "original": 1,
+              "equal": true,
+              "first_divergence": null,
+              "expected_first": [
+                12427,
+                4625,
+                50804,
+                323
+              ],
+              "actual_first": [
+                12427,
+                4625,
+                50804,
+                323
+              ]
+            },
+            {
+              "original": 2,
+              "equal": true,
+              "first_divergence": null,
+              "expected_first": [
+                30386,
+                13,
+                63957,
+                12427
+              ],
+              "actual_first": [
+                30386,
+                13,
+                63957,
+                12427
+              ]
+            },
+            {
+              "original": 3,
+              "equal": true,
+              "first_divergence": null,
+              "expected_first": [
+                63957,
+                12427,
+                4625,
+                50804
+              ],
+              "actual_first": [
+                63957,
+                12427,
+                4625,
+                50804
+              ]
+            },
+            {
+              "original": 0,
+              "equal": true,
+              "first_divergence": null,
+              "expected_first": [
+                13,
+                63957,
+                12427,
+                4625
+              ],
+              "actual_first": [
+                13,
+                63957,
+                12427,
+                4625
+              ]
+            },
+            {
+              "original": 1,
+              "equal": true,
+              "first_divergence": null,
+              "expected_first": [
+                12427,
+                4625,
+                50804,
+                323
+              ],
+              "actual_first": [
+                12427,
+                4625,
+                50804,
+                323
+              ]
+            },
+            {
+              "original": 2,
+              "equal": true,
+              "first_divergence": null,
+              "expected_first": [
+                30386,
+                13,
+                63957,
+                12427
+              ],
+              "actual_first": [
+                30386,
+                13,
+                63957,
+                12427
+              ]
+            },
+            {
+              "original": 3,
+              "equal": true,
+              "first_divergence": null,
+              "expected_first": [
+                63957,
+                12427,
+                4625,
+                50804
+              ],
+              "actual_first": [
+                63957,
+                12427,
+                4625,
+                50804
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "memory_diagnostic": {
+    "first_portable_boot_kv_tokens": 1247232,
+    "same_settings_warm_boot_kv_tokens": 1283584,
+    "same_compiled_graphs_and_52_subgraph_keys": true,
+    "interpretation": "Warm-cache reboot restores previous capacity without changing memory/context settings. Exact transient allocation was not identified."
+  }
+}

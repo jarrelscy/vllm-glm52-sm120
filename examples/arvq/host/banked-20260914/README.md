@@ -1,6 +1,7 @@
 # Banked local GLM-5.3 launch — 2026-09-14
 
-`./switch.sh glm-5.3` selects the banked local image and initial-fit, unrotated
+`./switch.sh glm-5.3` (also `./switch.sh Glm-5.3` or
+`./switch.sh glm-5.3-arvq`) selects the banked local image and initial-fit, unrotated
 8+8 checkpoint. It retains 1,048,576 context, eight request slots, TP4/DCP4/MTP3,
 vision, residual-activation P4 kernels and LMCache. Source-built experiments and
 sampler diagnostics are disabled. The PV checkpoint remains staged separately.

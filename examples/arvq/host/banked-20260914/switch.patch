@@ -1,5 +1,14 @@
 --- a/switch.sh
 +++ b/switch.sh
+@@ -20,7 +20,7 @@
+   glm5.3-uncensored|glm-5.3f-unc|glm5.3-unc) echo "Alias: $1 → glm5.3-flash-uncensored"; set -- "glm5.3-flash-uncensored" ;;
+   # glm-5.3 aliases point at the re-tiered 1m checkpoint as of 2026-09-04 (user
+   # call); the pre-retier profile stays reachable as plain `glm5.3-hybrid`.
+-  glm5.3-vision|glm-5.3) echo "Alias: $1 → glm5.3-hybrid-1m"; set -- "glm5.3-hybrid-1m" ;;
++  glm5.3-vision|glm-5.3|Glm-5.3) echo "Alias: $1 → glm5.3-hybrid-1m"; set -- "glm5.3-hybrid-1m" ;;
+   glm5.3-1m|glm-5.3-1m) echo "Alias: $1 → glm5.3-hybrid-1m"; set -- "glm5.3-hybrid-1m" ;;
+   glm-5.3-arvq|glm5.3-arvq|glm5.3-arvq-mtp) echo "Alias: $1 → glm5.3-hybrid-1m (ARVQ + dense P4 + MTP)"; set -- "glm5.3-hybrid-1m" ;;
+   qwen3.8fn|qwen4-preview|flash-next) echo "Alias: $1 → qwen3.8-flash-next"; set -- "qwen3.8-flash-next" ;;
 @@ -315,8 +315,9 @@
  if [ "$1" = "glm5.3-hybrid-1m" ]; then
    ARVQ_COMPOSE="$SCRIPT_DIR/docker-compose.glm53-arvq.yaml"

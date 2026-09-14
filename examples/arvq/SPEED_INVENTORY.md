@@ -39,6 +39,23 @@ to DMA: short single-stream decode does not exercise the large-payload DMA
 threshold. [PCIe details](PCIE.md) separate microbench evidence from serving
 measurements.
 
+## Grouped prefill
+
+The deployed host profile now groups cold-expert routes for eligible prefill
+batches, while retaining the existing MTP decode path.
+
+| Cold input tokens | Previous latency | Grouped latency | Speedup |
+| --- | ---: | ---: | ---: |
+| 1024 | 1.828 s | 1.833 s | unchanged (below dispatch threshold) |
+| 4096 | 7.192 s | 4.724 s | 1.52x |
+| 8192 | 15.595 s | 9.769 s | 1.60x |
+
+These are HTTP latencies for identical input tokens and one output token,
+measured with three alternating pairs and unique cache salts. Short-prompt MTP
+throughput remained 133.4 total output tokens/s at one stream and 264.2 at four
+streams. [Implementation and limits](PREFILL.md) and
+[measurement details](results/prefill/GROUPED_NOTES.md).
+
 ## Where time was spent before dense quantization
 
 The available detailed no-MTP profile is the **50.439 tokens/s communication

@@ -248,8 +248,40 @@ def grouped_cold_prefill(
         stop = start + count
         if count >= min_expert_tokens:
             route_slots = sorted_slots[start:stop]
-            rows = x[route_slots // top_k].to(torch.float16)
-            w13 = decode("w13", expert)
+            if (
+                os.environ.get("VLLM_ARVQ_FUSED_COLD_GATHER", "0") == "1"
+                and tokens in (2048, 4096)
+                and top_k == 8
+                and hidden == 6144
+                and chunk_tokens == 128
+                and n13 == 1024
+                and x.dtype == torch.bfloat16
+                and x.is_contiguous()
+                and tensors[1].numel() == 512
+            ):
+                from vllm.model_executor.layers.quantization import (
+                    nvfp4_arvq_cold_gather as cold_gather,
+                )
+                from vllm.model_executor.layers.quantization.nvfp4_arvq_hybrid import (
+                    _layout,
+                )
+
+                words_per_tile, _ = _layout(tensors[1])
+                words = (n13 // 16) * (hidden // 64) * words_per_tile
+                rows, w13 = cold_gather.decode_gather(
+                    x,
+                    route_slots,
+                    tensors[0].reshape(-1)[expert * words : expert * words + words + 1],
+                    tensors[1],
+                    tensors[2][expert],
+                    alphas[0],
+                    n13,
+                    hidden,
+                    top_k,
+                )
+            else:
+                rows = x[route_slots // top_k].to(torch.float16)
+                w13 = decode("w13", expert)
             h13 = torch.mm(rows, w13.T, out_dtype=torch.float32).half()
             del rows, w13
             gate, up = h13.chunk(2, dim=-1)
@@ -261,6 +293,21 @@ def grouped_cold_prefill(
             routed[route_slots] = out
             del act, w2, out
         start = stop
+
+    if (
+        os.environ.get("VLLM_ARVQ_FUSED_ROUTE_SUM", "0") == "1"
+        and tokens in (2048, 4096)
+        and top_k == 8
+        and hidden == 6144
+        and chunk_tokens == 128
+        and x.dtype == torch.bfloat16
+        and routed.is_contiguous()
+        and topk_weights.dtype == torch.float32
+        and topk_weights.is_contiguous()
+    ):
+        from vllm.model_executor.layers.quantization.nvfp4_arvq_route_sum import run
+
+        return run(routed, topk_weights, x.dtype)
 
     outputs = []
     for start in range(0, tokens, chunk_tokens):

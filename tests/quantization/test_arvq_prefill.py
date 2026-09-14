@@ -10,13 +10,16 @@ from vllm.model_executor.layers.quantization import nvfp4_arvq_prefill as prefil
 
 @pytest.mark.parametrize("words,entries", [(60, 384), (64, 512)])
 @pytest.mark.parametrize("compact", [False, True])
+@pytest.mark.parametrize("fusion_flags", [False, True])
 @pytest.mark.parametrize(
     "scenario", ["mixed", "all_hot", "all_cold", "low_count", "zero"]
 )
 def test_grouped_preserves_mixed_route_order(
-    monkeypatch, compact, scenario, words, entries
+    monkeypatch, compact, scenario, words, entries, fusion_flags
 ):
     monkeypatch.setenv("VLLM_ARVQ_COMPACT_PREFILL", "1" if compact else "0")
+    monkeypatch.setenv("VLLM_ARVQ_FUSED_COLD_GATHER", "1" if fusion_flags else "0")
+    monkeypatch.setenv("VLLM_ARVQ_FUSED_ROUTE_SUM", "1" if fusion_flags else "0")
     torch.manual_seed(7)
     hidden, intermediate = 128, 128
     w13 = torch.randn(3, intermediate * 2, hidden).half() * 0.01

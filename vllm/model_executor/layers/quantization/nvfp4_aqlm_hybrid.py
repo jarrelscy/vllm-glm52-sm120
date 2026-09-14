@@ -370,6 +370,10 @@ class NvFp4AqlmHybridConfig(QuantizationConfig):
 
     @classmethod
     def from_config(cls, config: dict[str, Any]) -> "NvFp4AqlmHybridConfig":
+        if "arvq" in config:
+            from .nvfp4_arvq_hybrid import NvFp4ArvqHybridConfig
+
+            return NvFp4ArvqHybridConfig.from_config(config)
         nvfp4 = ModelOptNvFp4Config.from_config(config["nvfp4"])
         aqlm = config.get("aqlm", {})
         layer_books = {

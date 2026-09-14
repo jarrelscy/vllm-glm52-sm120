@@ -1,0 +1,90 @@
+services:
+  glm53-arvq:
+    image: glm53-arvq-sm120:local
+    build:
+      context: ../..
+      dockerfile: Dockerfile.arvq
+    command:
+    - --trust-remote-code
+    - --reasoning-parser
+    - glm47
+    - --profiler-config.profiler=torch
+    - --profiler-config.torch_profiler_dir=/profiles
+    - --profiler-config.torch_profiler_with_stack=false
+    - ${PREFIX_CACHING_FLAG:---enable-prefix-caching}
+    environment:
+      PARALLEL: ${PARALLEL:-tp4-1m-mtp}
+      CUDAGRAPH_MODE: ${CUDAGRAPH_MODE:-FULL_AND_PIECEWISE}
+      VLLM_FORCE_CUSTOM_ALLREDUCE: ${VLLM_FORCE_CUSTOM_ALLREDUCE:-0}
+      AQLM_GEMV_PIPELINE: ${AQLM_GEMV_PIPELINE:-1}
+      VLLM_SM120_ROUTER_GEMM: ${VLLM_SM120_ROUTER_GEMM:-1}
+      NCCL_ALGO: ${NCCL_ALGO:-RING,TREE}
+      AQLM_GEMV_BF16IN: ${AQLM_GEMV_BF16IN:-1}
+      AQLM_FUSED_COMBINE: ${AQLM_FUSED_COMBINE:-1}
+      AQLM_GLUE_OPT: ${AQLM_GLUE_OPT:-1}
+      AQLM_GEMV_ROWMAP: ${AQLM_GEMV_ROWMAP:-1}
+      AQLM_FUSED_SILU: ${AQLM_FUSED_SILU:-1}
+      VLLM_GLM_COMM_OVERLAP: ${VLLM_GLM_COMM_OVERLAP:-1}
+      VLLM_DSA_CANONICAL_TOPK: ${VLLM_DSA_CANONICAL_TOPK:-inkernel}
+      VLLM_DCP_A2A_EXACT: ${VLLM_DCP_A2A_EXACT:-0}
+      VLLM_GLM_COMM_COALESCE: ${VLLM_GLM_COMM_COALESCE:-0}
+      LOCAL_ARGMAX: ${LOCAL_ARGMAX:-}
+      VLLM_GLM_IDX_FUSED_LOCALIZE: ${VLLM_GLM_IDX_FUSED_LOCALIZE:-1}
+      VLLM_GLM_MM_MASK_REUSE: ${VLLM_GLM_MM_MASK_REUSE:-1}
+      VLLM_GLM_EMBED_GRAPH: ${VLLM_GLM_EMBED_GRAPH:-1}
+      VLLM_GLM_DCP_RS_STAGED: ${VLLM_GLM_DCP_RS_STAGED:-1}
+      VLLM_GLM_DCP_RS_VIEW: ${VLLM_GLM_DCP_RS_VIEW:-1}
+      VLLM_GLM_DCP_AG_RAW_TOPK: ${VLLM_GLM_DCP_AG_RAW_TOPK:-1}
+      VLLM_GLM_SKIP_EMPTY_FILL: ${VLLM_GLM_SKIP_EMPTY_FILL:-1}
+      VLLM_GLM_DCP_QUERY_SPLIT: ${VLLM_GLM_DCP_QUERY_SPLIT:-0}
+      VLLM_GLM_DCP_QUERY_SPLIT_MIN_ROWS: ${VLLM_GLM_DCP_QUERY_SPLIT_MIN_ROWS:-1024}
+      VLLM_ENABLE_PCIE_ALLREDUCE: ${VLLM_ENABLE_PCIE_ALLREDUCE:-0}
+      VLLM_PCIE_ONESHOT_ALLREDUCE_MAX_SIZE: ${VLLM_PCIE_ONESHOT_ALLREDUCE_MAX_SIZE:-84KB}
+      VLLM_PCIE_ONESHOT_FUSED_ADD_RMS_NORM_MAX_SIZE: ${VLLM_PCIE_ONESHOT_FUSED_ADD_RMS_NORM_MAX_SIZE:-84KB}
+      VLLM_PCIE_TWOSHOT_ALLREDUCE_MAX_SIZE: ${VLLM_PCIE_TWOSHOT_ALLREDUCE_MAX_SIZE:-off}
+      VLLM_PCIE_DMA_MIN_BYTES: ${VLLM_PCIE_DMA_MIN_BYTES:-off}
+      VLLM_GLM_PCIE_FUSED_AR_RMS: ${VLLM_GLM_PCIE_FUSED_AR_RMS:-0}
+      CUTE_DSL_ARCH: sm_120a
+      SERVED_NAME: jarrelscy/GLM-5.3-Vision-NVFP4-ARVQ-hybrid
+      MODEL_DIR: /models/arvq
+      MAX_NUM_SEQS: ${MAX_NUM_SEQS:-4}
+      MAX_NUM_BATCHED_TOKENS: ${MAX_NUM_BATCHED_TOKENS:-4096}
+      ENABLE_LMCACHE: ${ENABLE_LMCACHE:-0}
+      LMCACHE_MAX_LOCAL_DISK_SIZE: ${LMCACHE_MAX_LOCAL_DISK_SIZE:-400}
+      UTIL: ${UTIL:-0.96}
+      MAXLEN: ${MAXLEN:-950000}
+      TRITON_CACHE_DIR: /data/triton_cache
+      VLLM_ARVQ_CHUNK_TOKENS: '128'
+      VLLM_MTP_INDEX_SHARE: '1'
+      GLM_MOE_LANE_ROWS: '1'
+      GLM_NVFP4_LUT256: '1'
+      NCCL_P2P_LEVEL: SYS
+      DCP_BACKEND: ag_rs
+    ports:
+    - 8001:8001
+    volumes:
+    - ${ARVQ_MODEL_DIR:-/data/models/jarrelscy/GLM-5.3-Vision-NVFP4-ARVQ-hybrid}:/models/arvq:ro
+    - arvq-lmcache:/lmcache/disk
+    - arvq-triton:/data/triton_cache
+    - arvq-vllm:/root/.cache/vllm
+    - arvq-flashinfer:/root/.cache/flashinfer
+    - arvq-torch:/root/.cache/torch_extensions
+    - arvq-profiles:/profiles
+    ipc: host
+    shm_size: 16g
+    deploy:
+      resources:
+        reservations:
+          devices:
+          - driver: nvidia
+            count: 4
+            capabilities:
+            - gpu
+    restart: unless-stopped
+volumes:
+  arvq-lmcache: {}
+  arvq-triton: {}
+  arvq-vllm: {}
+  arvq-flashinfer: {}
+  arvq-torch: {}
+  arvq-profiles: {}

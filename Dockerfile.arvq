@@ -1,0 +1,7 @@
+# The base supplies compatible compiled vLLM extensions and GLM dependencies.
+ARG BASE_IMAGE=glm52-vision-sm120:latest
+FROM ${BASE_IMAGE}
+# Overlay the complete fork package so model loaders, vision, MTP and quantization
+# come from this branch. Existing compiled extensions in the base are retained.
+COPY vllm /opt/vllm/vllm
+RUN NVCC=/usr/local/cuda/bin/nvcc bash /opt/vllm/vllm/model_executor/layers/quantization/arvq/build.sh

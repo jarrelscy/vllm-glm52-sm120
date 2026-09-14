@@ -1695,7 +1695,9 @@ class DeepseekV2Model(nn.Module):
             # live on the MoERunner's RoutedExperts submodule.
             if any(
                 f".mlp.experts.{p}" in name
-                for p in ("w13_", "w2_", "w2m_", "w2c_", "nvfp4_", "hyb_")
+                for p in (
+                    "w13_", "w2_", "w2m_", "w2c_", "nvfp4_", "arvq_", "hyb_"
+                )
             ):
                 name = name.replace(
                     ".mlp.experts.", ".mlp.experts.routed_experts."

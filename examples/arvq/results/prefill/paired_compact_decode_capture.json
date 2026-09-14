@@ -1,0 +1,45 @@
+{
+  "utc": "2026-09-14T09:42:18.620397+00:00",
+  "image": "glm53-arvq-sm120:paired-compact",
+  "image_id": "sha256:d27bae779bf0ae5fcba740ae780282dcdbd8b67d5064cb7d23237edd74f3af60",
+  "parallel": "tp4-1m-mtp",
+  "native_max": "16",
+  "prompt_tokens": "Continue the following text:\n\nThe quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. ",
+  "scope": "Paired nativeM16+compact; short136prompt64output MTPdecode, filter target decode CPU ranges.",
+  "response": {
+    "id": "cmpl-a7ac05771617dfc8",
+    "object": "text_completion",
+    "created": 1789378938,
+    "model": "jarrelscy/GLM-5.3-Vision-NVFP4-ARVQ-hybrid",
+    "choices": [
+      {
+        "index": 0,
+        "text": " The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox",
+        "logprobs": null,
+        "finish_reason": "length",
+        "stop_reason": null,
+        "token_ids": null,
+        "prompt_logprobs": null,
+        "prompt_token_ids": null,
+        "routed_experts": null
+      }
+    ],
+    "service_tier": null,
+    "system_fingerprint": "vllm-0.23.1rc1.dev916+g3e3c9129c-tp4-d7725f91",
+    "usage": {
+      "prompt_tokens": 136,
+      "total_tokens": 200,
+      "completion_tokens": 64,
+      "prompt_tokens_details": null
+    },
+    "kv_transfer_params": null
+  },
+  "request_wall_s": 0.6843279828317463,
+  "trace_files": [
+    "/data/profiles/glm5.3-arvq/68a6aaf23f2c_1.async_llm.1789378939666561945.pt.trace.json.gz",
+    "/data/profiles/glm5.3-arvq/dp0_pp0_tp0_dcp0_ep0_rank0.1789378940160364374.pt.trace.json.gz",
+    "/data/profiles/glm5.3-arvq/dp0_pp0_tp1_dcp1_ep1_rank1.1789378940158803807.pt.trace.json.gz",
+    "/data/profiles/glm5.3-arvq/dp0_pp0_tp2_dcp2_ep2_rank2.1789378940159363609.pt.trace.json.gz",
+    "/data/profiles/glm5.3-arvq/dp0_pp0_tp3_dcp3_ep3_rank3.1789378940160834117.pt.trace.json.gz"
+  ]
+}

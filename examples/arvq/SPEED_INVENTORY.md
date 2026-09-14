@@ -4,6 +4,43 @@ The measured single-stream progression reaches **53.276 tokens/s without MTP**
 and **141.661 tokens/s with MTP**. These are two distinct serving modes, not
 aggregate throughput across simultaneous requests.
 
+## Latest paired-dense and compact-prefill profile
+
+The host profile now enables paired dense P4 through 16 positions and compact
+grouped prefill. Total short-request MTP throughput measured **136.05 / 200.53 /
+274.15 tokens/s** at one/two/four streams, versus 133.4 / 192.7 / 264.2 previously.
+Single-stream decode excluding initial latency was **144.80 tokens/s**. Each
+stream generated 512 tokens after a 136-token prompt, with one warmup and two
+measured batches per concurrency; all drafts were accepted. These are different
+server boots, and small throughput changes need broader workload confirmation.
+No new no-MTP serving measurement was made in this round.
+
+Cold 4096/8192-token input latency is now **4.165 / 8.571 seconds**, compared with
+7.192 / 15.595 before grouped prefill. These cross-round gains are about 1.73x /
+1.82x. Compaction alone, isolated with three alternating same-boot pairs, reduced
+4.688 to 4.165 seconds and 9.724 to 8.571 seconds. Each request generated one
+token and used a fresh cache salt. The 1024-token control stayed unchanged.
+
+[Paired kernel evidence](PAIRED_P4_RESULTS.md) and
+[prefill implementation and limits](PREFILL.md) describe the changes. Weight
+formats and checkpoint bytes are unchanged; rotation remains retired.
+
+## Remaining decode work in the latest profile
+
+A bounded 64-output-token MTP trace selected 17 target decode invocations on
+rank zero. Summed GPU activity was 428.717 ms within a 465.472 ms window:
+remaining BF16 dense GEMMs accounted for 24.30%, NCCL communication 20.07%,
+hybrid expert math 19.68%, and elementwise operations 11.17%. Paired attention
+output-projection math plus reduction was only 3.95%; the trace contains the
+new `nvfp4_dense_paired_kernel`, confirming dispatch. These are GPU activity
+shares, not additive wall-time savings or a no-MTP profile.
+
+The next decode candidates are other dense projections, repeated-expert token
+pairing, and DCP communication. For prefill, grouping hot routes for native FP4
+GEMM could complement the current grouped cold path. That needs an independent
+four-plane activation oracle and careful output precision handling. No speedup
+for these further candidates is claimed here.
+
 ## Measured progression
 
 | Build | No MTP, tokens/s | MTP, tokens/s | What changed |

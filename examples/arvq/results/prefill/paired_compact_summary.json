@@ -1,0 +1,191 @@
+{
+  "prefill": [
+    {
+      "input_tokens": 1024,
+      "compact_off_s": 1.9075763959748049,
+      "compact_on_s": 1.9053897916649778,
+      "speedup": 1.0011475889707147
+    },
+    {
+      "input_tokens": 4096,
+      "compact_off_s": 4.68836086212347,
+      "compact_on_s": 4.164691223452489,
+      "speedup": 1.1257403275714792
+    },
+    {
+      "input_tokens": 8192,
+      "compact_off_s": 9.723791627213359,
+      "compact_on_s": 8.570622556998083,
+      "speedup": 1.1345490438467263
+    }
+  ],
+  "decode": [
+    {
+      "concurrency": 1,
+      "old_total_tps": 133.40258668088632,
+      "new_total_tps": 136.05462625660132,
+      "mean_request_decode_tps": 144.8032869914756,
+      "acceptance_fraction": 1.0,
+      "emitted_per_step": 4.0
+    },
+    {
+      "concurrency": 2,
+      "old_total_tps": 192.74,
+      "new_total_tps": 200.52870597166395,
+      "mean_request_decode_tps": 108.29686565080837,
+      "acceptance_fraction": 1.0,
+      "emitted_per_step": 4.0
+    },
+    {
+      "concurrency": 4,
+      "old_total_tps": 264.2026628246524,
+      "new_total_tps": 274.14926301291143,
+      "mean_request_decode_tps": 76.09034576107437,
+      "acceptance_fraction": 1.0,
+      "emitted_per_step": 4.0
+    }
+  ],
+  "token_comparison_to_m8": [
+    {
+      "concurrency": 1,
+      "run": 0,
+      "stream": 0,
+      "same_prompt_hash": true,
+      "old_tokens": 512,
+      "new_tokens": 512,
+      "identical": false,
+      "common_prefix_tokens": 0
+    },
+    {
+      "concurrency": 1,
+      "run": 1,
+      "stream": 0,
+      "same_prompt_hash": true,
+      "old_tokens": 512,
+      "new_tokens": 512,
+      "identical": false,
+      "common_prefix_tokens": 0
+    },
+    {
+      "concurrency": 2,
+      "run": 0,
+      "stream": 0,
+      "same_prompt_hash": true,
+      "old_tokens": 512,
+      "new_tokens": 512,
+      "identical": true,
+      "common_prefix_tokens": 512
+    },
+    {
+      "concurrency": 2,
+      "run": 0,
+      "stream": 1,
+      "same_prompt_hash": true,
+      "old_tokens": 512,
+      "new_tokens": 512,
+      "identical": true,
+      "common_prefix_tokens": 512
+    },
+    {
+      "concurrency": 2,
+      "run": 1,
+      "stream": 0,
+      "same_prompt_hash": true,
+      "old_tokens": 512,
+      "new_tokens": 512,
+      "identical": false,
+      "common_prefix_tokens": 0
+    },
+    {
+      "concurrency": 2,
+      "run": 1,
+      "stream": 1,
+      "same_prompt_hash": true,
+      "old_tokens": 512,
+      "new_tokens": 512,
+      "identical": false,
+      "common_prefix_tokens": 0
+    },
+    {
+      "concurrency": 4,
+      "run": 0,
+      "stream": 0,
+      "same_prompt_hash": true,
+      "old_tokens": 512,
+      "new_tokens": 512,
+      "identical": true,
+      "common_prefix_tokens": 512
+    },
+    {
+      "concurrency": 4,
+      "run": 0,
+      "stream": 1,
+      "same_prompt_hash": true,
+      "old_tokens": 512,
+      "new_tokens": 512,
+      "identical": true,
+      "common_prefix_tokens": 512
+    },
+    {
+      "concurrency": 4,
+      "run": 0,
+      "stream": 2,
+      "same_prompt_hash": true,
+      "old_tokens": 512,
+      "new_tokens": 512,
+      "identical": true,
+      "common_prefix_tokens": 512
+    },
+    {
+      "concurrency": 4,
+      "run": 0,
+      "stream": 3,
+      "same_prompt_hash": true,
+      "old_tokens": 512,
+      "new_tokens": 512,
+      "identical": false,
+      "common_prefix_tokens": 0
+    },
+    {
+      "concurrency": 4,
+      "run": 1,
+      "stream": 0,
+      "same_prompt_hash": true,
+      "old_tokens": 512,
+      "new_tokens": 512,
+      "identical": true,
+      "common_prefix_tokens": 512
+    },
+    {
+      "concurrency": 4,
+      "run": 1,
+      "stream": 1,
+      "same_prompt_hash": true,
+      "old_tokens": 512,
+      "new_tokens": 512,
+      "identical": true,
+      "common_prefix_tokens": 512
+    },
+    {
+      "concurrency": 4,
+      "run": 1,
+      "stream": 2,
+      "same_prompt_hash": true,
+      "old_tokens": 512,
+      "new_tokens": 512,
+      "identical": false,
+      "common_prefix_tokens": 0
+    },
+    {
+      "concurrency": 4,
+      "run": 1,
+      "stream": 3,
+      "same_prompt_hash": true,
+      "old_tokens": 512,
+      "new_tokens": 512,
+      "identical": false,
+      "common_prefix_tokens": 0
+    }
+  ],
+  "scope": "Staticpaired1/native16 bothcompactionmodes; groupedalways1. Rawgroupedboolean controlsCOMPACTION asidentifiedbytoggle_env."
+}

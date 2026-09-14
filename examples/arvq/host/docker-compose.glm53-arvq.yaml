@@ -1,4 +1,4 @@
-# Tested ARVQ + grouped prefill + dense P4 + MTP profile. Loaded by switch.sh for glm5.3-hybrid-1m.
+# Tested ARVQ + compact grouped prefill + paired dense P4 + MTP profile. Loaded by switch.sh for glm5.3-hybrid-1m.
 # Rotation is retired; production and active tuning use unrotated ARVQ.
 services:
   vllm-glm5.3-hybrid-1m:
@@ -8,6 +8,7 @@ services:
       SERVED_NAME: jarrelscy/GLM-5.3-Vision-NVFP4-ARVQ-hybrid
       VLLM_ARVQ_CHUNK_TOKENS: '128'
       VLLM_ARVQ_GROUPED_PREFILL: '1'
+      VLLM_ARVQ_COMPACT_PREFILL: '1'
       VLLM_MTP_INDEX_SHARE: '1'
       GLM_MOE_LANE_ROWS: '1'
       GLM_NVFP4_LUT256: '1'
@@ -25,7 +26,8 @@ services:
       VLLM_PCIE_DMA_FP8: 'off'
       VLLM_GLM_PCIE_FUSED_AR_RMS: '1'
       VLLM_ENABLE_NVFP4_P4_O_PROJ: '1'
-      VLLM_NVFP4_P4_MAX_TOKENS: '8'
+      VLLM_NVFP4_P4_MAX_TOKENS: '16'
+      VLLM_NVFP4_P4_PAIRED: '1'
       PARALLEL: ${PARALLEL:-tp4-1m-mtp}
       MAX_NUM_SEQS: '4'
       MAX_NUM_BATCHED_TOKENS: '4096'
@@ -45,7 +47,7 @@ services:
     - /home/jarrelscy/glm52/vllm-arvq-serving/vllm/distributed/device_communicators/cuda_communicator.py:/opt/vllm/vllm/distributed/device_communicators/cuda_communicator.py:ro
     - /home/jarrelscy/glm52/vllm-arvq-serving/vllm/distributed/parallel_state.py:/opt/vllm/vllm/distributed/parallel_state.py:ro
     - /home/jarrelscy/glm52/vllm-arvq-serving/vllm/model_executor/layers/pcie_fused_ar_rms.py:/opt/vllm/vllm/model_executor/layers/pcie_fused_ar_rms.py:ro
-    image: glm53-arvq-sm120:grouped-prefill
+    image: glm53-arvq-sm120:paired-compact
     command:
     - --trust-remote-code
     - --reasoning-parser

@@ -43,9 +43,14 @@ for a fresh dequantize-plus-BF16-GEMM control. Communication is excluded.
 The serialized and resident weight formats are unchanged. Odd/even position
 counts, changed-activation CUDA graph replay, independent encoded-weight/P4
 oracles, and the 17-position fallback were checked. At sixteen positions,
-enabling native execution replaces the old BF16 fallback arithmetic, so full
-model output and draft acceptance still need serving measurement. These kernel
-speedups are not end-to-end throughput multipliers.
+enabling native execution replaces the old BF16 fallback arithmetic. The bounded
+serving check accepted all drafts and reached total throughput 136.1/200.5/274.1
+tokens/s at one/two/four streams, versus approximately 133.4/192.7/264.2 before.
+Each configuration used the repeated 136-token prompt and 512 output tokens per
+request; these are cross-boot comparisons with two measured batches per stream
+count. Single-stream decode excluding initial latency measured 144.8 tokens/s.
+These kernel speedups are not end-to-end throughput multipliers or acceptance
+estimates for ordinary production traffic.
 
 ## Run the bounded experiment
 

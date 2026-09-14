@@ -21,26 +21,34 @@ To reproduce on a host with the matching base switch and compose deployment,
 copy the override beside `switch.sh` and apply the patch there with `patch -p1`.
 The override preserves the measured bind mounts and cache directories, builds
 `Dockerfile.arvq` from `/home/jarrelscy/glm52/vllm-arvq-serving`, and selects
-`glm53-arvq-sm120:grouped-prefill`. Adjust these host paths for another machine.
+`glm53-arvq-sm120:paired-compact`. Adjust these host paths for another machine.
 
-Settings: TP4 + DCP4, MTP three drafts, dense NVFP4 P4 through eight positions,
+Settings: TP4 + DCP4, MTP three drafts, paired dense NVFP4 P4 through sixteen positions,
 CUDA graph sizes `[1,2,4,8,16]`, four requests, 4096 batched tokens, 950000 context
 limit, utilization 0.96, LMCache disabled, and the measured PCIe communication
 policy. Grouped cold prefill is enabled with `VLLM_ARVQ_GROUPED_PREFILL=1`
 for eligible batches of at least 2048 tokens, including startup memory profiling.
+Native route compaction is enabled with `VLLM_ARVQ_COMPACT_PREFILL=1`; dense
+pairing uses `VLLM_NVFP4_P4_PAIRED=1`. Both library defaults remain OFF.
 `PARALLEL=tp4-1m` can explicitly select the no-MTP mode.
 
 The full local checkpoint remains unrotated. Rotation is retired from production
 and active tuning; `rotation-prototype-v1` retains historical experiments only.
 
-Grouped prefill reduced cold 4096-token input latency from 7.192 to 4.724 seconds
-and 8192-token latency from 15.595 to 9.769 seconds. Short-request total throughput
-remained 133.4 tokens/s at one stream and 264.2 at four streams. See
-[the controlled A/B](../results/prefill/GROUPED_NOTES.md).
+Grouped prefill plus compaction reduced cold 4096-token input latency from 7.192
+to 4.165 seconds and 8192-token latency from 15.595 to 8.571 seconds across rounds.
+The same-boot compaction gain alone was 12.6–13.5% in throughput. Paired dense
+execution reached total short-request MTP throughput of 136.1/200.5/274.1 tokens/s
+at one/two/four streams, with all drafts accepted. See
+[implementation and measurement limits](../PREFILL.md).
 
 Validation: shell syntax passes; all four checked direct/alias invocations
 resolve and validate the override before reaching the stop phase; an incomplete
-ARVQ-named cold shard is rejected; the merged image, complete command, critical
-environment, and every bind mount match the measured running M8+MTP container.
+ARVQ-named cold shard is rejected. Initial integration matched the merged image,
+complete command, critical environment, and every bind mount against the measured
+M8+MTP container. The current paired/compact override passes compose validation,
+and the live server confirms paired mode, native maximum 16, grouped prefill,
+and compaction ON. The live A/B process retains diagnostic toggle mode with its
+marker ON; future switch launches use fixed production mode `1`.
 The published patch passes a reverse-application check against the updated
 host script. These checks do not invoke the script's global stop loop.

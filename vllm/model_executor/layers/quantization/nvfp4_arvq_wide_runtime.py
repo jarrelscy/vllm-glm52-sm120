@@ -27,6 +27,17 @@ def library():
             [ctypes.c_void_p] * 6 + [ctypes.c_int] * 3 + [ctypes.c_void_p]
         )
         LIB.hybrid_pack_register_pairs.restype = ctypes.c_int
+        if os.environ.get("VLLM_ARVQ_FUSED_GATE_PACK") == "1":
+            try:
+                pack = LIB.hybrid_pack_routes_top8
+            except AttributeError as error:
+                raise RuntimeError(
+                    "Rebuild arvq/build_prefill_wide.sh for fused gate packing"
+                ) from error
+            pack.argtypes = (
+                [ctypes.c_void_p] * 7 + [ctypes.c_int] * 4 + [ctypes.c_void_p]
+            )
+            pack.restype = ctypes.c_int
     return LIB
 
 
@@ -50,7 +61,24 @@ class WideHot:
 
     def __call__(self, x, cold, hot, tensors, alpha, n, split, hot_parts):
         lib = library()
-        slots, k = x.shape
+        routes = None
+        if isinstance(x, tuple):
+            x, routes, top_k = x
+            from vllm.model_executor.layers.quantization.nvfp4_arvq_route_pack import (
+                eligible,
+            )
+
+            if (
+                self.groups is not None
+                or hot_parts != 2
+                or not eligible(x, routes, top_k, True)
+            ):
+                raise ValueError(
+                    "Fused route packing is limited to eligible hot gate inputs"
+                )
+            slots, k = routes.numel(), x.shape[1]
+        else:
+            slots, k = x.shape
         packed = torch.empty((slots, 4, k // 8), device=x.device, dtype=torch.int32)
         scales = torch.empty((slots, 4, k // 16), device=x.device, dtype=torch.uint8)
         partial = torch.empty((slots, n, split), device=x.device, dtype=torch.float32)
@@ -61,13 +89,24 @@ class WideHot:
             self.groups = torch.empty(
                 ((slots + 31) // 32, 7), device=x.device, dtype=torch.int32
             )
-            err = lib.hybrid_pack_register_pairs(
-                *map(ptr, [x, packed, scales, cold, hot, self.groups]),
-                k,
-                slots,
-                4,
-                stream,
-            )
+            if routes is None:
+                err = lib.hybrid_pack_register_pairs(
+                    *map(ptr, [x, packed, scales, cold, hot, self.groups]),
+                    k,
+                    slots,
+                    4,
+                    stream,
+                )
+            else:
+                pack = lib.hybrid_pack_routes_top8
+                err = pack(
+                    *map(ptr, [x, packed, scales, cold, hot, self.groups, routes]),
+                    k,
+                    slots,
+                    4,
+                    8,
+                    stream,
+                )
         else:
             err = lib.hybrid_pack(*map(ptr, [x, packed, scales]), k, slots, 4, stream)
         if err:

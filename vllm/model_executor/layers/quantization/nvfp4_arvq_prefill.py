@@ -199,7 +199,15 @@ def grouped_cold_prefill(
                 route_indices = route_indices[torch.argsort(key, stable=True)]
             for begin in range(0, route_indices.numel(), chunk_tokens * top_k):
                 route_slots = route_indices[begin : begin + chunk_tokens * top_k]
-                xr = x[route_slots // top_k].half()
+                from vllm.model_executor.layers.quantization import (
+                    nvfp4_arvq_route_pack as route_pack,
+                )
+
+                xr = (
+                    (x, route_slots, top_k)
+                    if route_pack.eligible(x, route_slots, top_k, use_pairs)
+                    else x[route_slots // top_k].half()
+                )
                 cold, hot = native_cold[route_slots], hot_ids[route_slots]
                 if use_pairs:
                     from vllm.model_executor.layers.quantization import (

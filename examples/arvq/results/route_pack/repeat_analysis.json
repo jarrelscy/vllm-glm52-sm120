@@ -1,0 +1,86 @@
+[
+  {
+    "tokens": 2048,
+    "case": "allcold",
+    "mean_candidate_minus_baseline_ms": 0.017427684118350346,
+    "approx_t95_ms": [
+      -0.1039254610163456,
+      0.1387808292530463
+    ],
+    "median_paired_speedup": 0.9999021023553113,
+    "candidate_faster_pairs": 6,
+    "rounds": 12,
+    "paired_deltas_ms": [
+      -0.15709642320871353,
+      -0.0741882249712944,
+      -0.030259601771831512,
+      0.02761930227279663,
+      -0.06595905870199203,
+      -0.21974649280309677,
+      0.0630989670753479,
+      0.04503875970840454,
+      0.03668013960123062,
+      0.5564065650105476,
+      -0.025539658963680267,
+      0.05307793617248535
+    ],
+    "order": "even baseline then candidate; odd candidate then baseline",
+    "qualification": "temporal pairs not independent samples; interval descriptive"
+  },
+  {
+    "tokens": 4096,
+    "case": "mixed",
+    "mean_candidate_minus_baseline_ms": -0.13721012510359287,
+    "approx_t95_ms": [
+      -0.19404601821904305,
+      -0.08037423198814268
+    ],
+    "median_paired_speedup": 1.009330646825735,
+    "candidate_faster_pairs": 11,
+    "rounds": 12,
+    "paired_deltas_ms": [
+      -0.19791536033153534,
+      -0.11289771646261215,
+      -0.12692715972661972,
+      -0.3572208806872368,
+      0.03405846655368805,
+      -0.18034689128398895,
+      -0.11375918984413147,
+      -0.12545567005872726,
+      -0.11310633271932602,
+      -0.12428779155015945,
+      -0.08643697947263718,
+      -0.14222599565982819
+    ],
+    "order": "even baseline then candidate; odd candidate then baseline",
+    "qualification": "temporal pairs not independent samples; interval descriptive"
+  },
+  {
+    "tokens": 4096,
+    "case": "allhot",
+    "mean_candidate_minus_baseline_ms": -0.47953659668564796,
+    "approx_t95_ms": [
+      -0.6230960009875246,
+      -0.3359771923837714
+    ],
+    "median_paired_speedup": 1.0282459476303467,
+    "candidate_faster_pairs": 11,
+    "rounds": 12,
+    "paired_deltas_ms": [
+      -0.6509851664304733,
+      -0.5075391381978989,
+      0.15025772154331207,
+      -0.8189016953110695,
+      -0.42464956641197205,
+      -0.4228409379720688,
+      -0.45972876250743866,
+      -0.568365678191185,
+      -0.4917606711387634,
+      -0.5180491134524345,
+      -0.5198875442147255,
+      -0.521988607943058
+    ],
+    "order": "even baseline then candidate; odd candidate then baseline",
+    "qualification": "temporal pairs not independent samples; interval descriptive"
+  }
+]

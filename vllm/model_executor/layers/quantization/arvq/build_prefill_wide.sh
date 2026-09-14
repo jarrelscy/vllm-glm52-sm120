@@ -7,4 +7,5 @@ arvq_source_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
   -gencode arch=compute_120a,code=sm_120a \
   "$arvq_source_dir/prefill_wide.cu" \
   "$arvq_source_dir/prefill_register.cu" \
-  "$arvq_source_dir/prefill_shared_activation.cu" -o "$arvq_source_dir/prefill_wide.so"
+  "$arvq_source_dir/prefill_shared_activation.cu" \
+  "$arvq_source_dir/route_pack.cu" -o "$arvq_source_dir/prefill_wide.so"

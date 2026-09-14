@@ -1,0 +1,187 @@
+{
+  "source": {
+    "qualified_pack_source": "/home/jarrelscy/homeassistant/cold-format-lab/register8_shared_activation_experiment/shared_activation_eight.cu",
+    "sha256": "22708ad5bcb561f3b7303d0cf0729524c36b40895368ccd006e03c3c65463240",
+    "changes": "Only source load replaced: BF16 route gather then explicit half RN before unchanged P4 and descriptor body. Native shared8 math/down unchanged."
+  },
+  "checkpoint": "/lab/arvq_8x8_experiment/initial_fit_layer3",
+  "tp_rank": 3,
+  "scope": "Complete real8+8 grouped/compact layer3 including CPU synchronization, fused cold gather/route sum and register-eight-pair hot on both arms; no TP collective. Both arms retain qualified cold activation and shared8 hot; only hot gate gather-half-P4 packing is fused; native cold decoding is identical.",
+  "sort": "0",
+  "results": [
+    {
+      "tokens": 2048,
+      "case": "allcold",
+      "bitwise_int16_equal": true,
+      "median_ms": [
+        9.348389692604542,
+        9.348559658974409
+      ],
+      "samples_ms": [
+        [
+          9.484246373176575,
+          9.354429319500923,
+          9.318610653281212,
+          9.34235006570816,
+          9.377789683640003,
+          9.537186473608017,
+          9.323129430413246,
+          9.335900656878948,
+          9.439896792173386,
+          9.340280666947365,
+          9.306460618972778,
+          9.396159090101719
+        ],
+        [
+          9.327149949967861,
+          9.280241094529629,
+          9.28835105150938,
+          9.369969367980957,
+          9.311830624938011,
+          9.31743998080492,
+          9.386228397488594,
+          9.380939416587353,
+          9.476576931774616,
+          9.896687231957912,
+          9.280920960009098,
+          9.449237026274204
+        ]
+      ],
+      "speedup": 0.9999818189778888,
+      "memory": [
+        {
+          "incremental_peak_allocated_bytes": 428427776,
+          "incremental_peak_reserved_bytes": 429916160,
+          "total_peak_allocated_bytes": 1262735360,
+          "total_peak_reserved_bytes": 1293942784
+        },
+        {
+          "incremental_peak_allocated_bytes": 428427776,
+          "incremental_peak_reserved_bytes": 429916160,
+          "total_peak_allocated_bytes": 1262735360,
+          "total_peak_reserved_bytes": 1293942784
+        }
+      ],
+      "additional_peak_allocated_bytes": 0,
+      "serving_free_mib_supplied": null,
+      "headroom_assessment": "not qualified: actual loaded-server headroom not supplied",
+      "routed_bytes": 402653184
+    },
+    {
+      "tokens": 4096,
+      "case": "mixed",
+      "bitwise_int16_equal": true,
+      "median_ms": [
+        13.425629120320082,
+        13.278576079756021
+      ],
+      "samples_ms": [
+        [
+          12.868360616266727,
+          12.723433785140514,
+          12.726373970508575,
+          12.953808531165123,
+          13.063116930425167,
+          13.381210155785084,
+          13.47004808485508,
+          13.484826311469078,
+          13.511165976524353,
+          13.5311558842659,
+          13.551044277846813,
+          13.629693537950516
+        ],
+        [
+          12.670445255935192,
+          12.610536068677902,
+          12.599446810781956,
+          12.596587650477886,
+          13.097175396978855,
+          13.200863264501095,
+          13.356288895010948,
+          13.35937064141035,
+          13.398059643805027,
+          13.40686809271574,
+          13.464607298374176,
+          13.487467542290688
+        ]
+      ],
+      "speedup": 1.011074458562485,
+      "memory": [
+        {
+          "incremental_peak_allocated_bytes": 899178496,
+          "incremental_peak_reserved_bytes": 809500672,
+          "total_peak_allocated_bytes": 1758866944,
+          "total_peak_reserved_bytes": 2076180480
+        },
+        {
+          "incremental_peak_allocated_bytes": 886595584,
+          "incremental_peak_reserved_bytes": 809500672,
+          "total_peak_allocated_bytes": 1746284032,
+          "total_peak_reserved_bytes": 2076180480
+        }
+      ],
+      "additional_peak_allocated_bytes": -12582912,
+      "serving_free_mib_supplied": null,
+      "headroom_assessment": "not qualified: actual loaded-server headroom not supplied",
+      "routed_bytes": 805306368
+    },
+    {
+      "tokens": 4096,
+      "case": "allhot",
+      "bitwise_int16_equal": true,
+      "median_ms": [
+        18.603887408971786,
+        18.176752142608166
+      ],
+      "samples_ms": [
+        [
+          17.069866880774498,
+          16.931709833443165,
+          16.940908506512642,
+          18.440806306898594,
+          18.619111739099026,
+          18.588663078844547,
+          18.579712137579918,
+          18.756047822535038,
+          18.819638527929783,
+          18.878186121582985,
+          18.906114622950554,
+          18.907446414232254
+        ],
+        [
+          16.418881714344025,
+          16.424170695245266,
+          17.091166228055954,
+          17.621904611587524,
+          18.194462172687054,
+          18.16582214087248,
+          18.11998337507248,
+          18.187682144343853,
+          18.32787785679102,
+          18.36013700813055,
+          18.38622707873583,
+          18.385457806289196
+        ]
+      ],
+      "speedup": 1.023498987223486,
+      "memory": [
+        {
+          "incremental_peak_allocated_bytes": 898843648,
+          "incremental_peak_reserved_bytes": 809500672,
+          "total_peak_allocated_bytes": 1758513664,
+          "total_peak_reserved_bytes": 2076180480
+        },
+        {
+          "incremental_peak_allocated_bytes": 886260736,
+          "incremental_peak_reserved_bytes": 809500672,
+          "total_peak_allocated_bytes": 1745930752,
+          "total_peak_reserved_bytes": 2076180480
+        }
+      ],
+      "additional_peak_allocated_bytes": -12582912,
+      "serving_free_mib_supplied": null,
+      "headroom_assessment": "not qualified: actual loaded-server headroom not supplied",
+      "routed_bytes": 805306368
+    }
+  ]
+}

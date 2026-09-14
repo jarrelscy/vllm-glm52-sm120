@@ -8,6 +8,7 @@ remain serialized ARVQ; hot experts retain the native P4 implementation.
 
 import ctypes
 import os
+from collections.abc import Callable
 from pathlib import Path
 
 import torch
@@ -169,8 +170,27 @@ def grouped_cold_prefill(
             ]
         else:
             batches = [(native_slots, normal_split)]
-        for route_indices, split in batches:
-            if route_indices.numel() >= 512 and _sort_native_prefill_enabled():
+        # Decode and non-target/tiny-tail shapes never enter the candidate.
+        from vllm.model_executor.layers.quantization.nvfp4_arvq_paired_policy import (
+            partition,
+        )
+
+        # CPU-known upper bound: avoid candidate kernels when too few hot
+        # routes can qualify (including all-cold and tiny-hot controls).
+        if (
+            os.environ.get("VLLM_ARVQ_PAIRED_HOT_PREFILL", "0") == "1"
+            and slots - cold_slots.numel() >= 512
+        ):
+            paired_batches = partition(batches, tokens, hot_ids, native_cold)
+        else:
+            paired_batches = [(rows, split, False) for rows, split in batches]
+        active_projection: Callable[..., torch.Tensor]
+        for route_indices, split, use_pairs in paired_batches:
+            if (
+                not use_pairs
+                and route_indices.numel() >= 512
+                and _sort_native_prefill_enabled()
+            ):
                 # Each route is independent; preserve the original split
                 # segmentation and scatter destinations while reusing weights.
                 cold_key = native_cold[route_indices].long()
@@ -181,12 +201,31 @@ def grouped_cold_prefill(
                 route_slots = route_indices[begin : begin + chunk_tokens * top_k]
                 xr = x[route_slots // top_k].half()
                 cold, hot = native_cold[route_slots], hot_ids[route_slots]
-                h13 = projection(
+                if use_pairs:
+                    from vllm.model_executor.layers.quantization import (
+                        nvfp4_arvq_paired_runtime as paired_runtime,
+                    )
+
+                    if os.environ.get("VLLM_ARVQ_WIDE_HOT_PREFILL", "0") == "1":
+                        from vllm.model_executor.layers.quantization import (
+                            nvfp4_arvq_wide_runtime as wide_runtime,
+                        )
+
+                        # Use the whole scheduled prefill count, not the size
+                        # of this compact route chunk or per-expert group.
+                        active_projection = wide_runtime.WideHot(
+                            wide_runtime.mode_for_tokens(tokens)
+                        )
+                    else:
+                        active_projection = paired_runtime.PairedHot()
+                else:
+                    active_projection = projection
+                h13 = active_projection(
                     xr, cold, hot, tensors[:6], alphas[0], n13, split, 2
                 ).half()
                 gate, up = h13.chunk(2, dim=-1)
                 act = (torch.nn.functional.silu(gate) * up).half()
-                routed[route_slots] = projection(
+                routed[route_slots] = active_projection(
                     act, cold, hot, tensors[6:], alphas[1], hidden, 2, 1
                 )
     else:

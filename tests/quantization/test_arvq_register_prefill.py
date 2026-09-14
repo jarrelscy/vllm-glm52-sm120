@@ -112,7 +112,8 @@ def test_eight_pairs_per_warp_cover_sixteen_positions():
 
 
 @pytest.mark.parametrize("mode", [0, 2])
-def test_register8_runtime_descriptor_abi(monkeypatch, mode):
+@pytest.mark.parametrize("enabled,n", [(False, 128), (True, 64), (True, 128)])
+def test_register8_runtime_descriptor_abi(monkeypatch, mode, enabled, n):
     from types import SimpleNamespace
 
     path = (
@@ -123,6 +124,7 @@ def test_register8_runtime_descriptor_abi(monkeypatch, mode):
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
+    monkeypatch.setenv("VLLM_ARVQ_SHARED_HOT_ACTIVATION", "1" if enabled else "0")
     calls = []
 
     def record(name):
@@ -136,6 +138,7 @@ def test_register8_runtime_descriptor_abi(monkeypatch, mode):
         hybrid_pack_register_pairs=record("pack_register_pairs"),
         hybrid_pack=record("pack"),
         wide_launch_register=record("register"),
+        wide_launch_shared_activation=record("shared_activation"),
     )
     monkeypatch.setattr(module, "library", lambda: library)
     monkeypatch.setattr(
@@ -146,15 +149,16 @@ def test_register8_runtime_descriptor_abi(monkeypatch, mode):
     hot = torch.zeros(33, dtype=torch.int32)
     cold = torch.full_like(hot, -1)
     tensors = [torch.zeros(1)] * 6
-    fn(x, cold, hot, tensors, 1.0, 64, 8, 2)
+    fn(x, cold, hot, tensors, 1.0, n, 8, 2)
     groups = fn.groups
-    fn(x, cold, hot, tensors, 1.0, 64, 2, 1)
+    fn(x, cold, hot, tensors, 1.0, n, 2, 1)
     assert groups.shape == (2, 7) and fn.groups is groups
-    assert [n for n, _ in calls] == [
+    selected = "shared_activation" if enabled and n % 128 == 0 else "register"
+    assert [name for name, _ in calls] == [
         "pack_register_pairs",
-        "register",
+        selected,
         "pack",
-        "register",
+        selected,
     ]
-    assert calls[1][1][10:16] == (64, 128, 33, 8, 2, mode)
-    assert calls[3][1][10:16] == (64, 128, 33, 2, 1, mode)
+    assert calls[1][1][10:16] == (n, 128, 33, 8, 2, mode)
+    assert calls[3][1][10:16] == (n, 128, 33, 2, 1, mode)

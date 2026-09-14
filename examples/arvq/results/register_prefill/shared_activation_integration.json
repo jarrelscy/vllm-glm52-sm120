@@ -1,0 +1,14 @@
+{
+  "source_equivalence": {
+    "mma": true,
+    "wide_kernel": true,
+    "hybrid_reduce": true,
+    "wide_launch": true
+  },
+  "qualified_source_sha256": "22708ad5bcb561f3b7303d0cf0729524c36b40895368ccd006e03c3c65463240",
+  "production_source_sha256": "c8860398c212076237266e5b00e0c0ebee34d6119c3d5354e263f558a1a8e52a",
+  "build": "CPU compilation PASS, six old/new exported C ABI symbols present",
+  "cpu_tests": "13 PASS",
+  "gpu_tests": "No new GPU run; exact-body equivalence to qualified nine-case winner",
+  "flag": "VLLM_ARVQ_SHARED_HOT_ACTIVATION=1, default OFF"
+}

@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
 import ctypes
+import os
 from pathlib import Path
 
 import torch
@@ -16,6 +17,8 @@ def library():
             [ctypes.c_void_p] * 10 + [ctypes.c_int] * 6 + [ctypes.c_void_p]
         )
         LIB.wide_launch_register.restype = ctypes.c_int
+        LIB.wide_launch_shared_activation.argtypes = LIB.wide_launch_register.argtypes
+        LIB.wide_launch_shared_activation.restype = ctypes.c_int
         LIB.hybrid_pack.argtypes = (
             [ctypes.c_void_p] * 3 + [ctypes.c_int] * 3 + [ctypes.c_void_p]
         )
@@ -41,6 +44,9 @@ class WideHot:
             raise ValueError("Only qualified L1 variants may be dispatched")
         self.mode = mode
         self.groups = None
+        self.shared_activation = (
+            os.environ.get("VLLM_ARVQ_SHARED_HOT_ACTIVATION") == "1"
+        )
 
     def __call__(self, x, cold, hot, tensors, alpha, n, split, hot_parts):
         lib = library()
@@ -66,7 +72,12 @@ class WideHot:
             err = lib.hybrid_pack(*map(ptr, [x, packed, scales]), k, slots, 4, stream)
         if err:
             raise RuntimeError(f"ARVQ hot prefill CUDA launch failed: {err}")
-        err = lib.wide_launch_register(
+        launch = (
+            lib.wide_launch_shared_activation
+            if self.shared_activation and n % 128 == 0
+            else lib.wide_launch_register
+        )
+        err = launch(
             *map(
                 ptr,
                 [

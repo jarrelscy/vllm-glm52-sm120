@@ -1,0 +1,93 @@
+{
+  "device": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+  "configuration": {
+    "library": "/lab/hybrid_experiment/hybrid.so",
+    "output": "/lab/tuning_experiment/split_sweep_cold8_large.json",
+    "tokens": 1,
+    "cold_slots": 8,
+    "rotations": 32,
+    "cold_experts": 128,
+    "hot_experts": 24,
+    "gate_splits": "12,16",
+    "down_splits": "2"
+  },
+  "weight_pool_bytes": 419958056,
+  "scope": "synthetic exact native-format P4 complete routed MLP, includes runtime glue, excludes TP communication",
+  "results": [
+    {
+      "gate_split": 12,
+      "down_split": 2,
+      "relative_l2": 0.0,
+      "warm": {
+        "median_us": 43.15999895334244,
+        "samples_us": [
+          45.12400180101395,
+          43.191999197006226,
+          43.09200122952461,
+          43.09200122952461,
+          43.15999895334244
+        ]
+      },
+      "rotating": {
+        "median_us": 43.18024963140488,
+        "samples_us": [
+          43.84487494826317,
+          43.177250772714615,
+          43.188873678445816,
+          43.18024963140488,
+          43.175000697374344
+        ]
+      }
+    },
+    {
+      "gate_split": 16,
+      "down_split": 2,
+      "relative_l2": 0.0,
+      "warm": {
+        "median_us": 43.15600171685219,
+        "samples_us": [
+          45.45599967241287,
+          43.15600171685219,
+          43.088000267744064,
+          43.03999990224838,
+          43.20799931883812
+        ]
+      },
+      "rotating": {
+        "median_us": 45.9936261177063,
+        "samples_us": [
+          46.84675112366676,
+          45.99950090050697,
+          45.991748571395874,
+          45.97862437367439,
+          45.9936261177063
+        ]
+      }
+    }
+  ],
+  "winner": {
+    "gate_split": 12,
+    "down_split": 2,
+    "relative_l2": 0.0,
+    "warm": {
+      "median_us": 43.15999895334244,
+      "samples_us": [
+        45.12400180101395,
+        43.191999197006226,
+        43.09200122952461,
+        43.09200122952461,
+        43.15999895334244
+      ]
+    },
+    "rotating": {
+      "median_us": 43.18024963140488,
+      "samples_us": [
+        43.84487494826317,
+        43.177250772714615,
+        43.188873678445816,
+        43.18024963140488,
+        43.175000697374344
+      ]
+    }
+  }
+}

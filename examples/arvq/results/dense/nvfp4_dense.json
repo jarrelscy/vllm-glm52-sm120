@@ -1,0 +1,136 @@
+{
+  "gpu": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+  "scope": "actual BF16 weights quantized NVFP4; M1 BF16-to-FP16 + P4pack + hot native GEMV + split/global reduce + BF16cast, no communication",
+  "results": [
+    {
+      "name": "self_attn.o_proj.weight",
+      "shape": [
+        6144,
+        4096
+      ],
+      "weight_relative_l2": 0.09512171894311905,
+      "output_relative_l2": 0.09991823881864548,
+      "kernel_relative_l2_vs_quantized_oracle": 5.539523044717498e-07,
+      "pool_count": 21,
+      "pool_bytes": 297271380,
+      "bpw": 4.500001271565755,
+      "timings": [
+        {
+          "split": 1,
+          "warm_us": 24.67840015888214,
+          "rotating_us": 38.067963009788876
+        },
+        {
+          "split": 2,
+          "warm_us": 18.44639927148819,
+          "rotating_us": 23.89188494001116
+        },
+        {
+          "split": 4,
+          "warm_us": 15.166400372982025,
+          "rotating_us": 18.228038152058918
+        },
+        {
+          "split": 8,
+          "warm_us": 14.350399374961853,
+          "rotating_us": 17.757714362371537
+        },
+        {
+          "split": 16,
+          "warm_us": 20.476800203323364,
+          "rotating_us": 18.88167631058466
+        }
+      ],
+      "best": {
+        "split": 8,
+        "warm_us": 14.350399374961853,
+        "rotating_us": 17.757714362371537
+      }
+    },
+    {
+      "name": "mlp.shared_experts.gate_up_proj.weight",
+      "shape": [
+        1024,
+        6144
+      ],
+      "weight_relative_l2": 0.09483444690704346,
+      "output_relative_l2": 0.09168439358472824,
+      "kernel_relative_l2_vs_quantized_oracle": 6.523648607981158e-07,
+      "pool_count": 81,
+      "pool_bytes": 286654788,
+      "bpw": 4.5000050862630205,
+      "timings": [
+        {
+          "split": 1,
+          "warm_us": 32.77280032634735,
+          "rotating_us": 53.81177266438802
+        },
+        {
+          "split": 2,
+          "warm_us": 21.503999829292297,
+          "rotating_us": 31.126815890088494
+        },
+        {
+          "split": 4,
+          "warm_us": 16.383999586105347,
+          "rotating_us": 19.871130107361594
+        },
+        {
+          "split": 8,
+          "warm_us": 12.390399724245071,
+          "rotating_us": 14.351327919665678
+        },
+        {
+          "split": 16,
+          "warm_us": 12.284799665212631,
+          "rotating_us": 12.576256269290123
+        }
+      ],
+      "best": {
+        "split": 16,
+        "warm_us": 12.284799665212631,
+        "rotating_us": 12.576256269290123
+      }
+    },
+    {
+      "name": "mlp.shared_experts.down_proj.weight",
+      "shape": [
+        6144,
+        512
+      ],
+      "weight_relative_l2": 0.09493987262248993,
+      "output_relative_l2": 0.09436529129743576,
+      "kernel_relative_l2_vs_quantized_oracle": 2.0176143777916877e-07,
+      "pool_count": 162,
+      "pool_bytes": 286655112,
+      "bpw": 4.500010172526042,
+      "timings": [
+        {
+          "split": 1,
+          "warm_us": 12.296000123023987,
+          "rotating_us": 12.040513827476973
+        },
+        {
+          "split": 2,
+          "warm_us": 10.334400087594986,
+          "rotating_us": 10.250715561854987
+        },
+        {
+          "split": 4,
+          "warm_us": 10.347200185060501,
+          "rotating_us": 9.606271319919163
+        },
+        {
+          "split": 8,
+          "warm_us": 11.059200018644333,
+          "rotating_us": 9.760197298026378
+        }
+      ],
+      "best": {
+        "split": 4,
+        "warm_us": 10.347200185060501,
+        "rotating_us": 9.606271319919163
+      }
+    }
+  ]
+}

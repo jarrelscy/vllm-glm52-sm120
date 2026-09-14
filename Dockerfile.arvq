@@ -21,3 +21,4 @@ RUN /opt/vllm/.venv/bin/python -c "import importlib.metadata as m; assert not an
 # come from this branch. Existing compiled extensions in the base are retained.
 COPY vllm /opt/vllm/vllm
 RUN NVCC=/usr/local/cuda/bin/nvcc bash /opt/vllm/vllm/model_executor/layers/quantization/arvq/build.sh
+RUN NVCC=/usr/local/cuda/bin/nvcc bash /opt/vllm/vllm/model_executor/layers/quantization/arvq/build_dense.sh

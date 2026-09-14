@@ -1,0 +1,42 @@
+{
+  "0": {
+    "samples": 16,
+    "sm_mhz_median": 2272.0,
+    "sm_mhz_min": 2145.0,
+    "sm_mhz_max": 2272.0,
+    "memory_mhz_median": 13365.0,
+    "power_w_mean": 157.631875,
+    "temperature_c_max": 78.0,
+    "gpu_util_percent_median": 98.0
+  },
+  "1": {
+    "samples": 16,
+    "sm_mhz_median": 2272.0,
+    "sm_mhz_min": 1965.0,
+    "sm_mhz_max": 2295.0,
+    "memory_mhz_median": 13365.0,
+    "power_w_mean": 140.31437499999998,
+    "temperature_c_max": 65.0,
+    "gpu_util_percent_median": 98.0
+  },
+  "2": {
+    "samples": 16,
+    "sm_mhz_median": 2287.0,
+    "sm_mhz_min": 2272.0,
+    "sm_mhz_max": 2302.0,
+    "memory_mhz_median": 13365.0,
+    "power_w_mean": 148.988125,
+    "temperature_c_max": 75.0,
+    "gpu_util_percent_median": 98.0
+  },
+  "3": {
+    "samples": 16,
+    "sm_mhz_median": 2280.0,
+    "sm_mhz_min": 2145.0,
+    "sm_mhz_max": 2280.0,
+    "memory_mhz_median": 13365.0,
+    "power_w_mean": 156.35375,
+    "temperature_c_max": 73.0,
+    "gpu_util_percent_median": 98.0
+  }
+}

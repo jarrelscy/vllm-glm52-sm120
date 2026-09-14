@@ -1,0 +1,52 @@
+{
+  "gpu": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+  "tokens": 4,
+  "scope": "actual BF16 weights quantized NVFP4; M1 BF16-to-FP16 + P4pack + hot native GEMV + split/global reduce + BF16cast, no communication",
+  "results": [
+    {
+      "name": "self_attn.o_proj.weight",
+      "shape": [
+        6144,
+        4096
+      ],
+      "weight_relative_l2": 0.09512171894311905,
+      "output_relative_l2": 0.09831128269433975,
+      "kernel_relative_l2_vs_quantized_oracle": 2.567158219335397e-07,
+      "pool_count": 21,
+      "pool_bytes": 297271380,
+      "bpw": 4.500001271565755,
+      "timings": [
+        {
+          "split": 1,
+          "warm_us": 28.467199206352234,
+          "rotating_us": 37.89379029046921
+        },
+        {
+          "split": 2,
+          "warm_us": 24.57920014858246,
+          "rotating_us": 24.798781531197683
+        },
+        {
+          "split": 4,
+          "warm_us": 30.80640137195587,
+          "rotating_us": 30.122513998122443
+        },
+        {
+          "split": 8,
+          "warm_us": 30.70879876613617,
+          "rotating_us": 29.2203426361084
+        },
+        {
+          "split": 16,
+          "warm_us": 32.77119994163513,
+          "rotating_us": 32.25904873439244
+        }
+      ],
+      "best": {
+        "split": 2,
+        "warm_us": 24.57920014858246,
+        "rotating_us": 24.798781531197683
+      }
+    }
+  ]
+}

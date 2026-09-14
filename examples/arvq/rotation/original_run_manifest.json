@@ -1,0 +1,11 @@
+{
+  "rotation.cu": "e1e6961057c02e8ea2521c53c7d517c2b0ee166d33dfdac183e523f1405929cc",
+  "rotation.so": "2bfd4bf3c052b7a014b863d3b4b13406442c11071902889f0e17379e3f2bf5a3",
+  "fit_rotation.py": "683b54709d475f71f11501c75e860d1ad6db62c19710a8d4ff8f526c058a9995",
+  "rotation_bench.py": "a556e50cb74accb1c7780ff9432d48426170de3c890fbef7be331b081ac1f1e2",
+  "projection_bench.py": "202938f6c89467e5cac27771c765a3308db67d1d5b8ee0e3a8ac23142c11d32f",
+  "fit_results.json": "724f900428220bae25d599dd13bd1be2b18fd433635509a7f1c815cb925e5abf",
+  "rotation_bench.json": "fd7d4da079f478febf1415d17726f94f34cc8b1159cc7ae9e175dc265d07c332",
+  "projection_results.json": "9e944179bda9dd4ebc83447dd1f12af0693ba9d5b5e4ca6e7a44fb4baed746e1",
+  "format.json": "42067b65d615dfbe5fb464f93571b54d99e05267736ddf62ac0046cf7411d538"
+}

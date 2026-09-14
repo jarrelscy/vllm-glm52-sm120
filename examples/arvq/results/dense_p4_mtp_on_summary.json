@@ -1,0 +1,18 @@
+{
+  "dense_p4_mtp_on_tps": 141.66089779930758,
+  "measured_runs": 3,
+  "warmup_runs": 1,
+  "tps_min": 141.58221094876419,
+  "tps_max": 141.73417449935425,
+  "ttft_ms_mean": 255.17084635794163,
+  "draft_steps_total": 384.0,
+  "accepted_draft_tokens": 1152.0,
+  "proposed_draft_tokens": 1152.0,
+  "emitted_per_step": 4.0,
+  "server_ms_per_draft_step_proxy": 28.18323551400681,
+  "normalized_to_original_4_emitted_tps_estimate": 141.9283459492093,
+  "previous_arvq_communication_tps": 138.40135079460498,
+  "gain_percent_vs_previous_arvq_communication": 2.3551410343819024,
+  "all_counters_isolated": true,
+  "scope": "Three-run denseP4 vs one-run previousARVQcomm. Identical repeatedpangram136input512output;100%acceptance. Noqualityrerun;targetweightsidenticaltoMTPoffdiagnostic,draftweightsunchanged."
+}

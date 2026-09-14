@@ -10,7 +10,9 @@ vLLM's MoE runner, as in TPHybridExpertsMoEMethod.
 import ctypes
 import os
 from pathlib import Path
+from typing import cast
 
+import regex as re
 import torch
 
 from vllm.model_executor.layers.quantization.nvfp4_aqlm_hybrid import (
@@ -170,13 +172,33 @@ class NvFp4ArvqHybridConfig(NvFp4AqlmHybridConfig):
         }
         if any(b["n_base"] != 0 for b in books.values()):
             raise ValueError("ARVQ checkpoint requires n_base=0")
-        return cls(ModelOptNvFp4Config.from_config(config["nvfp4"]), books)
+        nvfp4 = cast(
+            ModelOptNvFp4Config, ModelOptNvFp4Config.from_config(config["nvfp4"])
+        )
+        return cls(nvfp4, books)
 
     @classmethod
     def get_min_capability(cls):
         return 120
 
     def get_quant_method(self, layer, prefix):
+        from vllm.model_executor.layers.linear import LinearBase
+        from vllm.model_executor.layers.quantization.nvfp4_p4_linear import (
+            NvFp4P4LinearMethod,
+            matches,
+        )
+
+        if isinstance(layer, LinearBase) and matches(prefix):
+            # MTP construction can use layers.78 without an mtp_block component.
+            # The serialized expert layer range ends at the final target layer.
+            target_layer = re.search(r"(?:^|\.)layers\.(\d+)\.", prefix)
+            if (
+                target_layer is not None
+                and self.aqlm_layer_books
+                and int(target_layer.group(1)) <= max(self.aqlm_layer_books)
+            ):
+                return NvFp4P4LinearMethod()
+
         from vllm.distributed import (
             get_tensor_model_parallel_rank,
             get_tensor_model_parallel_world_size,
@@ -291,7 +313,8 @@ class ArvqExpertsMoEMethod(TPHybridExpertsMoEMethod):
             local = mask.long().cumsum(0) - 1
             lookups.append(torch.where(mask, local, -1).to(torch.int32))
         layer._arvq_lookups = torch.stack(lookups).contiguous()
-        tensors, alphas = [], []
+        tensors: list[torch.Tensor] = []
+        alphas: list[float] = []
         for proj in ("w13", "w2"):
             packed = getattr(layer, f"arvq_{proj}_packed")
             guarded = torch.empty(packed.numel() + 1, device=device, dtype=torch.int32)

@@ -1,0 +1,40 @@
+{
+  "format": "arvq_rht_v1",
+  "status": "selected_for_next_revision; prototype_only",
+  "transform": {
+    "type": "input_signed_normalized_hadamard",
+    "block_width": 128,
+    "weight_rule": "W_rot = W D H",
+    "activation_rule": "x_rot = x D H",
+    "sign_storage": "int8 vector of input width, shared across cold experts per layer/projection",
+    "seed_rule": "CPU torch.Generator: 91426 + 2*layer + int(projection == down)",
+    "sign_values_rule": "torch.randint(0,2,(K,),generator=generator)*2-1",
+    "runtime_uses": "serialized signs; seed is conversion provenance only",
+    "scope": "cold linear projections only; separate gate/up and down transforms; no transform through SwiGLU",
+    "tp_constraint": "transform blocks may not cross a down-projection rank boundary"
+  },
+  "weight_encoding": {
+    "vector_size": 8,
+    "codebook_sizes": [256, 128],
+    "codebook_scalar_type": "FP4 E2M1",
+    "codebook_vector_storage": "uint32, eight nibbles per vector",
+    "index_bits": [8, 7],
+    "index_layout": "existing native ARVQ MMA fragment layout, 15 packed bits per vector",
+    "block_scale_type": "FP8 E4M3",
+    "block_scale_group": 128,
+    "global_scale_type": "float32 per projection",
+    "core_payload_bpw": 1.9375,
+    "maximum_cold_tensor_payload_bpw": 2
+  },
+  "activation_encoding": {
+    "planes": 4,
+    "plane_weights": [1, 0.0625, 0.00390625, 0.000244140625],
+    "rotation_and_packing": "fused, FP32 rotation intermediate",
+    "hot_routes": "skip rotation and retain original NVFP4 packing"
+  },
+  "deployment": {
+    "enabled_in_current_checkpoint": false,
+    "requires": "re-encoded cold weights and transform-aware loader/packer dispatch",
+    "never_infer_rotation_from": "bit width or model name"
+  }
+}

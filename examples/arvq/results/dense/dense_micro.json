@@ -1,0 +1,65 @@
+{
+  "gpu": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+  "torch": "2.11.0+cu130",
+  "M": 1,
+  "pool_min_MiB": 272,
+  "results": [
+    {
+      "name": "self_attn.o_proj.weight",
+      "shape": [
+        6144,
+        4096
+      ],
+      "weight_relative_l2": 0.026451250538229942,
+      "output_relative_l2": 0.02747044339776039,
+      "kernel_relative_l2_vs_dequant": 0.0017340725753456354,
+      "bf16_eager_warm_us": 22.465600073337555,
+      "bf16_eager_rotating_us": 33.74933401743571,
+      "bf16_eager_pool_count": 6,
+      "bf16_inductor_warm_us": 22.15999960899353,
+      "bf16_inductor_rotating_us": 33.76506567001343,
+      "bf16_inductor_pool_count": 6,
+      "fp8_w8a16_warm_us": 16.417600214481354,
+      "fp8_w8a16_rotating_us": 23.0402668317159,
+      "fp8_w8a16_pool_count": 12
+    },
+    {
+      "name": "mlp.shared_experts.gate_up_proj.weight",
+      "shape": [
+        1024,
+        6144
+      ],
+      "weight_relative_l2": 0.026440611109137535,
+      "output_relative_l2": 0.025205664336681366,
+      "kernel_relative_l2_vs_dequant": 0.0017482411349192262,
+      "bf16_eager_warm_us": 8.233600109815598,
+      "bf16_eager_rotating_us": 10.118956151215926,
+      "bf16_eager_pool_count": 23,
+      "bf16_inductor_warm_us": 8.230400085449219,
+      "bf16_inductor_rotating_us": 10.112696108610734,
+      "bf16_inductor_pool_count": 23,
+      "fp8_w8a16_warm_us": 14.448000490665436,
+      "fp8_w8a16_rotating_us": 16.103617004726242,
+      "fp8_w8a16_pool_count": 46
+    },
+    {
+      "name": "mlp.shared_experts.down_proj.weight",
+      "shape": [
+        6144,
+        512
+      ],
+      "weight_relative_l2": 0.026274550706148148,
+      "output_relative_l2": 0.026112239807844162,
+      "kernel_relative_l2_vs_dequant": 0.0017815909814089537,
+      "bf16_eager_warm_us": 6.191999837756157,
+      "bf16_eager_rotating_us": 5.929739060609237,
+      "bf16_eager_pool_count": 46,
+      "bf16_inductor_warm_us": 6.159999966621399,
+      "bf16_inductor_rotating_us": 5.931130181188169,
+      "bf16_inductor_pool_count": 46,
+      "fp8_w8a16_warm_us": 10.27199998497963,
+      "fp8_w8a16_rotating_us": 9.49808014763726,
+      "fp8_w8a16_pool_count": 90
+    }
+  ]
+}

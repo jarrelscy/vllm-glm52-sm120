@@ -1,0 +1,11 @@
+{
+  "triton_red_fused_mm_t_0": {
+    "[('xnumel', '6144'), ('r0_numel', '4096')]": "/data/triton_cache/glm5.3-arvq-vllm/torch_compile_cache/torch_aot_compile/0dfa064b9a8c658292c00a5bbd6ad9c9eb95a9e4a41994e457df7f3a029c2214/inductor_cache/6m/c6m7znoyybe6d5a75swiux2qz5tppayx4mthnqnolzwebmsxvyoh.py"
+  },
+  "triton_red_fused_mm_t_2": {
+    "[('xnumel', '2624'), ('r0_numel', '6144')]": "/data/triton_cache/glm5.3-arvq-vllm/torch_compile_cache/torch_aot_compile/0dfa064b9a8c658292c00a5bbd6ad9c9eb95a9e4a41994e457df7f3a029c2214/inductor_cache/gc/cgcudydv2fltos6znligmbewqonbnkiupgc5g5p6vhrnatkz5gvj.py"
+  },
+  "triton_red_fused_mm_rms_norm_split_with_sizes_t_5": {
+    "[('xnumel', '4096'), ('r0_numel', '2048')]": "/data/triton_cache/glm5.3-arvq-vllm/torch_compile_cache/torch_aot_compile/0dfa064b9a8c658292c00a5bbd6ad9c9eb95a9e4a41994e457df7f3a029c2214/inductor_cache/gt/cgtkrh4igx35pakaynwr45xmolpiauehv5wdf6s2evezrx2r4ext.py"
+  }
+}

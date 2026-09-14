@@ -1,0 +1,7 @@
+*.so
+*.pt
+*.safetensors
+__pycache__/
+/fit_results.json
+/projection_results.json
+/rotation_bench.json

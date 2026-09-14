@@ -1,0 +1,29 @@
+{
+  "exact_bf16_edge_oracle": true,
+  "exact_bf16_actual_weight_oracle": true,
+  "cuda_graph": true,
+  "pool_bytes": 297271380,
+  "dequant_us": 25.672229131062824,
+  "fallback": [
+    {
+      "tokens": 4,
+      "rotating_dequant_plus_bf16_gemm_us": 43.89988581339518
+    },
+    {
+      "tokens": 8,
+      "rotating_dequant_plus_bf16_gemm_us": 44.61196263631185
+    },
+    {
+      "tokens": 16,
+      "rotating_dequant_plus_bf16_gemm_us": 48.68693124680292
+    },
+    {
+      "tokens": 32,
+      "rotating_dequant_plus_bf16_gemm_us": 48.70948791503906
+    },
+    {
+      "tokens": 128,
+      "rotating_dequant_plus_bf16_gemm_us": 61.82597932361421
+    }
+  ]
+}

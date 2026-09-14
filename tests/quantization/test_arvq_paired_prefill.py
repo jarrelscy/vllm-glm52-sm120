@@ -118,3 +118,40 @@ def test_actual_helper_preserves_scatter_and_selects_owner_batch(
         assert factories == []
     else:
         assert factories and set(factories) == {expected}
+
+
+@pytest.mark.parametrize("mode", [0, 2])
+def test_wide_dispatches_register_kernel_and_reuses_pair_descriptors(monkeypatch, mode):
+    from types import SimpleNamespace
+
+    calls = []
+
+    def record(name):
+        def invoke(*args):
+            calls.append((name, args))
+            return 0
+
+        return invoke
+
+    lib = SimpleNamespace(
+        hybrid_pack_pairs=record("pack_pairs"),
+        hybrid_pack=record("pack"),
+        wide_launch_register=record("register"),
+    )
+    monkeypatch.setattr(wide, "library", lambda: lib)
+    monkeypatch.setattr(
+        torch.cuda, "current_stream", lambda: SimpleNamespace(cuda_stream=0)
+    )
+    projection = wide.WideHot(mode)
+    rows = torch.zeros((33, 128), dtype=torch.float16)
+    hot = torch.zeros(33, dtype=torch.int32)
+    cold = torch.full_like(hot, -1)
+    tensors = [torch.zeros(1)] * 6
+    result = projection(rows, cold, hot, tensors, 1.0, 64, 8, 2)
+    groups = projection.groups
+    projection(rows, cold, hot, tensors, 1.0, 64, 2, 1)
+    assert result.shape == (33, 64)
+    assert projection.groups is groups and groups.shape == (2, 11)
+    assert [name for name, _ in calls] == ["pack_pairs", "register", "pack", "register"]
+    assert calls[1][1][10:16] == (64, 128, 33, 8, 2, mode)
+    assert calls[3][1][10:16] == (64, 128, 33, 2, 1, mode)

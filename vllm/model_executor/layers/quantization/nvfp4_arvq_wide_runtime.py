@@ -12,10 +12,10 @@ def library():
     global LIB
     if LIB is None:
         LIB = ctypes.CDLL(str(Path(__file__).with_name("arvq") / "prefill_wide.so"))
-        LIB.wide_launch.argtypes = (
+        LIB.wide_launch_register.argtypes = (
             [ctypes.c_void_p] * 10 + [ctypes.c_int] * 6 + [ctypes.c_void_p]
         )
-        LIB.wide_launch.restype = ctypes.c_int
+        LIB.wide_launch_register.restype = ctypes.c_int
         LIB.hybrid_pack.argtypes = (
             [ctypes.c_void_p] * 3 + [ctypes.c_int] * 3 + [ctypes.c_void_p]
         )
@@ -66,7 +66,7 @@ class WideHot:
             err = lib.hybrid_pack(*map(ptr, [x, packed, scales]), k, slots, 4, stream)
         if err:
             raise RuntimeError(f"ARVQ hot prefill CUDA launch failed: {err}")
-        err = lib.wide_launch(
+        err = lib.wide_launch_register(
             *map(
                 ptr,
                 [

@@ -1,0 +1,29 @@
+{
+  "qualified_source_sha256": "a852689930075a60c7ba9bdabe362ad2890b072f3591d4706dbcb7d37a8f4fba",
+  "production_source_sha256": "e561a8e41031db7c6a8ddf352288c5124811678298b666a026d2ee7aeb2e35da",
+  "normalization": "Remove comments/whitespace; rename three helper/kernel identifiers only. Numeric/operators/order unchanged. Template PAIRS4 instantiated in both.",
+  "functions": [
+    {
+      "qualified": "mma",
+      "production": "register_mma",
+      "body_token_count": 209,
+      "equal": true,
+      "normalized_sha256": "648a067cdc4af17a0c73e89f19f7d4a59039c2f8bbf2d935ab792c46347720fa"
+    },
+    {
+      "qualified": "wide_kernel",
+      "production": "register_kernel",
+      "body_token_count": 1006,
+      "equal": true,
+      "normalized_sha256": "9439f468091e5959a4581e18cdef3480266386b1c3daf365cc7be6525498b41d"
+    },
+    {
+      "qualified": "hybrid_reduce",
+      "production": "register_reduce",
+      "body_token_count": 145,
+      "equal": true,
+      "normalized_sha256": "a700d8ca72d8712d25ad171c5a4c28fe770410a2e3c72918cfd5018a4800d674"
+    }
+  ],
+  "export_change": "New wide_launch_register invokes only register_kernel<4>; original wide_launch/hybrid_pack exports retained from prefill_wide.cu."
+}

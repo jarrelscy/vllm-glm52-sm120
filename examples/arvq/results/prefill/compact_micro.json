@@ -1,0 +1,89 @@
+{
+  "layer": 3,
+  "tp_rank": 3,
+  "scope": "actual full mixed layer; wall clock includes routing sort/count CPUcopy, gather/scatter, all kernels and combine; excludes TPallreduce",
+  "independent_mixed_oracle_relative_l2": 0.00015240100037772208,
+  "results": [
+    {
+      "tokens": 1024,
+      "selected_cold_experts": 106,
+      "selected_cold_slots": 3854,
+      "routed_output_bytes": 201326592,
+      "relative_l2_vs_grouped": 0.0,
+      "bitwise_equal": true,
+      "grouped_baseline_ms": 15.239310916513205,
+      "compact_ms": 13.953020330518484,
+      "speedup": 1.0921872508980228,
+      "grouped_baseline_samples_ms": [
+        15.333587769418955,
+        15.188232064247131,
+        15.208411030471325,
+        15.215080697089434,
+        15.239310916513205,
+        15.610223170369864
+      ],
+      "compact_samples_ms": [
+        13.953020330518484,
+        13.940678909420967,
+        13.945749960839748,
+        13.925239909440279,
+        14.225154183804989,
+        14.345960225909948
+      ]
+    },
+    {
+      "tokens": 2048,
+      "selected_cold_experts": 195,
+      "selected_cold_slots": 12483,
+      "routed_output_bytes": 402653184,
+      "relative_l2_vs_grouped": 0.0,
+      "bitwise_equal": true,
+      "grouped_baseline_ms": 23.103266023099422,
+      "compact_ms": 18.740261904895306,
+      "speedup": 1.2328144686742302,
+      "grouped_baseline_samples_ms": [
+        22.847901098430157,
+        22.90691016241908,
+        22.930748760700226,
+        23.103266023099422,
+        23.10766512528062,
+        23.166464176028967
+      ],
+      "compact_samples_ms": [
+        18.53033807128668,
+        18.55360670015216,
+        18.65169545635581,
+        18.740261904895306,
+        18.850830849260092,
+        18.885029014199972
+      ]
+    },
+    {
+      "tokens": 4096,
+      "selected_cold_experts": 195,
+      "selected_cold_slots": 25040,
+      "routed_output_bytes": 805306368,
+      "relative_l2_vs_grouped": 0.0,
+      "bitwise_equal": true,
+      "grouped_baseline_ms": 39.16862886399031,
+      "compact_ms": 30.56867979466915,
+      "speedup": 1.281332040738668,
+      "grouped_baseline_samples_ms": [
+        38.88047393411398,
+        39.07145978882909,
+        39.09345995634794,
+        39.18875800445676,
+        39.171839132905006,
+        39.16862886399031
+      ],
+      "compact_samples_ms": [
+        30.492721125483513,
+        30.507751274853945,
+        30.544130131602287,
+        30.61131900176406,
+        30.630907975137234,
+        30.56867979466915
+      ]
+    }
+  ]
+}

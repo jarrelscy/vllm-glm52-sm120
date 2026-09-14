@@ -1,7 +1,8 @@
 # Two P4 activations per native FP4 MMA
 
-This is an unimplemented candidate based on the production `arvq/hybrid.cu`
-fragment mapping. No paired-kernel benchmark or speedup is claimed.
+Dense o_proj pairing is implemented behind the static, default-OFF
+`VLLM_NVFP4_P4_PAIRED=1` flag. See [measured dense results](PAIRED_P4_RESULTS.md).
+Routed expert pairing below remains an unimplemented proposal.
 
 ## Available columns
 

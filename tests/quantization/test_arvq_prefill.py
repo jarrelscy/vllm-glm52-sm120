@@ -8,15 +8,26 @@ import torch
 from vllm.model_executor.layers.quantization import nvfp4_arvq_prefill as prefill
 
 
-def test_grouped_preserves_mixed_route_order(monkeypatch):
+@pytest.mark.parametrize("compact", [False, True])
+@pytest.mark.parametrize(
+    "scenario", ["mixed", "all_hot", "all_cold", "low_count", "zero"]
+)
+def test_grouped_preserves_mixed_route_order(monkeypatch, compact, scenario):
+    monkeypatch.setenv("VLLM_ARVQ_COMPACT_PREFILL", "1" if compact else "0")
     torch.manual_seed(7)
     hidden, intermediate = 128, 128
     w13 = torch.randn(3, intermediate * 2, hidden).half() * 0.01
     w2 = torch.randn(3, hidden, intermediate).half() * 0.01
     x = torch.randn(4, hidden).half()
     ids = torch.tensor([[0, 2], [1, 0], [2, 0], [2, 0]])
+    if scenario == "all_hot":
+        ids.fill_(2)
+    elif scenario == "all_cold":
+        ids.fill_(0)
+    elif scenario == "zero":
+        ids.fill_(3)
     routing = torch.tensor([[0.2, 0.8], [0.7, 0.3], [0.4, 0.6], [0.1, 0.9]])
-    lookups = torch.tensor([[0, 1, -1], [-1, -1, 0]], dtype=torch.int32)
+    lookups = torch.tensor([[0, 1, -1, -1], [-1, -1, 0, -1]], dtype=torch.int32)
     tensors = []
     for n, k in ((256, 128), (128, 128)):
         tensors.extend(
@@ -61,13 +72,16 @@ def test_grouped_preserves_mixed_route_order(monkeypatch):
         tensors,
         [1.0, 1.0],
         projection=projection,
-        min_expert_tokens=3,
+        min_expert_tokens=99 if scenario == "low_count" else 3,
         chunk_tokens=2,
     )
     expected_routes = torch.empty(4, 2, hidden)
     for token in range(4):
         for slot in range(2):
             expert = int(ids[token, slot])
+            if expert == 3:
+                expected_routes[token, slot] = 0
+                continue
             h13 = (x[token].float() @ w13[expert].float().T).half()
             gate, up = h13.chunk(2)
             act = (torch.nn.functional.silu(gate) * up).half()
@@ -76,7 +90,47 @@ def test_grouped_preserves_mixed_route_order(monkeypatch):
     # CPU batched GEMM and per-route matvec accumulate in different orders;
     # a few intermediate FP16 values can land on opposite rounding midpoints.
     torch.testing.assert_close(actual, expected, atol=5e-7, rtol=1e-3)
-    assert decoded == [(256, 128), (128, 128)]
+    assert decoded == (
+        [(256, 128), (128, 128)] if scenario in ("mixed", "all_cold") else []
+    )
+
+
+def test_compact_retains_tiny_original_tail_split(monkeypatch):
+    monkeypatch.setenv("VLLM_ARVQ_COMPACT_PREFILL", "1")
+    calls = []
+
+    def projection(rows, cold, hot, tensors, alpha, n, split, parts):
+        calls.append((rows.shape[0], split, parts))
+        return torch.zeros(rows.shape[0], n)
+
+    result = prefill.grouped_cold_prefill(
+        torch.ones(131, 16).half(),
+        torch.ones(131, 8),
+        torch.zeros(131, 8, dtype=torch.long),
+        torch.tensor([[-1], [0]], dtype=torch.int32),
+        [torch.empty(1, 2, 1)] * 12,
+        [1.0, 1.0],
+        projection=projection,
+    )
+    assert calls == [(1024, 8, 2), (1024, 2, 1), (24, 16, 2), (24, 2, 1)]
+    assert result.count_nonzero() == 0
+
+
+def test_compact_diagnostic_marker(monkeypatch):
+    monkeypatch.setenv("VLLM_ARVQ_COMPACT_PREFILL", "toggle")
+    monkeypatch.setattr(prefill.Path, "exists", lambda path: False)
+    assert not prefill._compact_prefill_enabled()
+    monkeypatch.setattr(prefill.Path, "exists", lambda path: True)
+    assert prefill._compact_prefill_enabled()
+
+    def unexpected(path):
+        raise AssertionError("Normal modes must not inspect marker files")
+
+    monkeypatch.setattr(prefill.Path, "exists", unexpected)
+    monkeypatch.setenv("VLLM_ARVQ_COMPACT_PREFILL", "1")
+    assert prefill._compact_prefill_enabled()
+    monkeypatch.delenv("VLLM_ARVQ_COMPACT_PREFILL")
+    assert not prefill._compact_prefill_enabled()
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="requires SM120 GPU")

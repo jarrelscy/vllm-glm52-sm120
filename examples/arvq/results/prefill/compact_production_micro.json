@@ -1,0 +1,36 @@
+{
+  "implementation": "installed production helper env flag OFF/ON",
+  "layer": 3,
+  "tp_rank": 3,
+  "scope": "actual full mixed layer; wall clock includes routing sort/count CPUcopy, gather/scatter, all kernels and combine; excludes TPallreduce",
+  "independent_mixed_oracle_relative_l2": 0.00015240100037772208,
+  "results": [
+    {
+      "tokens": 4096,
+      "selected_cold_experts": 195,
+      "selected_cold_slots": 24934,
+      "routed_output_bytes": 805306368,
+      "relative_l2_vs_grouped": 0.0,
+      "bitwise_equal": true,
+      "grouped_baseline_ms": 38.49631641060114,
+      "compact_ms": 29.923344030976295,
+      "speedup": 1.2864978048827098,
+      "grouped_baseline_samples_ms": [
+        36.63577884435654,
+        36.693247966468334,
+        37.70761890336871,
+        38.49631641060114,
+        38.66261290386319,
+        39.00582809001207
+      ],
+      "compact_samples_ms": [
+        27.885678689926863,
+        27.87911891937256,
+        29.57470016553998,
+        29.923344030976295,
+        30.446955002844334,
+        30.4072848521173
+      ]
+    }
+  ]
+}

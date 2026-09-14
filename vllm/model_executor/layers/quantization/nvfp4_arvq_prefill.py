@@ -15,6 +15,14 @@ import torch
 _LIB = None
 
 
+def _compact_prefill_enabled():
+    """Diagnostic marker mode must remain fixed for the entire TP request."""
+    mode = os.environ.get("VLLM_ARVQ_COMPACT_PREFILL", "0")
+    return mode == "1" or (
+        mode == "toggle" and Path("/dev/shm/vllm_arvq_compact_prefill_on").exists()
+    )
+
+
 def dequantize_cold(packed, codebooks, scales, global_scale, n, k, dtype=torch.float16):
     """Decode one expert into an ephemeral 16-bit [N,K] matrix."""
     global _LIB
@@ -26,12 +34,16 @@ def dequantize_cold(packed, codebooks, scales, global_scale, n, k, dtype=torch.f
             )
         )
         _LIB = ctypes.CDLL(str(path))
-        _LIB.arvq_dequant.argtypes = (
-            [ctypes.c_void_p] * 3
-            + [ctypes.c_float, ctypes.c_void_p]
-            + [ctypes.c_int] * 2
-            + [ctypes.c_void_p]
-        )
+        _LIB.arvq_dequant.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_float,
+            ctypes.c_void_p,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_void_p,
+        ]
         _LIB.arvq_dequant.restype = ctypes.c_int
         _LIB.arvq_dequant_fp16.argtypes = _LIB.arvq_dequant.argtypes
         _LIB.arvq_dequant_fp16.restype = ctypes.c_int
@@ -113,32 +125,48 @@ def grouped_cold_prefill(
     # FP32 preserves the native hot outputs and final route-sum ordering.
     # T4096,H6144,top8 =>768MiB, without a full repeated-input allocation.
     routed = torch.empty((slots, hidden), device=x.device, dtype=torch.float32)
-    for start in range(0, tokens, chunk_tokens):
-        stop = min(start + chunk_tokens, tokens)
-        route_slice = slice(start * top_k, stop * top_k)
-        xr = x[start:stop].half().repeat_interleave(top_k, 0)
-        cold, hot = native_cold[route_slice], hot_ids[route_slice]
-        h13 = projection(
-            xr,
-            cold,
-            hot,
-            tensors[:6],
-            alphas[0],
+    if _compact_prefill_enabled():
+        # Drop only grouped-cold rows. Original both-negative routes remain
+        # native so their defined zero outputs still initialize routed storage.
+        grouped_mask = (cold_ids >= 0) & (native_cold < 0)
+        native_slots = torch.nonzero(~grouped_mask, as_tuple=False).flatten()
+        normal_split = 16 if chunk_tokens * top_k <= 32 else 8
+        tail_tokens = tokens % chunk_tokens
+        if normal_split == 8 and 0 < tail_tokens * top_k <= 32:
+            # Preserve the original tiny last chunk's split/reduction order.
+            cutoff = (tokens - tail_tokens) * top_k
+            batches = [
+                (native_slots[native_slots < cutoff], normal_split),
+                (native_slots[native_slots >= cutoff], 16),
+            ]
+        else:
+            batches = [(native_slots, normal_split)]
+        for route_indices, split in batches:
+            for begin in range(0, route_indices.numel(), chunk_tokens * top_k):
+                route_slots = route_indices[begin : begin + chunk_tokens * top_k]
+                xr = x[route_slots // top_k].half()
+                cold, hot = native_cold[route_slots], hot_ids[route_slots]
+                h13 = projection(
+                    xr, cold, hot, tensors[:6], alphas[0], n13, split, 2
+                ).half()
+                gate, up = h13.chunk(2, dim=-1)
+                act = (torch.nn.functional.silu(gate) * up).half()
+                routed[route_slots] = projection(
+                    act, cold, hot, tensors[6:], alphas[1], hidden, 2, 1
+                )
+    else:
+        _native_prefill_routes(
+            x,
+            native_cold,
+            hot_ids,
+            tensors,
+            alphas,
+            routed,
+            projection,
+            chunk_tokens,
+            top_k,
             n13,
-            16 if xr.shape[0] <= 32 else 8,
-            2,
-        ).half()
-        gate, up = h13.chunk(2, dim=-1)
-        act = (torch.nn.functional.silu(gate) * up).half()
-        routed[route_slice] = projection(
-            act,
-            cold,
-            hot,
-            tensors[6:],
-            alphas[1],
             hidden,
-            2,
-            1,
         )
 
     start = 0
@@ -168,3 +196,47 @@ def grouped_cold_prefill(
             (tile * topk_weights[start:stop, :, None].float()).sum(1).to(x.dtype)
         )
     return torch.cat(outputs, dim=0)
+
+
+def _native_prefill_routes(
+    x,
+    native_cold,
+    hot_ids,
+    tensors,
+    alphas,
+    routed,
+    projection,
+    chunk_tokens,
+    top_k,
+    n13,
+    hidden,
+):
+    """Original uncompressed route schedule, retained for controlled A/B."""
+    tokens = x.shape[0]
+    for start in range(0, tokens, chunk_tokens):
+        stop = min(start + chunk_tokens, tokens)
+        route_slice = slice(start * top_k, stop * top_k)
+        xr = x[start:stop].half().repeat_interleave(top_k, 0)
+        cold, hot = native_cold[route_slice], hot_ids[route_slice]
+        h13 = projection(
+            xr,
+            cold,
+            hot,
+            tensors[:6],
+            alphas[0],
+            n13,
+            16 if xr.shape[0] <= 32 else 8,
+            2,
+        ).half()
+        gate, up = h13.chunk(2, dim=-1)
+        act = (torch.nn.functional.silu(gate) * up).half()
+        routed[route_slice] = projection(
+            act,
+            cold,
+            hot,
+            tensors[6:],
+            alphas[1],
+            hidden,
+            2,
+            1,
+        )

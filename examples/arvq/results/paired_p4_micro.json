@@ -1,0 +1,125 @@
+{
+  "summary": {
+    "scope": "CUDA graph BF16 input cast + P4 pack + native NVFP4 projection + split/global reduce + BF16 output cast; no communication; 21 independently allocated weight copies, 297271380 bytes",
+    "shape": [
+      6144,
+      4096
+    ],
+    "rows": [
+      {
+        "tokens": 1,
+        "current_split": 8,
+        "current_us": 17.72937093462263,
+        "retuned_baseline_us": 17.72937093462263,
+        "paired_split": 8,
+        "paired_us": 17.734018961588543,
+        "speedup": 0.9997379033497156,
+        "oracle_l2": 5.539523044717498e-07,
+        "ideal_78_layer_saved_ms": -0.00036254610334125205
+      },
+      {
+        "tokens": 2,
+        "current_split": 2,
+        "current_us": 23.903998874482653,
+        "retuned_baseline_us": 18.455542836870467,
+        "paired_split": 8,
+        "paired_us": 17.825980413527716,
+        "speedup": 1.3409640490989472,
+        "oracle_l2": 5.488637384587491e-07,
+        "ideal_78_layer_saved_ms": 0.4740854399544851
+      },
+      {
+        "tokens": 4,
+        "current_split": 2,
+        "current_us": 24.817067100888206,
+        "retuned_baseline_us": 24.817067100888206,
+        "paired_split": 4,
+        "paired_us": 18.474971680414107,
+        "speedup": 1.3432803865782132,
+        "oracle_l2": 2.567158219335397e-07,
+        "ideal_78_layer_saved_ms": 0.4946834427969797
+      },
+      {
+        "tokens": 8,
+        "current_split": 1,
+        "current_us": 39.81813249133882,
+        "retuned_baseline_us": 39.81813249133882,
+        "paired_split": 2,
+        "paired_us": 25.389180864606583,
+        "speedup": 1.568311033887931,
+        "oracle_l2": 2.5743324272298196e-07,
+        "ideal_78_layer_saved_ms": 1.1254582268851148
+      }
+    ]
+  },
+  "production_m16": {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+    "tokens": 16,
+    "scope": "actual BF16 weights quantized NVFP4; BF16-to-FP16 + P4pack + native projection + split/global reduce + BF16cast; no communication",
+    "results": [
+      {
+        "name": "self_attn.o_proj.weight",
+        "shape": [
+          6144,
+          4096
+        ],
+        "weight_relative_l2": 0.09512171894311905,
+        "output_relative_l2": 0.09586666524410248,
+        "kernel_relative_l2_vs_quantized_oracle": 2.5987856133724563e-07,
+        "pool_count": 21,
+        "pool_bytes": 297271380,
+        "bpw": 4.500001271565755,
+        "timings": [
+          {
+            "split": 1,
+            "warm_us": 36.91200017929077,
+            "rotating_us": 37.100038074311755
+          },
+          {
+            "split": 2,
+            "warm_us": 36.353600025177,
+            "rotating_us": 36.55314218430292
+          },
+          {
+            "split": 4,
+            "warm_us": 42.396798729896545,
+            "rotating_us": 44.108649662562776
+          },
+          {
+            "split": 8,
+            "warm_us": 40.6607985496521,
+            "rotating_us": 42.27672304425921
+          },
+          {
+            "split": 16,
+            "warm_us": 49.190399050712585,
+            "rotating_us": 50.451959882463726
+          }
+        ],
+        "library": "arvq/dense.so (production specialized paired kernel)",
+        "best": {
+          "split": 2,
+          "warm_us": 36.353600025177,
+          "rotating_us": 36.55314218430292
+        }
+      }
+    ]
+  },
+  "dequant_fresh": {
+    "exact_bf16_edge_oracle": true,
+    "exact_bf16_actual_weight_oracle": true,
+    "cuda_graph": true,
+    "pool_bytes": 297271380,
+    "dequant_us": 25.54666655404227,
+    "fallback": [
+      {
+        "tokens": 8,
+        "rotating_dequant_plus_bf16_gemm_us": 44.46582794189453
+      },
+      {
+        "tokens": 16,
+        "rotating_dequant_plus_bf16_gemm_us": 45.75283867972238
+      }
+    ]
+  }
+}

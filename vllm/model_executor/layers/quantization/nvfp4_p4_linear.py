@@ -76,13 +76,8 @@ def quantize_weight(weight: torch.Tensor):
     )
 
 
-def _dequantize(weight, scales, global_scale, n, k):
+def _dense_kernels():
     global _DENSE_LIB
-    from vllm.model_executor.layers.quantization.nvfp4_arvq_hybrid import (
-        _check,
-        _ptr,
-    )
-
     if _DENSE_LIB is None:
         path = Path(
             os.environ.get(
@@ -95,16 +90,61 @@ def _dequantize(weight, scales, global_scale, n, k):
             [ctypes.c_void_p] * 4 + [ctypes.c_int] * 2 + [ctypes.c_void_p]
         )
         _DENSE_LIB.nvfp4_dense_dequant.restype = ctypes.c_int
+    return _DENSE_LIB
+
+
+def _dequantize(weight, scales, global_scale, n, k):
+    from vllm.model_executor.layers.quantization.nvfp4_arvq_hybrid import _check, _ptr
+
+    lib = _dense_kernels()
     out = torch.empty((n, k), dtype=torch.bfloat16, device=weight.device)
     stream = ctypes.c_void_p(torch.cuda.current_stream().cuda_stream)
     _check(
-        _DENSE_LIB.nvfp4_dense_dequant(
+        lib.nvfp4_dense_dequant(
             _ptr(weight),
             _ptr(scales),
             _ptr(global_scale),
             _ptr(out),
             n,
             k,
+            stream,
+        )
+    )
+    return out
+
+
+def _paired_projection(x, weight, scales, global_scale, n, split):
+    from vllm.model_executor.layers.quantization.nvfp4_arvq_hybrid import (
+        _check,
+        _kernels,
+        _ptr,
+    )
+
+    lib = _dense_kernels()
+    lib.nvfp4_dense_paired.argtypes = (
+        [ctypes.c_void_p] * 7 + [ctypes.c_int] * 4 + [ctypes.c_void_p]
+    )
+    lib.nvfp4_dense_paired.restype = ctypes.c_int
+    slots, k = x.shape
+    packed = torch.empty((slots, 4, k // 8), device=x.device, dtype=torch.int32)
+    act_scales = torch.empty((slots, 4, k // 16), device=x.device, dtype=torch.uint8)
+    partial = torch.empty((slots, n, split), device=x.device, dtype=torch.float32)
+    out = torch.empty((slots, n), device=x.device, dtype=torch.float32)
+    stream = ctypes.c_void_p(torch.cuda.current_stream().cuda_stream)
+    _check(
+        _kernels().hybrid_pack(
+            _ptr(x), _ptr(packed), _ptr(act_scales), k, slots, 4, stream
+        )
+    )
+    _check(
+        lib.nvfp4_dense_paired(
+            *map(
+                _ptr, (weight, scales, global_scale, packed, act_scales, partial, out)
+            ),
+            n,
+            k,
+            slots,
+            split,
             stream,
         )
     )
@@ -127,7 +167,15 @@ def dense_p4(
     k = weight.shape[2] * 64
     tokens = x.numel() // k
     flat = x.reshape(tokens, k)
-    if 0 < tokens <= native_max_tokens:
+    # Static process flag: CUDA graph capture freezes this dispatch. Changing
+    # the flag requires restarting/recapturing graphs, never a live marker.
+    paired = os.environ.get("VLLM_NVFP4_P4_PAIRED", "0") == "1"
+    if paired and 1 < tokens <= min(native_max_tokens, 16):
+        split = 8 if tokens <= 2 else 4 if tokens <= 4 else 2
+        out = _paired_projection(
+            flat.to(torch.float16).contiguous(), weight, scales, global_scale, n, split
+        ).to(x.dtype)
+    elif 0 < tokens <= native_max_tokens:
         split = 8 if tokens == 1 else 2 if tokens <= 4 else 1 if tokens <= 8 else 4
         tensors = [weight, weight, scales, weight, scales, global_scale]
         out = _projection(

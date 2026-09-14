@@ -22,6 +22,31 @@ This fallback uses the quantized weights, so it does not restore original BF16
 accuracy. Token dispatch stays inside an opaque custom operator so Dynamo does
 not freeze a Python shape branch across graph sizes.
 
+## Paired FP4 tile execution
+
+`VLLM_NVFP4_P4_PAIRED=1` enables a dense-only kernel that places two token
+positions into the eight MMA columns, retaining four residual activation planes
+for each. One-token calls keep the original path. The native token cap is a
+separate setting: `VLLM_NVFP4_P4_MAX_TOKENS=16` allows the tested paired path
+through 16 positions; larger calls retain temporary BF16 reconstruction.
+The library defaults remain paired OFF and native cap four. This process-level
+flag must be set before CUDA graph capture; changing it requires a restart and
+fresh capture.
+
+Paired split counts are eight at two positions, four at three/four, and two at
+five through sixteen. On the actual layer-3 attention-output matrix with a
+297 MB rotating weight pool, complete packing, projection, reduction, and output
+cast fell from 24.82 to 18.47 us at four positions and 39.82 to 25.39 us at eight.
+At sixteen positions the production paired kernel took 36.55 us versus 45.75 us
+for a fresh dequantize-plus-BF16-GEMM control. Communication is excluded.
+
+The serialized and resident weight formats are unchanged. Odd/even position
+counts, changed-activation CUDA graph replay, independent encoded-weight/P4
+oracles, and the 17-position fallback were checked. At sixteen positions,
+enabling native execution replaces the old BF16 fallback arithmetic, so full
+model output and draft acceptance still need serving measurement. These kernel
+speedups are not end-to-end throughput multipliers.
+
 ## Run the bounded experiment
 
 From the repository root:

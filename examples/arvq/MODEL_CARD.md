@@ -53,7 +53,7 @@ curl --fail http://localhost:8001/health
 
 **Build prerequisite:** [`Dockerfile.arvq`](https://github.com/jarrelscy/vllm-glm52-sm120/blob/arvq-hybrid-sm120/Dockerfile.arvq) layers this fork and its kernels over the compatible local base image `glm52-vision-sm120:latest`. That base supplies the compiled vLLM/SM120 and vision dependencies; this is not yet a self-contained public-image installation. The standalone Compose configuration has been validated, while the serving measurements use the [host deployment override](https://github.com/jarrelscy/vllm-glm52-sm120/tree/arvq-hybrid-sm120/examples/arvq/host). A new host needs the compatible base image, Docker GPU support, and the complete checkpoint before running the command.
 
-The measured hardware is **4 × NVIDIA RTX PRO 6000 Blackwell Max-Q, 96 GiB each (SM120), PCIe without NVLink**. The profile uses TP4 + DCP4, three MTP draft tokens, four concurrent requests, 4096 batched tokens, CUDA graph sizes `[1,2,4,8,16]`, and memory utilization 0.96. Its “1M-context” profile is configured for **950,000 total tokens**, including input and generated output. This configured limit is not a demonstrated 950k-context accuracy or performance result.
+The measured hardware is **4 × NVIDIA RTX PRO 6000 Blackwell Max-Q, 96 GiB each (SM120), PCIe without NVLink**. The speed measurements below used TP4 + DCP4, three MTP draft tokens, four concurrent requests, 4096 batched tokens, CUDA graph sizes `[1,2,4,8,16]`, memory utilization 0.96, and a 950,000-token request limit. **Deployment update:** startup with the full **1,048,576-token** model position limit and four request slots has now been verified, with 1,222,912 shared KV-cache tokens. Eight request slots and LMCache integration are being validated. Input and generated output both count toward the request limit; configured capacity does not establish full-length accuracy or a completed million-token request test.
 
 The optimized override enables:
 
@@ -98,6 +98,57 @@ Effective input throughput is input tokens divided by HTTP request wall time, in
 Before grouped prefill and compaction, the 4096/8192-token requests took **7.192/15.595 seconds**. Latest latency is **4.165/8.571 seconds**, approximately **1.73×/1.82× faster across rounds**. Compaction alone was isolated in the final same-boot A/B: **4.688 → 4.165 seconds** and **9.724 → 8.571 seconds**, or **12.6–13.5% more input throughput**. The 1024-token control remains below the 2048-token grouped-prefill threshold and was unchanged within that A/B.
 
 [Raw results, methodology, output comparisons, and the fresh decode profile](https://github.com/jarrelscy/vllm-glm52-sm120/blob/460457d2a/examples/arvq/results/prefill/PAIRED_COMPACT_NOTES.md) are available alongside the [speed inventory](https://github.com/jarrelscy/vllm-glm52-sm120/blob/460457d2a/examples/arvq/SPEED_INVENTORY.md).
+
+## How the FP4 MMA tile is used
+
+The native instruction is SM120 `mma.sync ... m16n8k64`: it multiplies a **16×64 weight tile** by a **64×8 activation tile** and accumulates a **16×8 FP32 output tile**. Here the 16 rows are output channels; the eight columns are independent activation representations. A single routed token would otherwise use just one of those columns. MTP provides several token positions, but MoE routing can send them to different experts, so they cannot automatically share one weight tile.
+
+### Four residual activation planes per token
+
+Instead of leaving most columns idle, the packer represents each activation vector as four successively refined FP4 planes. Let `r0 = x`. At plane `p`, quantize the current residual into FP4 E2M1 values with a block scale, decode that plane as `dp`, then compute:
+
+```text
+r[p+1] = 16 * (r[p] - d[p])
+x ≈ d[0] + d[1]/16 + d[2]/256 + d[3]/4096
+```
+
+Each plane has its own scale per 16 activation values; the implementation chooses a bounded power-of-two scale representable in E4M3. Multiplying the remaining residual by 16 before the next quantization makes the smaller correction usable on the FP4 grid. These are four representations of the **same token**, not four speculative tokens and not four different weights.
+
+For a single routed token, the activation operand uses:
+
+```text
+MMA column:   0      1      2      3      4   5   6   7
+Contents:    d0     d1     d2     d3      0   0   0   0
+```
+
+One MMA computes all four `W*d[p]` columns simultaneously. The FP32 epilogue reconstructs the result with the same factors `1, 1/16, 1/256, 1/4096`. **Four planes do not require four times as many MMA instructions:** the instruction already computes eight columns. Packing four planes, loading their scales, and combining outputs still have real costs; only the MMA instruction count stays unchanged for a fixed weight tile and K step.
+
+This reduces activation-quantization error. It does **not** undo errors already present in quantized weights, change cold/hot bits per weight, or involve a Hadamard rotation. The concrete implementation is [`pack_planes` and `hybrid_kernel`](https://github.com/jarrelscy/vllm-glm52-sm120/blob/arvq-hybrid-sm120/vllm/model_executor/layers/quantization/arvq/hybrid.cu).
+
+### Two tokens fill all eight columns in dense projections
+
+Dense attention-output projections use the same weight matrix for every token. The paired kernel can therefore assign four columns to token A and four to token B:
+
+```text
+MMA column:   0      1      2      3      4      5      6      7
+Contents:   A.d0   A.d1   A.d2   A.d3   B.d0   B.d1   B.d2   B.d3
+```
+
+The weight tile is loaded once and one MMA produces both tokens' four-plane products. The epilogue reduces each group of four independently. An odd final token is guarded; single-token execution retains the original path. This pairing is implemented for dense `o_proj`, **not arbitrary MoE routes with different expert IDs**. See [`nvfp4_dense_paired_kernel`](https://github.com/jarrelscy/vllm-glm52-sm120/blob/arvq-hybrid-sm120/vllm/model_executor/layers/quantization/arvq/dense.cu).
+
+### Additive cold codebooks stay on native FP4 MMA
+
+For ARVQ, a cold weight vector is the scaled sum of two indexed FP4 codebook vectors. Rather than adding them into a higher-precision weight matrix during native decode, the kernel uses linearity:
+
+```text
+(W0 + W1) * d[p] = W0 * d[p] + W1 * d[p]
+```
+
+Packed indices select FP4 fragments from the two shared codebooks. Two native FP4 MMAs accumulate into the same FP32 output tile, one for each codebook component. Each MMA already covers all four activation planes. Thus the cold path uses **two MMAs per K tile**, while the hot NVFP4 path uses **one**; these are tile-level counts, not instruction counts for a complete projection or model layer.
+
+### Prefill uses a different reuse opportunity
+
+For long eligible prefills, many tokens visit the same expert. The current cold prefill path groups those routes, reconstructs one expert projection temporarily in FP16, and uses GEMM with FP32 outputs. That grouped cold path does **not** use the native P4 MMA trick. Hot routes and low-count cold routes retain native P4 execution, and compaction removes routes already handled by grouped GEMM. This distinction is part of why prefill and decode use different schedules while reading the same compressed checkpoint.
 
 ## Format, optimization scope, and accuracy status
 

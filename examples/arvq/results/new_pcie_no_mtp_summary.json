@@ -1,0 +1,42 @@
+{
+  "groups": [
+    {
+      "label": "new_pcie_mtp_off",
+      "profile_runner_family": "V1",
+      "prompt_target": 128,
+      "prompt_usage_counts": [
+        136
+      ],
+      "measured_runs": 3,
+      "completion_tokens": 1536,
+      "decode_tps_mean": 50.43921170615597,
+      "decode_tps_min": 50.43502185786699,
+      "decode_tps_max": 50.44412062001647,
+      "ttft_ms_mean": 233.4288164662818,
+      "draft_steps_total": 0,
+      "accepted_draft_tokens_total": 0,
+      "proposed_draft_tokens_total": 0,
+      "accepted_per_draft_step": null,
+      "draft_acceptance_fraction": null,
+      "emitted_per_step": 1,
+      "step_ms_proxy": 19.826698647016162,
+      "step_proxy_method": "serverdecode/post-first-emission-tokens;MTPoff",
+      "counter_isolation_all_runs": true,
+      "ignore_eos": true,
+      "max_tokens": 512,
+      "seed": 173,
+      "warmup_runs_per_length": 1,
+      "prompt_hashes": [
+        "0e0c8294e5faef58abde23dc3d15965186ed292c16b282aa5b75e196508a7dde"
+      ]
+    }
+  ],
+  "notes": [
+    "Measured decodeTPS is arithmetic mean of per-request token-ID-verified rates, excluding first emissionbatch.",
+    "MTPstep duration is pooled server requestdecode time / pooled draftrequest steps, not GPU kernel latency.",
+    "MTPoff assumes one forward per token after firstemission, and uses serverdecode/postfirsttokens.",
+    "NormalizedTPS is a counter-derived estimate at original pooled1+accepted/drafts; it is not a measured forced-acceptance rerun.",
+    "Naturalprofile MTPoff usesV1 and MTPon usesV2; original/new matchedpairs share runner andFULL_AND_PIECEWISE. On/off comparisons therefore include a runner difference.",
+    "Throughput on repeatedpangram input can reflect nearly100% MTPacceptance; do not generalize to realistic workload quality."
+  ]
+}

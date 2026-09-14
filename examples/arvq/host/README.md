@@ -21,16 +21,22 @@ To reproduce on a host with the matching base switch and compose deployment,
 copy the override beside `switch.sh` and apply the patch there with `patch -p1`.
 The override preserves the measured bind mounts and cache directories, builds
 `Dockerfile.arvq` from `/home/jarrelscy/glm52/vllm-arvq-serving`, and selects
-`glm53-arvq-sm120:dense-p4-m8`. Adjust these host paths for another machine.
+`glm53-arvq-sm120:grouped-prefill`. Adjust these host paths for another machine.
 
 Settings: TP4 + DCP4, MTP three drafts, dense NVFP4 P4 through eight positions,
 CUDA graph sizes `[1,2,4,8,16]`, four requests, 4096 batched tokens, 950000 context
 limit, utilization 0.96, LMCache disabled, and the measured PCIe communication
-policy. `PARALLEL=tp4-1m` can explicitly select the no-MTP mode.
+policy. Grouped cold prefill is enabled with `VLLM_ARVQ_GROUPED_PREFILL=1`
+for eligible batches of at least 2048 tokens, including startup memory profiling.
+`PARALLEL=tp4-1m` can explicitly select the no-MTP mode.
 
-The full local checkpoint remains unrotated. The H128 weight samples published
-under `rotation-prototype-v1` are separate tuning artifacts. Do not substitute
-them for full model shards.
+The full local checkpoint remains unrotated. Rotation is retired from production
+and active tuning; `rotation-prototype-v1` retains historical experiments only.
+
+Grouped prefill reduced cold 4096-token input latency from 7.192 to 4.724 seconds
+and 8192-token latency from 15.595 to 9.769 seconds. Short-request total throughput
+remained 133.4 tokens/s at one stream and 264.2 at four streams. See
+[the controlled A/B](../results/prefill/GROUPED_NOTES.md).
 
 Validation: shell syntax passes; all four checked direct/alias invocations
 resolve and validate the override before reaching the stop phase; an incomplete

@@ -98,6 +98,27 @@ def _projection(x, cold_ids, hot_ids, tensors, alpha, n, split, hot_parts):
     return out
 
 
+def _grouped_prefill_enabled(num_tokens: int, top_k: int, hidden: int) -> bool:
+    """Bound eager execution; ``toggle`` is a diagnostic same-boot A/B mode.
+
+    In diagnostic mode, marker-file presence enables grouped prefill. Keep its
+    state fixed throughout an entire request on every TP rank. Normal ``1``
+    mode performs no filesystem checks; captured paths never inspect the file.
+    Eligibility starts at 2048 tokens, the measured grouped-MLP crossover;
+    the routed FP32 output buffer remains bounded to one GiB.
+    """
+    mode = os.environ.get("VLLM_ARVQ_GROUPED_PREFILL", "0")
+    eligible = (
+        mode in ("1", "toggle")
+        and num_tokens >= 2048
+        and num_tokens * top_k * hidden * 4 <= 1024**3
+        and not torch.cuda.is_current_stream_capturing()
+    )
+    if not eligible:
+        return False
+    return mode == "1" or Path("/dev/shm/vllm_arvq_grouped_prefill_on").exists()
+
+
 @torch.library.custom_op("arvq_hybrid::mlp", mutates_args=())
 def arvq_mlp(
     x: torch.Tensor,
@@ -109,6 +130,21 @@ def arvq_mlp(
     chunk_tokens: int,
 ) -> torch.Tensor:
     """Opaque graph-safe P4 pack, unified projection, SiLU and route combine."""
+    if _grouped_prefill_enabled(x.shape[0], topk_ids.shape[1], x.shape[1]):
+        from vllm.model_executor.layers.quantization.nvfp4_arvq_prefill import (
+            grouped_cold_prefill,
+        )
+
+        return grouped_cold_prefill(
+            x,
+            topk_weights,
+            topk_ids,
+            lookups,
+            tensors,
+            alphas,
+            projection=_projection,
+            chunk_tokens=chunk_tokens,
+        )
     outputs = []
     hidden = x.shape[1]
     n13 = tensors[3].shape[1] * 16

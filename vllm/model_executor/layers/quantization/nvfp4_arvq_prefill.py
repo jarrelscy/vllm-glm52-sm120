@@ -1,0 +1,170 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: Copyright contributors to the vLLM project
+"""Opt-in grouped cold prefill, reconstructing only temporary FP16 weights.
+
+The caller gates token count, memory budget and CUDA capture. Cold weights
+remain serialized ARVQ; hot experts retain the native P4 implementation.
+"""
+
+import ctypes
+import os
+from pathlib import Path
+
+import torch
+
+_LIB = None
+
+
+def dequantize_cold(packed, codebooks, scales, global_scale, n, k, dtype=torch.float16):
+    """Decode one expert into an ephemeral 16-bit [N,K] matrix."""
+    global _LIB
+    if _LIB is None:
+        path = Path(
+            os.environ.get(
+                "VLLM_ARVQ_PREFILL_LIB",
+                str(Path(__file__).with_name("arvq") / "prefill.so"),
+            )
+        )
+        _LIB = ctypes.CDLL(str(path))
+        _LIB.arvq_dequant.argtypes = (
+            [ctypes.c_void_p] * 3
+            + [ctypes.c_float, ctypes.c_void_p]
+            + [ctypes.c_int] * 2
+            + [ctypes.c_void_p]
+        )
+        _LIB.arvq_dequant.restype = ctypes.c_int
+        _LIB.arvq_dequant_fp16.argtypes = _LIB.arvq_dequant.argtypes
+        _LIB.arvq_dequant_fp16.restype = ctypes.c_int
+    if dtype not in (torch.float16, torch.bfloat16):
+        raise ValueError("ARVQ prefill decode requires FP16 or BF16 output")
+    output = torch.empty((n, k), device=packed.device, dtype=dtype)
+    pointer = lambda tensor: ctypes.c_void_p(tensor.data_ptr())
+    decoder = _LIB.arvq_dequant_fp16 if dtype == torch.float16 else _LIB.arvq_dequant
+    error = decoder(
+        pointer(packed),
+        pointer(codebooks),
+        pointer(scales),
+        global_scale,
+        pointer(output),
+        n,
+        k,
+        ctypes.c_void_p(torch.cuda.current_stream().cuda_stream),
+    )
+    if error:
+        raise RuntimeError(f"ARVQ prefill weight decode failed with CUDA error {error}")
+    return output
+
+
+def grouped_cold_prefill(
+    x,
+    topk_weights,
+    topk_ids,
+    lookups,
+    tensors,
+    alphas,
+    *,
+    projection,
+    min_expert_tokens=32,
+    chunk_tokens=128,
+    max_routed_bytes=1024**3,
+):
+    if x.is_cuda and torch.cuda.is_current_stream_capturing():
+        raise RuntimeError("Grouped cold prefill cannot run in CUDA capture")
+    tokens, hidden = x.shape
+    top_k = topk_ids.shape[1]
+    slots = tokens * top_k
+    if slots * hidden * 4 > max_routed_bytes:
+        raise RuntimeError("Grouped cold prefill exceeds its routed-output budget")
+    n13 = tensors[3].shape[1] * 16
+
+    def decode(name, expert):
+        offset = 0 if name == "w13" else 6
+        n, k = (n13, hidden) if offset == 0 else (hidden, n13 // 2)
+        packed, codebooks, scales = tensors[offset : offset + 3]
+        words = (n // 16) * (k // 64) * 60
+        # Packed storage has one final guard; internal expert boundaries also
+        # provide the readable guard required by the cross-word extraction.
+        return dequantize_cold(
+            packed.reshape(-1)[expert * words : expert * words + words + 1],
+            codebooks,
+            scales[expert],
+            alphas[offset // 6],
+            n,
+            k,
+        )
+
+    ids = lookups[:, topk_ids.reshape(-1).long()]
+    cold_ids, hot_ids = ids[0], ids[1]
+    cold_slots = torch.nonzero(cold_ids >= 0, as_tuple=False).flatten()
+    if cold_slots.numel():
+        local_ids = cold_ids[cold_slots].long()
+        sorted_slots = cold_slots[torch.argsort(local_ids, stable=True)]
+        counts = torch.bincount(local_ids)
+        # One explicit count transfer; nonzero also synchronizes on CUDA.
+        counts_cpu = counts.cpu().tolist()
+        selected = counts >= min_expert_tokens
+        native_cold = cold_ids.clone()
+        native_cold[cold_slots[selected[local_ids]]] = -1
+    else:
+        sorted_slots = cold_slots
+        counts_cpu = []
+        native_cold = cold_ids
+
+    # FP32 preserves the native hot outputs and final route-sum ordering.
+    # T4096,H6144,top8 =>768MiB, without a full repeated-input allocation.
+    routed = torch.empty((slots, hidden), device=x.device, dtype=torch.float32)
+    for start in range(0, tokens, chunk_tokens):
+        stop = min(start + chunk_tokens, tokens)
+        route_slice = slice(start * top_k, stop * top_k)
+        xr = x[start:stop].half().repeat_interleave(top_k, 0)
+        cold, hot = native_cold[route_slice], hot_ids[route_slice]
+        h13 = projection(
+            xr,
+            cold,
+            hot,
+            tensors[:6],
+            alphas[0],
+            n13,
+            16 if xr.shape[0] <= 32 else 8,
+            2,
+        ).half()
+        gate, up = h13.chunk(2, dim=-1)
+        act = (torch.nn.functional.silu(gate) * up).half()
+        routed[route_slice] = projection(
+            act,
+            cold,
+            hot,
+            tensors[6:],
+            alphas[1],
+            hidden,
+            2,
+            1,
+        )
+
+    start = 0
+    for expert, count in enumerate(counts_cpu):
+        stop = start + count
+        if count >= min_expert_tokens:
+            route_slots = sorted_slots[start:stop]
+            rows = x[route_slots // top_k].to(torch.float16)
+            w13 = decode("w13", expert)
+            h13 = torch.mm(rows, w13.T, out_dtype=torch.float32).half()
+            del rows, w13
+            gate, up = h13.chunk(2, dim=-1)
+            act = (torch.nn.functional.silu(gate) * up).to(torch.float16)
+            del h13, gate, up
+            w2 = decode("w2", expert)
+            out = torch.mm(act, w2.T, out_dtype=torch.float32)
+            # Unique route destinations: no atomic accumulation or ordering race.
+            routed[route_slots] = out
+            del act, w2, out
+        start = stop
+
+    outputs = []
+    for start in range(0, tokens, chunk_tokens):
+        stop = min(start + chunk_tokens, tokens)
+        tile = routed[start * top_k : stop * top_k].view(stop - start, top_k, hidden)
+        outputs.append(
+            (tile * topk_weights[start:stop, :, None].float()).sum(1).to(x.dtype)
+        )
+    return torch.cat(outputs, dim=0)

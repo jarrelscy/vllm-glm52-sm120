@@ -1,0 +1,393 @@
+{
+  "utc": "2026-09-14T09:07:34.687275+00:00",
+  "image": "glm53-arvq-sm120:grouped-prefill",
+  "image_id": "sha256:5b0cbe5b9a93da9d420d1b2fa2a5d462eb92d715e3e684404f3108ca107fd063",
+  "config": {
+    "PARALLEL": "tp4-1m-mtp",
+    "VLLM_ARVQ_GROUPED_PREFILL": "toggle",
+    "VLLM_NVFP4_P4_MAX_TOKENS": "8"
+  },
+  "method": "One warmup per mode; measured modes alternate off/on. Cold cache forced before every request using unique_cache_salt. One output token, identical token IDs across modes. HTTP wall time includes prefill and first output; no speculative acceptance throughput normalization.",
+  "rows": [
+    {
+      "grouped": false,
+      "warmup": true,
+      "repetition": 0,
+      "prompt_tokens": 4096,
+      "prompt_sha256": "40289dc11f9389c0253a87c0a39c2e7964fecd719bbc534beccc765fba461fb6",
+      "cache_salt": "af49d977-5d3d-469a-90a5-19db0c1e61fc",
+      "request_wall_s": 6.941330804023892,
+      "input_tokens_per_s": 590.0885746038134,
+      "usage": {
+        "prompt_tokens": 4096,
+        "total_tokens": 4097,
+        "completion_tokens": 1,
+        "prompt_tokens_details": null
+      },
+      "response": {
+        "id": "cmpl-915d799eeffd6b6e",
+        "object": "text_completion",
+        "created": 1789376854,
+        "model": "jarrelscy/GLM-5.3-Vision-NVFP4-ARVQ-hybrid",
+        "choices": [
+          {
+            "index": 0,
+            "text": "5",
+            "logprobs": null,
+            "finish_reason": "length",
+            "stop_reason": null,
+            "token_ids": null,
+            "prompt_logprobs": null,
+            "prompt_token_ids": null,
+            "routed_experts": null
+          }
+        ],
+        "service_tier": null,
+        "system_fingerprint": "vllm-0.23.1rc1.dev916+g3e3c9129c-tp4-d7725f91",
+        "usage": {
+          "prompt_tokens": 4096,
+          "total_tokens": 4097,
+          "completion_tokens": 1,
+          "prompt_tokens_details": null
+        },
+        "kv_transfer_params": null
+      }
+    },
+    {
+      "grouped": true,
+      "warmup": true,
+      "repetition": 0,
+      "prompt_tokens": 4096,
+      "prompt_sha256": "40289dc11f9389c0253a87c0a39c2e7964fecd719bbc534beccc765fba461fb6",
+      "cache_salt": "1abd689e-923d-4f0d-bb24-094a2f1429fc",
+      "request_wall_s": 4.599568940233439,
+      "input_tokens_per_s": 890.5182318654665,
+      "usage": {
+        "prompt_tokens": 4096,
+        "total_tokens": 4097,
+        "completion_tokens": 1,
+        "prompt_tokens_details": null
+      },
+      "response": {
+        "id": "cmpl-bf72a954e4fbd365",
+        "object": "text_completion",
+        "created": 1789376861,
+        "model": "jarrelscy/GLM-5.3-Vision-NVFP4-ARVQ-hybrid",
+        "choices": [
+          {
+            "index": 0,
+            "text": "5",
+            "logprobs": null,
+            "finish_reason": "length",
+            "stop_reason": null,
+            "token_ids": null,
+            "prompt_logprobs": null,
+            "prompt_token_ids": null,
+            "routed_experts": null
+          }
+        ],
+        "service_tier": null,
+        "system_fingerprint": "vllm-0.23.1rc1.dev916+g3e3c9129c-tp4-d7725f91",
+        "usage": {
+          "prompt_tokens": 4096,
+          "total_tokens": 4097,
+          "completion_tokens": 1,
+          "prompt_tokens_details": null
+        },
+        "kv_transfer_params": null
+      }
+    },
+    {
+      "grouped": false,
+      "warmup": false,
+      "repetition": 0,
+      "prompt_tokens": 4096,
+      "prompt_sha256": "40289dc11f9389c0253a87c0a39c2e7964fecd719bbc534beccc765fba461fb6",
+      "cache_salt": "7fbba965-fcdc-4ea9-a197-1988e52f88bf",
+      "request_wall_s": 6.982465046923608,
+      "input_tokens_per_s": 586.6123170648236,
+      "usage": {
+        "prompt_tokens": 4096,
+        "total_tokens": 4097,
+        "completion_tokens": 1,
+        "prompt_tokens_details": null
+      },
+      "response": {
+        "id": "cmpl-82d98f7f25004485",
+        "object": "text_completion",
+        "created": 1789376866,
+        "model": "jarrelscy/GLM-5.3-Vision-NVFP4-ARVQ-hybrid",
+        "choices": [
+          {
+            "index": 0,
+            "text": "5",
+            "logprobs": null,
+            "finish_reason": "length",
+            "stop_reason": null,
+            "token_ids": null,
+            "prompt_logprobs": null,
+            "prompt_token_ids": null,
+            "routed_experts": null
+          }
+        ],
+        "service_tier": null,
+        "system_fingerprint": "vllm-0.23.1rc1.dev916+g3e3c9129c-tp4-d7725f91",
+        "usage": {
+          "prompt_tokens": 4096,
+          "total_tokens": 4097,
+          "completion_tokens": 1,
+          "prompt_tokens_details": null
+        },
+        "kv_transfer_params": null
+      }
+    },
+    {
+      "grouped": true,
+      "warmup": false,
+      "repetition": 0,
+      "prompt_tokens": 4096,
+      "prompt_sha256": "40289dc11f9389c0253a87c0a39c2e7964fecd719bbc534beccc765fba461fb6",
+      "cache_salt": "df0610e8-b81a-41f7-a9c0-d545247a3294",
+      "request_wall_s": 4.658178194891661,
+      "input_tokens_per_s": 879.3137206498094,
+      "usage": {
+        "prompt_tokens": 4096,
+        "total_tokens": 4097,
+        "completion_tokens": 1,
+        "prompt_tokens_details": null
+      },
+      "response": {
+        "id": "cmpl-b73fb1fdba94b5e2",
+        "object": "text_completion",
+        "created": 1789376873,
+        "model": "jarrelscy/GLM-5.3-Vision-NVFP4-ARVQ-hybrid",
+        "choices": [
+          {
+            "index": 0,
+            "text": "5",
+            "logprobs": null,
+            "finish_reason": "length",
+            "stop_reason": null,
+            "token_ids": null,
+            "prompt_logprobs": null,
+            "prompt_token_ids": null,
+            "routed_experts": null
+          }
+        ],
+        "service_tier": null,
+        "system_fingerprint": "vllm-0.23.1rc1.dev916+g3e3c9129c-tp4-d7725f91",
+        "usage": {
+          "prompt_tokens": 4096,
+          "total_tokens": 4097,
+          "completion_tokens": 1,
+          "prompt_tokens_details": null
+        },
+        "kv_transfer_params": null
+      }
+    },
+    {
+      "grouped": false,
+      "warmup": false,
+      "repetition": 1,
+      "prompt_tokens": 4096,
+      "prompt_sha256": "40289dc11f9389c0253a87c0a39c2e7964fecd719bbc534beccc765fba461fb6",
+      "cache_salt": "b5f0505f-26ca-4d06-875d-02cb0f6d935f",
+      "request_wall_s": 7.190359274856746,
+      "input_tokens_per_s": 569.6516465210433,
+      "usage": {
+        "prompt_tokens": 4096,
+        "total_tokens": 4097,
+        "completion_tokens": 1,
+        "prompt_tokens_details": null
+      },
+      "response": {
+        "id": "cmpl-81a72a987b1f7a53",
+        "object": "text_completion",
+        "created": 1789376878,
+        "model": "jarrelscy/GLM-5.3-Vision-NVFP4-ARVQ-hybrid",
+        "choices": [
+          {
+            "index": 0,
+            "text": "5",
+            "logprobs": null,
+            "finish_reason": "length",
+            "stop_reason": null,
+            "token_ids": null,
+            "prompt_logprobs": null,
+            "prompt_token_ids": null,
+            "routed_experts": null
+          }
+        ],
+        "service_tier": null,
+        "system_fingerprint": "vllm-0.23.1rc1.dev916+g3e3c9129c-tp4-d7725f91",
+        "usage": {
+          "prompt_tokens": 4096,
+          "total_tokens": 4097,
+          "completion_tokens": 1,
+          "prompt_tokens_details": null
+        },
+        "kv_transfer_params": null
+      }
+    },
+    {
+      "grouped": true,
+      "warmup": false,
+      "repetition": 1,
+      "prompt_tokens": 4096,
+      "prompt_sha256": "40289dc11f9389c0253a87c0a39c2e7964fecd719bbc534beccc765fba461fb6",
+      "cache_salt": "bfba2346-bc50-42a9-92dc-a6410fa258a0",
+      "request_wall_s": 4.723685889039189,
+      "input_tokens_per_s": 867.1194690367395,
+      "usage": {
+        "prompt_tokens": 4096,
+        "total_tokens": 4097,
+        "completion_tokens": 1,
+        "prompt_tokens_details": null
+      },
+      "response": {
+        "id": "cmpl-8335f7fcd60b3adb",
+        "object": "text_completion",
+        "created": 1789376885,
+        "model": "jarrelscy/GLM-5.3-Vision-NVFP4-ARVQ-hybrid",
+        "choices": [
+          {
+            "index": 0,
+            "text": "5",
+            "logprobs": null,
+            "finish_reason": "length",
+            "stop_reason": null,
+            "token_ids": null,
+            "prompt_logprobs": null,
+            "prompt_token_ids": null,
+            "routed_experts": null
+          }
+        ],
+        "service_tier": null,
+        "system_fingerprint": "vllm-0.23.1rc1.dev916+g3e3c9129c-tp4-d7725f91",
+        "usage": {
+          "prompt_tokens": 4096,
+          "total_tokens": 4097,
+          "completion_tokens": 1,
+          "prompt_tokens_details": null
+        },
+        "kv_transfer_params": null
+      }
+    },
+    {
+      "grouped": false,
+      "warmup": false,
+      "repetition": 2,
+      "prompt_tokens": 4096,
+      "prompt_sha256": "40289dc11f9389c0253a87c0a39c2e7964fecd719bbc534beccc765fba461fb6",
+      "cache_salt": "b2632a05-e57f-4ca7-9947-4471b159f910",
+      "request_wall_s": 7.403462686110288,
+      "input_tokens_per_s": 553.254628767772,
+      "usage": {
+        "prompt_tokens": 4096,
+        "total_tokens": 4097,
+        "completion_tokens": 1,
+        "prompt_tokens_details": null
+      },
+      "response": {
+        "id": "cmpl-93077cf1fa9d1325",
+        "object": "text_completion",
+        "created": 1789376890,
+        "model": "jarrelscy/GLM-5.3-Vision-NVFP4-ARVQ-hybrid",
+        "choices": [
+          {
+            "index": 0,
+            "text": "5",
+            "logprobs": null,
+            "finish_reason": "length",
+            "stop_reason": null,
+            "token_ids": null,
+            "prompt_logprobs": null,
+            "prompt_token_ids": null,
+            "routed_experts": null
+          }
+        ],
+        "service_tier": null,
+        "system_fingerprint": "vllm-0.23.1rc1.dev916+g3e3c9129c-tp4-d7725f91",
+        "usage": {
+          "prompt_tokens": 4096,
+          "total_tokens": 4097,
+          "completion_tokens": 1,
+          "prompt_tokens_details": null
+        },
+        "kv_transfer_params": null
+      }
+    },
+    {
+      "grouped": true,
+      "warmup": false,
+      "repetition": 2,
+      "prompt_tokens": 4096,
+      "prompt_sha256": "40289dc11f9389c0253a87c0a39c2e7964fecd719bbc534beccc765fba461fb6",
+      "cache_salt": "705e2852-82a8-4ee0-8b9d-b8ffc721a70b",
+      "request_wall_s": 4.789532561786473,
+      "input_tokens_per_s": 855.1982781535181,
+      "usage": {
+        "prompt_tokens": 4096,
+        "total_tokens": 4097,
+        "completion_tokens": 1,
+        "prompt_tokens_details": null
+      },
+      "response": {
+        "id": "cmpl-a6e109862adeea9b",
+        "object": "text_completion",
+        "created": 1789376897,
+        "model": "jarrelscy/GLM-5.3-Vision-NVFP4-ARVQ-hybrid",
+        "choices": [
+          {
+            "index": 0,
+            "text": "5",
+            "logprobs": null,
+            "finish_reason": "length",
+            "stop_reason": null,
+            "token_ids": null,
+            "prompt_logprobs": null,
+            "prompt_token_ids": null,
+            "routed_experts": null
+          }
+        ],
+        "service_tier": null,
+        "system_fingerprint": "vllm-0.23.1rc1.dev916+g3e3c9129c-tp4-d7725f91",
+        "usage": {
+          "prompt_tokens": 4096,
+          "total_tokens": 4097,
+          "completion_tokens": 1,
+          "prompt_tokens_details": null
+        },
+        "kv_transfer_params": null
+      }
+    }
+  ],
+  "cache_method": "unique_cache_salt",
+  "summary": [
+    {
+      "prompt_tokens": 4096,
+      "grouped": false,
+      "mean_wall_s": 7.19209566929688,
+      "individual_wall_s": [
+        6.982465046923608,
+        7.190359274856746,
+        7.403462686110288
+      ]
+    },
+    {
+      "prompt_tokens": 4096,
+      "grouped": true,
+      "mean_wall_s": 4.723798881905775,
+      "individual_wall_s": [
+        4.658178194891661,
+        4.723685889039189,
+        4.789532561786473
+      ]
+    },
+    {
+      "prompt_tokens": 4096,
+      "grouped_speedup": 1.5225236825483335
+    }
+  ],
+  "final_gate": "on"
+}

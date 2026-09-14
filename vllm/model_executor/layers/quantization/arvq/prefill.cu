@@ -1,0 +1,77 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: Copyright contributors to the vLLM project
+#include <cuda_bf16.h>
+#include <cuda_fp16.h>
+#include <cuda_runtime.h>
+#include <stdint.h>
+
+__device__ __forceinline__ float fp4(unsigned code) {
+  unsigned magnitude = code & 7;
+  float value = magnitude < 2
+                    ? magnitude * .5f
+                    : (1.f + .5f * (magnitude & 1)) *
+                          __uint_as_float(((magnitude >> 1) + 126) << 23);
+  return code & 8 ? -value : value;
+}
+
+template <bool FP16>
+__global__ void arvq_dequant_kernel(const unsigned* packed,
+                                    const unsigned* codebooks,
+                                    const unsigned char* scales, float global,
+                                    void* output, int N, int K) {
+  __shared__ unsigned lut[384];
+  for (int i = threadIdx.x; i < 384; i += blockDim.x) lut[i] = codebooks[i];
+  __syncthreads();
+  int64_t index = (int64_t)blockIdx.x * blockDim.x + threadIdx.x;
+  if (index >= (int64_t)N * (K / 8)) return;
+  int row = index / (K / 8), col = (index % (K / 8)) * 8, G = K / 64;
+  int j = (row % 16) / 8 + 2 * ((col % 64) / 32);
+  int lane = (row % 8) * 4 + (col % 32) / 8;
+  int bit = (j * 32 + lane) * 15;
+  const unsigned* tile = packed + ((int64_t)(row / 16) * G + col / 64) * 60;
+  unsigned pair = __funnelshift_r(tile[bit / 32], tile[bit / 32 + 1], bit % 32);
+  unsigned first = lut[pair & 255], second = lut[256 + ((pair >> 8) & 127)];
+  unsigned scale =
+      scales[((int64_t)(row / 16) * (K / 128) + col / 128) * 16 + row % 16];
+  unsigned exponent = (scale >> 3) & 15, mantissa = scale & 7;
+  float block_scale =
+      exponent == 0
+          ? mantissa * 0x1p-9f
+          : (1.f + mantissa * .125f) * __uint_as_float((exponent + 120) << 23);
+  uint16_t values[8];
+#pragma unroll
+  for (int i = 0; i < 8; i++) {
+    float value = fp4((first >> (4 * i)) & 15) + fp4((second >> (4 * i)) & 15);
+    float scaled = value * block_scale * global;
+    if constexpr (FP16)
+      values[i] = __half_as_ushort(__float2half_rn(scaled));
+    else
+      values[i] = __bfloat16_as_ushort(__float2bfloat16_rn(scaled));
+  }
+  reinterpret_cast<uint4*>(output)[index] = *reinterpret_cast<uint4*>(values);
+}
+
+// One expert: packed u32[N/16,K/64,60]+1 readable guard;
+// codebooks u32[384], scales u8[N/16,K/128,16], output bf16[N,K].
+extern "C" int arvq_dequant(const void* packed, const void* codebooks,
+                            const void* scales, float global, void* output,
+                            int N, int K, void* stream) {
+  if (N <= 0 || K <= 0 || N % 16 || K % 128) return (int)cudaErrorInvalidValue;
+  arvq_dequant_kernel<false>
+      <<<((int64_t)N * (K / 8) + 255) / 256, 256, 0, (cudaStream_t)stream>>>(
+          (const unsigned*)packed, (const unsigned*)codebooks,
+          (const unsigned char*)scales, global, output, N, K);
+  return (int)cudaGetLastError();
+}
+
+// Same ABI, with output f16[N,K] to match native activation precision.
+extern "C" int arvq_dequant_fp16(const void* packed, const void* codebooks,
+                                 const void* scales, float global, void* output,
+                                 int N, int K, void* stream) {
+  if (N <= 0 || K <= 0 || N % 16 || K % 128) return (int)cudaErrorInvalidValue;
+  arvq_dequant_kernel<true>
+      <<<((int64_t)N * (K / 8) + 255) / 256, 256, 0, (cudaStream_t)stream>>>(
+          (const unsigned*)packed, (const unsigned*)codebooks,
+          (const unsigned char*)scales, global, output, N, K);
+  return (int)cudaGetLastError();
+}

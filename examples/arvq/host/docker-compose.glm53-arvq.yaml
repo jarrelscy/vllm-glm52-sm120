@@ -1,5 +1,5 @@
-# Tested ARVQ + dense P4 + MTP profile. Loaded by switch.sh for glm5.3-hybrid-1m.
-# Current full checkpoint is unrotated; H128 rotation artifacts remain prototypes.
+# Tested ARVQ + grouped prefill + dense P4 + MTP profile. Loaded by switch.sh for glm5.3-hybrid-1m.
+# Rotation is retired; production and active tuning use unrotated ARVQ.
 services:
   vllm-glm5.3-hybrid-1m:
     environment:
@@ -7,6 +7,7 @@ services:
       MODEL_DIR: /data/models/jarrelscy/GLM-5.3-Vision-NVFP4-ARVQ-hybrid
       SERVED_NAME: jarrelscy/GLM-5.3-Vision-NVFP4-ARVQ-hybrid
       VLLM_ARVQ_CHUNK_TOKENS: '128'
+      VLLM_ARVQ_GROUPED_PREFILL: '1'
       VLLM_MTP_INDEX_SHARE: '1'
       GLM_MOE_LANE_ROWS: '1'
       GLM_NVFP4_LUT256: '1'
@@ -44,7 +45,7 @@ services:
     - /home/jarrelscy/glm52/vllm-arvq-serving/vllm/distributed/device_communicators/cuda_communicator.py:/opt/vllm/vllm/distributed/device_communicators/cuda_communicator.py:ro
     - /home/jarrelscy/glm52/vllm-arvq-serving/vllm/distributed/parallel_state.py:/opt/vllm/vllm/distributed/parallel_state.py:ro
     - /home/jarrelscy/glm52/vllm-arvq-serving/vllm/model_executor/layers/pcie_fused_ar_rms.py:/opt/vllm/vllm/model_executor/layers/pcie_fused_ar_rms.py:ro
-    image: glm53-arvq-sm120:dense-p4-m8
+    image: glm53-arvq-sm120:grouped-prefill
     command:
     - --trust-remote-code
     - --reasoning-parser

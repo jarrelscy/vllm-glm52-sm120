@@ -1,0 +1,41 @@
+{
+  "prefill": [
+    {
+      "input_tokens": 1024,
+      "off_mean_s": 1.8283842803599935,
+      "on_mean_s": 1.8330724723637104,
+      "speedup": 0.9974424404520834,
+      "latency_reduction_pct": -0.25641174309340986
+    },
+    {
+      "input_tokens": 4096,
+      "off_mean_s": 7.19209566929688,
+      "on_mean_s": 4.723798881905775,
+      "speedup": 1.5225236825483335,
+      "latency_reduction_pct": 34.319576669819426
+    },
+    {
+      "input_tokens": 8192,
+      "off_mean_s": 15.594703910406679,
+      "on_mean_s": 9.769489997376999,
+      "speedup": 1.5962659171147815,
+      "latency_reduction_pct": 37.35379617654934
+    }
+  ],
+  "decode": [
+    {
+      "concurrency": 1,
+      "aggregate_output_tps": 133.40258668088632,
+      "previous_aggregate_output_tps": 133.196,
+      "mean_per_request_decode_tps": 141.8319960733165
+    },
+    {
+      "concurrency": 4,
+      "aggregate_output_tps": 264.2026628246524,
+      "previous_aggregate_output_tps": 264.214,
+      "mean_per_request_decode_tps": 72.94538050241123
+    }
+  ],
+  "status": "healthy; grouped toggle ON",
+  "method": "One warmup per mode then3 alternating OFF/ON measured pairs per prompt length, unique cache_salt everyrequest; input token IDs identical between modes; one outputtoken.1024truncates saved4096,8192repeats twice. Decode1warm+2measured batches,136actualinput512output/request,C1/C4."
+}

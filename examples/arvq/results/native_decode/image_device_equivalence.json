@@ -1,0 +1,126 @@
+[
+  {
+    "library": "prefill.so",
+    "whole_device_dump_identical": true,
+    "resource_metadata_identical": true,
+    "device_dump_sha256": "69f45d5b329e9fb4fd411ad5180464bcf93ceb440b4dccc06d8741cd3457f214",
+    "functions": [
+      {
+        "name": "_Z19arvq_dequant_kernelILb1ELi8EEvPKjS1_PKhfPvii",
+        "instruction_count": 360,
+        "instructions_and_encoding_identical": true
+      },
+      {
+        "name": "_Z19arvq_dequant_kernelILb0ELi8EEvPKjS1_PKhfPvii",
+        "instruction_count": 360,
+        "instructions_and_encoding_identical": true
+      },
+      {
+        "name": "_Z19arvq_dequant_kernelILb1ELi7EEvPKjS1_PKhfPvii",
+        "instruction_count": 368,
+        "instructions_and_encoding_identical": true
+      },
+      {
+        "name": "_Z19arvq_dequant_kernelILb0ELi7EEvPKjS1_PKhfPvii",
+        "instruction_count": 368,
+        "instructions_and_encoding_identical": true
+      }
+    ]
+  },
+  {
+    "library": "decode_gather.so",
+    "whole_device_dump_identical": true,
+    "resource_metadata_identical": true,
+    "device_dump_sha256": "037f905f0d1a5c1b614b30b8cb54430c1808cfea5dff9f8f4c663af5c3577e2b",
+    "functions": [
+      {
+        "name": "_Z26arvq_dequant_gather_kernelILb1ELi8EEvPKjS1_PKhfPviiPK13__nv_bfloat16PKlP6__halfiii",
+        "instruction_count": 488,
+        "instructions_and_encoding_identical": true
+      },
+      {
+        "name": "_Z26arvq_dequant_gather_kernelILb1ELi7EEvPKjS1_PKhfPviiPK13__nv_bfloat16PKlP6__halfiii",
+        "instruction_count": 496,
+        "instructions_and_encoding_identical": true
+      },
+      {
+        "name": "_Z19arvq_dequant_kernelILb1ELi8EEvPKjS1_PKhfPvii",
+        "instruction_count": 360,
+        "instructions_and_encoding_identical": true
+      },
+      {
+        "name": "_Z19arvq_dequant_kernelILb0ELi8EEvPKjS1_PKhfPvii",
+        "instruction_count": 360,
+        "instructions_and_encoding_identical": true
+      },
+      {
+        "name": "_Z19arvq_dequant_kernelILb1ELi7EEvPKjS1_PKhfPvii",
+        "instruction_count": 368,
+        "instructions_and_encoding_identical": true
+      },
+      {
+        "name": "_Z19arvq_dequant_kernelILb0ELi7EEvPKjS1_PKhfPvii",
+        "instruction_count": 368,
+        "instructions_and_encoding_identical": true
+      }
+    ]
+  },
+  {
+    "library": "prefill_wide.so",
+    "whole_device_dump_identical": true,
+    "resource_metadata_identical": true,
+    "device_dump_sha256": "eb67129d83733988a29e385d05aef4d9507f1c9364b8cb3205367bbe5399949c",
+    "functions": [
+      {
+        "name": "_Z11wide_kernelILb0ELi1EEvPKjS1_S1_S1_PKiS3_Pfiiii",
+        "instruction_count": 512,
+        "instructions_and_encoding_identical": true
+      },
+      {
+        "name": "_Z11wide_kernelILb1ELi1EEvPKjS1_S1_S1_PKiS3_Pfiiii",
+        "instruction_count": 488,
+        "instructions_and_encoding_identical": true
+      },
+      {
+        "name": "_Z11wide_kernelILb0ELi4EEvPKjS1_S1_S1_PKiS3_Pfiiii",
+        "instruction_count": 536,
+        "instructions_and_encoding_identical": true
+      },
+      {
+        "name": "_Z13hybrid_reducePKfPfPKiS3_S0_fiiii",
+        "instruction_count": 344,
+        "instructions_and_encoding_identical": true
+      },
+      {
+        "name": "_Z11pack_planesPK6__halfPjPhiiiPKiS5_Pi",
+        "instruction_count": 424,
+        "instructions_and_encoding_identical": true
+      },
+      {
+        "name": "_Z15register_kernelILi8EEvPKjS1_S1_S1_PKiS3_Pfiiii",
+        "instruction_count": 2184,
+        "instructions_and_encoding_identical": true
+      },
+      {
+        "name": "_Z15register_reducePKfPfPKiS3_S0_fiiii",
+        "instruction_count": 344,
+        "instructions_and_encoding_identical": true
+      },
+      {
+        "name": "_Z20register_pack_planesPK6__halfPjPhiiiPKiS5_Pi",
+        "instruction_count": 424,
+        "instructions_and_encoding_identical": true
+      },
+      {
+        "name": "_Z24shared_activation_kernelILi8EEvPKjS1_S1_S1_PKiS3_Pfiiii",
+        "instruction_count": 2152,
+        "instructions_and_encoding_identical": true
+      },
+      {
+        "name": "_Z24shared_activation_reducePKfPfPKiS3_S0_fiiii",
+        "instruction_count": 344,
+        "instructions_and_encoding_identical": true
+      }
+    ]
+  }
+]

@@ -42,6 +42,12 @@ case at 14.217 versus 13.065 ms. Both repeat cases remained bitwise and peak-equ
 Raw observations, including variability, are retained in the JSON files.
 
 CPU compilation of both production libraries passed with every legacy export
-present. Scoped pre-commit hooks passed. The expanded CUDA regression tests
-were prepared after the isolated GPU campaign and require a later GPU lease;
-they must not be reported as already executed against the rebuilt libraries.
+present. Scoped pre-commit hooks passed. The rebuilt native libraries subsequently
+passed all eight expanded oracle/graph cases. Combined rebuilt native and shared
+hot kernels matched all nine complete MLP cases and allocation peaks against the
+qualified prototypes. The single integration timing round is not a speed claim.
+All three image-built libraries have byte-identical device SASS and resource
+dumps to those tested binaries. Whole ELF hashes differ; host assembly was
+not compared by that device-code audit.
+See `rebuilt_gpu_oracle.json`, `rebuilt_combined_mlp.json`, and
+`image_device_equivalence.json`. Whole-model image qualification is separate.

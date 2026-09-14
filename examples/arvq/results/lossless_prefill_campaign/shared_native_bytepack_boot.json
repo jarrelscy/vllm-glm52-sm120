@@ -1,0 +1,519 @@
+{
+  "scope": "Shared-eight hot, native cold reconstruction, exact6/7-byte DCP exchange. Fresh UUID cold prefixes, same initial8x8 weights. Cross-boot observations, not isolated attribution of each change. 3000 target not achieved. First request initialization retained separately.",
+  "container_id": "38e483dc0547d79231b55444a778a78123bc1c7fceb053d8b3fe948a6a7ce77f",
+  "configuration": {
+    "context_limit": 1048576,
+    "request_slots": 8,
+    "kv_token_capacity": 1283584,
+    "mtp_draft_tokens": 3,
+    "vision": true,
+    "lmcache": true,
+    "all_four_cache_ranks_checked": true
+  },
+  "headline": [
+    {
+      "case": "cold8k_1",
+      "valid": true,
+      "gpu_cache_hits": 0.0,
+      "external_cache_hits": 0.0,
+      "cold_aggregate_prefill_wall_tps": 1246.5505869610256,
+      "server_prefill_histogram_tps": 1250.1585115877049,
+      "steady_decode": {
+        "valid": false,
+        "reason": "No common decode interval"
+      },
+      "speculative": {
+        "drafts": 0.0,
+        "accepted": 0.0,
+        "proposed": 0.0,
+        "expected_emitted_per_step": null,
+        "acceptance_rate": null
+      }
+    },
+    {
+      "case": "cold8k_2",
+      "valid": true,
+      "gpu_cache_hits": 0.0,
+      "external_cache_hits": 0.0,
+      "cold_aggregate_prefill_wall_tps": 2033.7471405485815,
+      "server_prefill_histogram_tps": 2036.7114717723755,
+      "steady_decode": {
+        "valid": false,
+        "reason": "No common decode interval"
+      },
+      "speculative": {
+        "drafts": 0.0,
+        "accepted": 0.0,
+        "proposed": 0.0,
+        "expected_emitted_per_step": null,
+        "acceptance_rate": null
+      }
+    },
+    {
+      "case": "cold128k",
+      "valid": true,
+      "gpu_cache_hits": 0.0,
+      "external_cache_hits": 0.0,
+      "cold_aggregate_prefill_wall_tps": 1896.889425583712,
+      "server_prefill_histogram_tps": 1898.7282686291435,
+      "steady_decode": {
+        "valid": false,
+        "reason": "No common decode interval"
+      },
+      "speculative": {
+        "drafts": 0.0,
+        "accepted": 0.0,
+        "proposed": 0.0,
+        "expected_emitted_per_step": null,
+        "acceptance_rate": null
+      }
+    },
+    {
+      "case": "decode8k_c1",
+      "valid": true,
+      "gpu_cache_hits": 7680.0,
+      "external_cache_hits": 511.0,
+      "cold_aggregate_prefill_wall_tps": null,
+      "server_prefill_histogram_tps": 89105.47941247572,
+      "steady_decode": {
+        "valid": true,
+        "start_offset_s": 0.09841685649007559,
+        "end_offset_s": 3.6827570777386427,
+        "duration_s": 3.584340221248567,
+        "tokens_per_stream": [
+          511
+        ],
+        "aggregate_decode_tps": 142.56459165642443
+      },
+      "speculative": {
+        "drafts": 129.0,
+        "accepted": 382.0,
+        "proposed": 387.0,
+        "expected_emitted_per_step": 3.9612403100775193,
+        "acceptance_rate": 0.9870801033591732
+      }
+    }
+  ],
+  "matrix": [
+    {
+      "case": "t8192_c1",
+      "input_tokens_per_stream": 8192,
+      "concurrency": 1,
+      "cold_file": "t8192_c1_cold.json",
+      "cold_valid": true,
+      "warm_file": "t8192_c1_warm.json",
+      "warm_valid": true,
+      "steady_decode": {
+        "valid": true,
+        "start_offset_s": 0.07054124120622873,
+        "end_offset_s": 3.6760536152869463,
+        "duration_s": 3.6055123740807176,
+        "tokens_per_stream": [
+          511
+        ],
+        "aggregate_decode_tps": 141.72742927564838
+      },
+      "cold_aggregate_prefill_wall_tps": 2011.27074117406,
+      "server_prefill_histogram_tps": 2015.3415377351137,
+      "per_request_decode_tps": [
+        141.72742927564838
+      ]
+    },
+    {
+      "case": "t8192_c4",
+      "input_tokens_per_stream": 8192,
+      "concurrency": 4,
+      "cold_file": "t8192_c4_cold.json",
+      "cold_valid": true,
+      "warm_file": "t8192_c4_warm.json",
+      "warm_valid": true,
+      "steady_decode": {
+        "valid": true,
+        "start_offset_s": 0.1639950666576624,
+        "end_offset_s": 6.601075284183025,
+        "duration_s": 6.437080217525363,
+        "tokens_per_stream": [
+          506,
+          503,
+          507,
+          504
+        ],
+        "aggregate_decode_tps": 313.80687077666374
+      },
+      "cold_aggregate_prefill_wall_tps": 1978.651608823473,
+      "server_prefill_histogram_tps": 1435.7408990216375,
+      "per_request_decode_tps": [
+        78.76058706071602,
+        78.75259470293403,
+        78.340786879734,
+        78.76563210763459
+      ]
+    },
+    {
+      "case": "t8192_c8",
+      "input_tokens_per_stream": 8192,
+      "concurrency": 8,
+      "cold_file": "t8192_c8_cold.json",
+      "cold_valid": true,
+      "warm_file": "t8192_c8_warm.json",
+      "warm_valid": true,
+      "steady_decode": {
+        "valid": true,
+        "start_offset_s": 0.18392546102404594,
+        "end_offset_s": 10.324915057048202,
+        "duration_s": 10.140989596024156,
+        "tokens_per_stream": [
+          507,
+          501,
+          501,
+          506,
+          503,
+          504,
+          506,
+          502
+        ],
+        "aggregate_decode_tps": 397.39711414160104
+      },
+      "cold_aggregate_prefill_wall_tps": 1920.8628948733563,
+      "server_prefill_histogram_tps": 1332.477977088934,
+      "per_request_decode_tps": [
+        49.89141307563579,
+        49.587759461406606,
+        49.5893908573696,
+        49.987213114918,
+        49.98422300929484,
+        49.97942077830448,
+        49.98022165211635,
+        49.58634892933088
+      ]
+    },
+    {
+      "case": "t16384_c1",
+      "input_tokens_per_stream": 16384,
+      "concurrency": 1,
+      "cold_file": "t16384_c1_cold.json",
+      "cold_valid": true,
+      "warm_file": "t16384_c1_warm.json",
+      "warm_valid": true,
+      "steady_decode": {
+        "valid": true,
+        "start_offset_s": 0.084220040589571,
+        "end_offset_s": 3.6638545896857977,
+        "duration_s": 3.5796345490962267,
+        "tokens_per_stream": [
+          511
+        ],
+        "aggregate_decode_tps": 142.7520024715974
+      },
+      "cold_aggregate_prefill_wall_tps": 1904.5259445223153,
+      "server_prefill_histogram_tps": 1906.760799018375,
+      "per_request_decode_tps": [
+        142.7520024715974
+      ]
+    },
+    {
+      "case": "t32768_c1",
+      "input_tokens_per_stream": 32768,
+      "concurrency": 1,
+      "cold_file": "t32768_c1_cold.json",
+      "cold_valid": true,
+      "warm_file": "t32768_c1_warm.json",
+      "warm_valid": true,
+      "steady_decode": {
+        "valid": true,
+        "start_offset_s": 0.08928326889872551,
+        "end_offset_s": 3.6804675422608852,
+        "duration_s": 3.5911842733621597,
+        "tokens_per_stream": [
+          511
+        ],
+        "aggregate_decode_tps": 142.2928931245259
+      },
+      "cold_aggregate_prefill_wall_tps": 1902.1341794957666,
+      "server_prefill_histogram_tps": 1904.2699112663731,
+      "per_request_decode_tps": [
+        142.2928931245259
+      ]
+    }
+  ],
+  "fixed_reference_decode": [
+    {
+      "case": "order_0_1_2_3",
+      "valid": true,
+      "gpu_cache_hits": 0.0,
+      "external_cache_hits": 32764.0,
+      "cold_aggregate_prefill_wall_tps": null,
+      "server_prefill_histogram_tps": 64602.396302044,
+      "steady_decode": {
+        "valid": true,
+        "start_offset_s": 0.16445701196789742,
+        "end_offset_s": 6.438956266269088,
+        "duration_s": 6.27449925430119,
+        "tokens_per_stream": [
+          507,
+          504,
+          503,
+          510
+        ],
+        "aggregate_decode_tps": 322.57554236101646
+      },
+      "speculative": {
+        "drafts": 520.0,
+        "accepted": 1531.0,
+        "proposed": 1560.0,
+        "expected_emitted_per_step": 3.9442307692307694,
+        "acceptance_rate": 0.9814102564102564
+      },
+      "output_comparisons": [
+        {
+          "case": "order_0_1_2_3",
+          "comparisons": [
+            {
+              "original": 0,
+              "equal": true,
+              "first_divergence": null,
+              "expected_first": [
+                13,
+                63957,
+                12427,
+                4625
+              ],
+              "actual_first": [
+                13,
+                63957,
+                12427,
+                4625
+              ]
+            },
+            {
+              "original": 1,
+              "equal": true,
+              "first_divergence": null,
+              "expected_first": [
+                12427,
+                4625,
+                50804,
+                323
+              ],
+              "actual_first": [
+                12427,
+                4625,
+                50804,
+                323
+              ]
+            },
+            {
+              "original": 2,
+              "equal": true,
+              "first_divergence": null,
+              "expected_first": [
+                30386,
+                13,
+                63957,
+                12427
+              ],
+              "actual_first": [
+                30386,
+                13,
+                63957,
+                12427
+              ]
+            },
+            {
+              "original": 3,
+              "equal": true,
+              "first_divergence": null,
+              "expected_first": [
+                63957,
+                12427,
+                4625,
+                50804
+              ],
+              "actual_first": [
+                63957,
+                12427,
+                4625,
+                50804
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": "order_0_1_2_3_0_1_2_3",
+      "valid": true,
+      "gpu_cache_hits": 0.0,
+      "external_cache_hits": 65528.0,
+      "cold_aggregate_prefill_wall_tps": null,
+      "server_prefill_histogram_tps": 45887.66556100025,
+      "steady_decode": {
+        "valid": true,
+        "start_offset_s": 0.23412359599024057,
+        "end_offset_s": 9.953641862608492,
+        "duration_s": 9.719518266618252,
+        "tokens_per_stream": [
+          507,
+          504,
+          503,
+          502,
+          506,
+          508,
+          503,
+          502
+        ],
+        "aggregate_decode_tps": 415.1440317632031
+      },
+      "speculative": {
+        "drafts": 1042.0,
+        "accepted": 3064.0,
+        "proposed": 3126.0,
+        "expected_emitted_per_step": 3.9404990403071016,
+        "acceptance_rate": 0.9801663467690339
+      },
+      "output_comparisons": [
+        {
+          "case": "order_0_1_2_3_0_1_2_3",
+          "comparisons": [
+            {
+              "original": 0,
+              "equal": true,
+              "first_divergence": null,
+              "expected_first": [
+                13,
+                63957,
+                12427,
+                4625
+              ],
+              "actual_first": [
+                13,
+                63957,
+                12427,
+                4625
+              ]
+            },
+            {
+              "original": 1,
+              "equal": true,
+              "first_divergence": null,
+              "expected_first": [
+                12427,
+                4625,
+                50804,
+                323
+              ],
+              "actual_first": [
+                12427,
+                4625,
+                50804,
+                323
+              ]
+            },
+            {
+              "original": 2,
+              "equal": true,
+              "first_divergence": null,
+              "expected_first": [
+                30386,
+                13,
+                63957,
+                12427
+              ],
+              "actual_first": [
+                30386,
+                13,
+                63957,
+                12427
+              ]
+            },
+            {
+              "original": 3,
+              "equal": true,
+              "first_divergence": null,
+              "expected_first": [
+                63957,
+                12427,
+                4625,
+                50804
+              ],
+              "actual_first": [
+                63957,
+                12427,
+                4625,
+                50804
+              ]
+            },
+            {
+              "original": 0,
+              "equal": true,
+              "first_divergence": null,
+              "expected_first": [
+                13,
+                63957,
+                12427,
+                4625
+              ],
+              "actual_first": [
+                13,
+                63957,
+                12427,
+                4625
+              ]
+            },
+            {
+              "original": 1,
+              "equal": true,
+              "first_divergence": null,
+              "expected_first": [
+                12427,
+                4625,
+                50804,
+                323
+              ],
+              "actual_first": [
+                12427,
+                4625,
+                50804,
+                323
+              ]
+            },
+            {
+              "original": 2,
+              "equal": true,
+              "first_divergence": null,
+              "expected_first": [
+                30386,
+                13,
+                63957,
+                12427
+              ],
+              "actual_first": [
+                30386,
+                13,
+                63957,
+                12427
+              ]
+            },
+            {
+              "original": 3,
+              "equal": true,
+              "first_divergence": null,
+              "expected_first": [
+                63957,
+                12427,
+                4625,
+                50804
+              ],
+              "actual_first": [
+                63957,
+                12427,
+                4625,
+                50804
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

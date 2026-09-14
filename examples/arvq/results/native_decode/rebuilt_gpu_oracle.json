@@ -1,0 +1,50 @@
+[
+  {
+    "dtype": "torch.float16",
+    "bits": 15,
+    "case": "random",
+    "bits_and_graph_pass": true
+  },
+  {
+    "dtype": "torch.float16",
+    "bits": 15,
+    "case": "all_fp4_pairs",
+    "bits_and_graph_pass": true
+  },
+  {
+    "dtype": "torch.float16",
+    "bits": 16,
+    "case": "random",
+    "bits_and_graph_pass": true
+  },
+  {
+    "dtype": "torch.float16",
+    "bits": 16,
+    "case": "all_fp4_pairs",
+    "bits_and_graph_pass": true
+  },
+  {
+    "dtype": "torch.bfloat16",
+    "bits": 15,
+    "case": "random",
+    "bits_and_graph_pass": true
+  },
+  {
+    "dtype": "torch.bfloat16",
+    "bits": 15,
+    "case": "all_fp4_pairs",
+    "bits_and_graph_pass": true
+  },
+  {
+    "dtype": "torch.bfloat16",
+    "bits": 16,
+    "case": "random",
+    "bits_and_graph_pass": true
+  },
+  {
+    "dtype": "torch.bfloat16",
+    "bits": 16,
+    "case": "all_fp4_pairs",
+    "bits_and_graph_pass": true
+  }
+]

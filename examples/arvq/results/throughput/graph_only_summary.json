@@ -1,0 +1,56 @@
+{
+  "variant": "graphcoverageonly",
+  "image": "glm53-arvq-sm120:dense-p4",
+  "image_id": "sha256:d44d4dfa77316948473a4159f76553a65ed8c628d8a31a6b19ddfed465778b95",
+  "native_dense_max_tokens": "4",
+  "compilation_config": {
+    "mode": 3,
+    "cudagraph_mode": "FULL_AND_PIECEWISE",
+    "compile_sizes": [
+      1
+    ],
+    "cudagraph_capture_sizes": [
+      1,
+      2,
+      4,
+      8,
+      16
+    ]
+  },
+  "rows": [
+    {
+      "concurrency": 1,
+      "baseline_aggregate_tps": 133.7078769867752,
+      "graph_only_aggregate_tps": 133.33575964209712,
+      "gain_percent": -0.27830622478202116,
+      "per_stream_decode_tps_mean": 141.78195186076553,
+      "request_latency_median_s": 3.839802942238748,
+      "all_acceptance_one": true,
+      "all_counter_isolation_passed": true
+    },
+    {
+      "concurrency": 2,
+      "baseline_aggregate_tps": 72.72567119891895,
+      "graph_only_aggregate_tps": 184.80622128758387,
+      "gain_percent": 154.11415012190494,
+      "per_stream_decode_tps_mean": 99.41402247248419,
+      "request_latency_median_s": 5.520920040784404,
+      "all_acceptance_one": true,
+      "all_counter_isolation_passed": true
+    },
+    {
+      "concurrency": 4,
+      "baseline_aggregate_tps": 139.9081450309302,
+      "graph_only_aggregate_tps": 265.3472265698738,
+      "gain_percent": 89.65816930187455,
+      "per_stream_decode_tps_mean": 73.33532896561259,
+      "request_latency_median_s": 7.690894632134587,
+      "all_acceptance_one": true,
+      "all_counter_isolation_passed": true
+    }
+  ],
+  "capture_memory_GiB_per_rank": 0.88,
+  "capture_seconds": 21,
+  "memory_delta": "Earlier MTP capture-allocation log was not retained; no matched numeric delta claimed.",
+  "scope": "Same native_max4 andimage; capture[1,2,4]\u2192[1,2,4,8,16]. Two measured concurrentbatches afteronewarmup. Actualusage/batchwallspan,includeprefill; notsumofperstreamTPS."
+}

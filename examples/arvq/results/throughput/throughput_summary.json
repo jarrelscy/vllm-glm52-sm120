@@ -1,0 +1,572 @@
+{
+  "rows": [
+    {
+      "mtp": "on",
+      "workload": "concurrency",
+      "actual_prompt_tokens": [
+        136
+      ],
+      "concurrency": 1,
+      "measured_batches": 2,
+      "warmup_batches": 1,
+      "aggregate_output_tps_mean": 133.7078769867752,
+      "aggregate_output_tps_pooled": 133.70787328286147,
+      "per_stream_decode_tps_mean": 142.05080149318306,
+      "request_latency_s_median": 3.82912795082666,
+      "ttft_ms_median": 231.78065684624016,
+      "ttft_ms_min": 231.35529085993767,
+      "ttft_ms_max": 232.20602283254266,
+      "accepted_draft_fraction": 1.0,
+      "emitted_per_draft_request_step": 4.0,
+      "all_token_ids_verified": true,
+      "all_counter_isolation_passed": true,
+      "clocks_per_gpu": {
+        "0": {
+          "samples": 38,
+          "sm_mhz_median": 2227.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 274.27394736842103,
+          "temperature_c_max": 76.0,
+          "gpu_util_percent_median": 99.0
+        },
+        "1": {
+          "samples": 38,
+          "sm_mhz_median": 2250.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 251.84,
+          "temperature_c_max": 62.0,
+          "gpu_util_percent_median": 99.0
+        },
+        "2": {
+          "samples": 38,
+          "sm_mhz_median": 2257.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 269.9536842105263,
+          "temperature_c_max": 72.0,
+          "gpu_util_percent_median": 99.0
+        },
+        "3": {
+          "samples": 38,
+          "sm_mhz_median": 2235.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 273.4357894736842,
+          "temperature_c_max": 72.0,
+          "gpu_util_percent_median": 99.0
+        }
+      },
+      "raw_report": "dense_p4_mtp_on_concurrency.json"
+    },
+    {
+      "mtp": "on",
+      "workload": "concurrency",
+      "actual_prompt_tokens": [
+        136
+      ],
+      "concurrency": 2,
+      "measured_batches": 2,
+      "warmup_batches": 1,
+      "aggregate_output_tps_mean": 72.72567119891895,
+      "aggregate_output_tps_pooled": 72.72160419956948,
+      "per_stream_decode_tps_mean": 37.46013396456171,
+      "request_latency_s_median": 14.013815498445183,
+      "ttft_ms_median": 356.20538028888404,
+      "ttft_ms_min": 233.04856475442648,
+      "ttft_ms_max": 539.135126862675,
+      "accepted_draft_fraction": 0.9961089494163424,
+      "emitted_per_draft_request_step": 3.9883268482490273,
+      "all_token_ids_verified": true,
+      "all_counter_isolation_passed": true,
+      "clocks_per_gpu": {
+        "0": {
+          "samples": 141,
+          "sm_mhz_median": 2250.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 186.94617021276596,
+          "temperature_c_max": 80.0,
+          "gpu_util_percent_median": 100.0
+        },
+        "1": {
+          "samples": 141,
+          "sm_mhz_median": 2272.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 168.09460992907802,
+          "temperature_c_max": 67.0,
+          "gpu_util_percent_median": 100.0
+        },
+        "2": {
+          "samples": 141,
+          "sm_mhz_median": 2280.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 176.57581560283688,
+          "temperature_c_max": 76.0,
+          "gpu_util_percent_median": 38.0
+        },
+        "3": {
+          "samples": 141,
+          "sm_mhz_median": 2257.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 183.78326241134752,
+          "temperature_c_max": 75.0,
+          "gpu_util_percent_median": 100.0
+        }
+      },
+      "raw_report": "dense_p4_mtp_on_concurrency.json"
+    },
+    {
+      "mtp": "on",
+      "workload": "concurrency",
+      "actual_prompt_tokens": [
+        136
+      ],
+      "concurrency": 4,
+      "measured_batches": 2,
+      "warmup_batches": 1,
+      "aggregate_output_tps_mean": 139.9081450309302,
+      "aggregate_output_tps_pooled": 139.90709090851428,
+      "per_stream_decode_tps_mean": 37.12736116500096,
+      "request_latency_s_median": 14.597137323813513,
+      "ttft_ms_median": 967.3131857998669,
+      "ttft_ms_min": 237.13686596602201,
+      "ttft_ms_max": 990.7411350868642,
+      "accepted_draft_fraction": 1.0,
+      "emitted_per_draft_request_step": 4.0,
+      "all_token_ids_verified": true,
+      "all_counter_isolation_passed": true,
+      "clocks_per_gpu": {
+        "0": {
+          "samples": 146,
+          "sm_mhz_median": 2197.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 219.25095890410958,
+          "temperature_c_max": 87.0,
+          "gpu_util_percent_median": 100.0
+        },
+        "1": {
+          "samples": 146,
+          "sm_mhz_median": 2227.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 198.33979452054794,
+          "temperature_c_max": 75.0,
+          "gpu_util_percent_median": 100.0
+        },
+        "2": {
+          "samples": 146,
+          "sm_mhz_median": 2212.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 210.89856164383562,
+          "temperature_c_max": 84.0,
+          "gpu_util_percent_median": 47.0
+        },
+        "3": {
+          "samples": 146,
+          "sm_mhz_median": 2205.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 216.27787671232878,
+          "temperature_c_max": 82.0,
+          "gpu_util_percent_median": 100.0
+        }
+      },
+      "raw_report": "dense_p4_mtp_on_concurrency.json"
+    },
+    {
+      "mtp": "on",
+      "workload": "long",
+      "actual_prompt_tokens": [
+        4115
+      ],
+      "concurrency": 1,
+      "measured_batches": 1,
+      "warmup_batches": 0,
+      "aggregate_output_tps_mean": 37.73183875050974,
+      "aggregate_output_tps_pooled": 37.73183875050974,
+      "per_stream_decode_tps_mean": 89.90029573228625,
+      "request_latency_s_median": 13.569086553063244,
+      "ttft_ms_median": 7884.943247307092,
+      "ttft_ms_min": 7884.943247307092,
+      "ttft_ms_max": 7884.943247307092,
+      "accepted_draft_fraction": 0.5115511551155115,
+      "emitted_per_draft_request_step": 2.5346534653465347,
+      "all_token_ids_verified": true,
+      "all_counter_isolation_passed": true,
+      "clocks_per_gpu": {
+        "0": {
+          "samples": 68,
+          "sm_mhz_median": 1485.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 293.06867647058823,
+          "temperature_c_max": 91.0,
+          "gpu_util_percent_median": 100.0
+        },
+        "1": {
+          "samples": 68,
+          "sm_mhz_median": 1901.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 276.58441176470586,
+          "temperature_c_max": 79.0,
+          "gpu_util_percent_median": 100.0
+        },
+        "2": {
+          "samples": 68,
+          "sm_mhz_median": 1822.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 292.13117647058823,
+          "temperature_c_max": 89.0,
+          "gpu_util_percent_median": 100.0
+        },
+        "3": {
+          "samples": 68,
+          "sm_mhz_median": 1807.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 292.93573529411765,
+          "temperature_c_max": 87.0,
+          "gpu_util_percent_median": 100.0
+        }
+      },
+      "raw_report": "dense_p4_mtp_on_long.json"
+    },
+    {
+      "mtp": "on",
+      "workload": "long",
+      "actual_prompt_tokens": [
+        4115
+      ],
+      "concurrency": 4,
+      "measured_batches": 1,
+      "warmup_batches": 0,
+      "aggregate_output_tps_mean": 73.7551056425896,
+      "aggregate_output_tps_pooled": 73.7551056425896,
+      "per_stream_decode_tps_mean": 29.31669717904907,
+      "request_latency_s_median": 26.7069911272265,
+      "ttft_ms_median": 9614.8035840597,
+      "ttft_ms_min": 7966.76238020882,
+      "ttft_ms_max": 9615.123513620347,
+      "accepted_draft_fraction": 0.7005050505050505,
+      "emitted_per_draft_request_step": 3.1015151515151516,
+      "all_token_ids_verified": true,
+      "all_counter_isolation_passed": true,
+      "clocks_per_gpu": {
+        "0": {
+          "samples": 139,
+          "sm_mhz_median": 2182.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 255.47640287769784,
+          "temperature_c_max": 91.0,
+          "gpu_util_percent_median": 100.0
+        },
+        "1": {
+          "samples": 139,
+          "sm_mhz_median": 2212.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 239.36913669064748,
+          "temperature_c_max": 81.0,
+          "gpu_util_percent_median": 100.0
+        },
+        "2": {
+          "samples": 139,
+          "sm_mhz_median": 2212.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 253.76064748201438,
+          "temperature_c_max": 91.0,
+          "gpu_util_percent_median": 100.0
+        },
+        "3": {
+          "samples": 139,
+          "sm_mhz_median": 2175.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 252.72517985611512,
+          "temperature_c_max": 89.0,
+          "gpu_util_percent_median": 50.0
+        }
+      },
+      "raw_report": "dense_p4_mtp_on_long.json"
+    },
+    {
+      "mtp": "off",
+      "workload": "concurrency",
+      "actual_prompt_tokens": [
+        136
+      ],
+      "concurrency": 1,
+      "measured_batches": 2,
+      "warmup_batches": 1,
+      "aggregate_output_tps_mean": 52.21086796940786,
+      "aggregate_output_tps_pooled": 52.210859289553106,
+      "per_stream_decode_tps_mean": 53.39938078146989,
+      "request_latency_s_median": 9.806083301547915,
+      "ttft_ms_median": 236.61762522533536,
+      "ttft_ms_min": 236.12868506461382,
+      "ttft_ms_max": 237.1065653860569,
+      "accepted_draft_fraction": null,
+      "emitted_per_draft_request_step": null,
+      "all_token_ids_verified": true,
+      "all_counter_isolation_passed": true,
+      "clocks_per_gpu": {
+        "0": {
+          "samples": 98,
+          "sm_mhz_median": 2287.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 245.814693877551,
+          "temperature_c_max": 88.0,
+          "gpu_util_percent_median": 98.0
+        },
+        "1": {
+          "samples": 98,
+          "sm_mhz_median": 2310.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 216.0988775510204,
+          "temperature_c_max": 73.0,
+          "gpu_util_percent_median": 98.0
+        },
+        "2": {
+          "samples": 98,
+          "sm_mhz_median": 2325.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 245.9619387755102,
+          "temperature_c_max": 85.0,
+          "gpu_util_percent_median": 98.0
+        },
+        "3": {
+          "samples": 98,
+          "sm_mhz_median": 2295.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 245.47255102040816,
+          "temperature_c_max": 82.0,
+          "gpu_util_percent_median": 98.0
+        }
+      },
+      "raw_report": "dense_p4_mtp_off_concurrency.json"
+    },
+    {
+      "mtp": "off",
+      "workload": "concurrency",
+      "actual_prompt_tokens": [
+        136
+      ],
+      "concurrency": 2,
+      "measured_batches": 2,
+      "warmup_batches": 1,
+      "aggregate_output_tps_mean": 79.62577694255157,
+      "aggregate_output_tps_pooled": 79.62576969077126,
+      "per_stream_decode_tps_mean": 40.94337357529806,
+      "request_latency_s_median": 12.849984592059627,
+      "ttft_ms_median": 368.13884042203426,
+      "ttft_ms_min": 241.5580558590591,
+      "ttft_ms_max": 495.13484816998243,
+      "accepted_draft_fraction": null,
+      "emitted_per_draft_request_step": null,
+      "all_token_ids_verified": true,
+      "all_counter_isolation_passed": true,
+      "clocks_per_gpu": {
+        "0": {
+          "samples": 128,
+          "sm_mhz_median": 2272.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 262.024296875,
+          "temperature_c_max": 90.0,
+          "gpu_util_percent_median": 98.0
+        },
+        "1": {
+          "samples": 128,
+          "sm_mhz_median": 2302.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 232.49796875,
+          "temperature_c_max": 79.0,
+          "gpu_util_percent_median": 98.0
+        },
+        "2": {
+          "samples": 128,
+          "sm_mhz_median": 2310.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 268.877265625,
+          "temperature_c_max": 90.0,
+          "gpu_util_percent_median": 98.0
+        },
+        "3": {
+          "samples": 128,
+          "sm_mhz_median": 2280.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 265.136328125,
+          "temperature_c_max": 88.0,
+          "gpu_util_percent_median": 98.0
+        }
+      },
+      "raw_report": "dense_p4_mtp_off_concurrency.json"
+    },
+    {
+      "mtp": "off",
+      "workload": "concurrency",
+      "actual_prompt_tokens": [
+        136
+      ],
+      "concurrency": 4,
+      "measured_batches": 2,
+      "warmup_batches": 1,
+      "aggregate_output_tps_mean": 140.23649451374374,
+      "aggregate_output_tps_pooled": 140.23635078503085,
+      "per_stream_decode_tps_mean": 36.91717908515801,
+      "request_latency_s_median": 14.587902478640899,
+      "ttft_ms_median": 861.439018510282,
+      "ttft_ms_min": 244.1922170110047,
+      "ttft_ms_max": 1009.8435077816248,
+      "accepted_draft_fraction": null,
+      "emitted_per_draft_request_step": null,
+      "all_token_ids_verified": true,
+      "all_counter_isolation_passed": true,
+      "clocks_per_gpu": {
+        "0": {
+          "samples": 146,
+          "sm_mhz_median": 2212.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 291.343698630137,
+          "temperature_c_max": 92.0,
+          "gpu_util_percent_median": 98.0
+        },
+        "1": {
+          "samples": 146,
+          "sm_mhz_median": 2250.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 270.36664383561646,
+          "temperature_c_max": 85.0,
+          "gpu_util_percent_median": 98.0
+        },
+        "2": {
+          "samples": 146,
+          "sm_mhz_median": 2250.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 291.4210273972603,
+          "temperature_c_max": 91.0,
+          "gpu_util_percent_median": 98.0
+        },
+        "3": {
+          "samples": 146,
+          "sm_mhz_median": 2220.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 293.3186301369863,
+          "temperature_c_max": 89.0,
+          "gpu_util_percent_median": 98.0
+        }
+      },
+      "raw_report": "dense_p4_mtp_off_concurrency.json"
+    },
+    {
+      "mtp": "off",
+      "workload": "long",
+      "actual_prompt_tokens": [
+        4115
+      ],
+      "concurrency": 1,
+      "measured_batches": 1,
+      "warmup_batches": 0,
+      "aggregate_output_tps_mean": 29.113429710224533,
+      "aggregate_output_tps_pooled": 29.113429710224533,
+      "per_stream_decode_tps_mean": 53.87224711134078,
+      "request_latency_s_median": 17.585112892091274,
+      "ttft_ms_median": 8099.658607970923,
+      "ttft_ms_min": 8099.658607970923,
+      "ttft_ms_max": 8099.658607970923,
+      "accepted_draft_fraction": null,
+      "emitted_per_draft_request_step": null,
+      "all_token_ids_verified": true,
+      "all_counter_isolation_passed": true,
+      "clocks_per_gpu": {
+        "0": {
+          "samples": 88,
+          "sm_mhz_median": 2280.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 276.8969318181818,
+          "temperature_c_max": 91.0,
+          "gpu_util_percent_median": 98.0
+        },
+        "1": {
+          "samples": 88,
+          "sm_mhz_median": 2310.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 265.6781818181818,
+          "temperature_c_max": 87.0,
+          "gpu_util_percent_median": 98.0
+        },
+        "2": {
+          "samples": 88,
+          "sm_mhz_median": 2317.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 280.0552272727273,
+          "temperature_c_max": 91.0,
+          "gpu_util_percent_median": 98.0
+        },
+        "3": {
+          "samples": 88,
+          "sm_mhz_median": 2287.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 278.92079545454544,
+          "temperature_c_max": 89.0,
+          "gpu_util_percent_median": 98.0
+        }
+      },
+      "raw_report": "dense_p4_mtp_off_long.json"
+    },
+    {
+      "mtp": "off",
+      "workload": "long",
+      "actual_prompt_tokens": [
+        4115
+      ],
+      "concurrency": 4,
+      "measured_batches": 1,
+      "warmup_batches": 0,
+      "aggregate_output_tps_mean": 92.80147757788954,
+      "aggregate_output_tps_pooled": 92.80147757788954,
+      "per_stream_decode_tps_mean": 36.66750592193978,
+      "request_latency_s_median": 22.066781744826585,
+      "ttft_ms_median": 8163.1258726119995,
+      "ttft_ms_min": 8003.788758069277,
+      "ttft_ms_max": 8163.73061016202,
+      "accepted_draft_fraction": null,
+      "emitted_per_draft_request_step": null,
+      "all_token_ids_verified": true,
+      "all_counter_isolation_passed": true,
+      "clocks_per_gpu": {
+        "0": {
+          "samples": 110,
+          "sm_mhz_median": 2220.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 295.6513636363636,
+          "temperature_c_max": 91.0,
+          "gpu_util_percent_median": 98.0
+        },
+        "1": {
+          "samples": 110,
+          "sm_mhz_median": 2257.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 285.40763636363636,
+          "temperature_c_max": 88.0,
+          "gpu_util_percent_median": 98.0
+        },
+        "2": {
+          "samples": 110,
+          "sm_mhz_median": 2250.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 296.87363636363636,
+          "temperature_c_max": 90.0,
+          "gpu_util_percent_median": 98.0
+        },
+        "3": {
+          "samples": 110,
+          "sm_mhz_median": 2227.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 296.7742727272727,
+          "temperature_c_max": 89.0,
+          "gpu_util_percent_median": 98.0
+        }
+      },
+      "raw_report": "dense_p4_mtp_off_long.json"
+    }
+  ],
+  "methodology": {
+    "aggregate": "Per batch: sum final usage.completion_tokens / (latest stream completion - earliest stream request start). Table uses mean of batch rates, never sum of per-stream rates.",
+    "short": "Actual136-token repeated-pangram prompt,512output perstream,onewarmup+2measuredbatches perconcurrency,temperature0,seed173,ignoreEOS. Sameprompt acrossstreams andcases;prefixcaching enabled.",
+    "long": "Actual4115-token synthetic operations report,512output perstream,one measured batch/no warmup atC1andC4. Earlyper-concurrency prefixprevents cross-case cache reuse; concurrentstreams shareprompt. Lowerdifferentdraftacceptance prevents generalizationfrompangram.",
+    "runtime": "DenseP4o_proj enabled,native_max4,capture_sizes[1,2,4],maxseqs4,LMCacheoff. MTPonusesV2,offusesV1 asnaturalprofiledefaults.",
+    "limitations": "Closed simultaneous batches,notsteadyopen-loop arrival load. Includesprefill andfinalcompletion. Requestlatenciesanddraftcounterstepsare notGPUbatchstepdurations. Clocks200mssamplesincludeprefill.",
+    "left_running": "denseP4 enabled,PARALLELtp4-1m(noMTP). No furtherAPIrequests aftersweep."
+  }
+}

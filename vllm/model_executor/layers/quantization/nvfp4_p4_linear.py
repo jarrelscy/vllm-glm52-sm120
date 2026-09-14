@@ -128,7 +128,7 @@ def dense_p4(
     tokens = x.numel() // k
     flat = x.reshape(tokens, k)
     if 0 < tokens <= native_max_tokens:
-        split = 8 if tokens == 1 else 2 if tokens <= 4 else 4
+        split = 8 if tokens == 1 else 2 if tokens <= 4 else 1 if tokens <= 8 else 4
         tensors = [weight, weight, scales, weight, scales, global_scale]
         out = _projection(
             flat.to(torch.float16).contiguous(),

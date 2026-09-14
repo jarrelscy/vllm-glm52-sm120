@@ -116,20 +116,33 @@ call counts match the 75 shared-expert layers and measured isolated latencies
 are close. This mapping remains an inference rather than direct launch
 correlation; do not attribute them to indexer projections from names alone.
 
-### Batching beyond four tokens
+### Measured concurrency and the next controlled test
 
-**Concurrent throughput measurement is pending.** Single-stream MTP normally
-verifies four tokens, which fits the selected native dense-P4 path. Multiple
-requests can exceed this and use temporary weight reconstruction plus BF16
-GEMM. Isolated M16/M32 native P4 takes about 89/169 µs; reconstruction plus
-BF16 takes about 49 µs, so extending the native threshold blindly regresses
-these shapes. Larger graph capture also needs memory analysis because graph
-pools can retain reconstructed matrices.
+Total output throughput includes prefill and final completion, measured as all
+completed output tokens divided by concurrent batch wall span. It is not a sum
+of per-stream decode rates. Short cases use identical 136-token prompts and
+512 output tokens per stream, one warmup and two measured batches.
 
-The next comparison should report concurrency, aggregate output tokens/s,
-per-request latency, MTP acceptance, and actual dispatch. Single-stream rates
-cannot be multiplied by request count. Concurrent artifacts will be recorded
-under [results/](results/) when available; no aggregate result is asserted here.
+| MTP | Streams | Total tokens/s | Per-stream decode tokens/s | Median request seconds |
+| --- | ---: | ---: | ---: | ---: |
+| On | 1 | 133.71 | 142.05 | 3.829 |
+| On | 2 | 72.73 | 37.46 | 14.014 |
+| On | 4 | 139.91 | 37.13 | 14.597 |
+| Off | 1 | 52.21 | 53.40 | 9.806 |
+| Off | 2 | 79.63 | 40.94 | 12.850 |
+| Off | 4 | 140.24 | 36.92 | 14.588 |
+
+A separate 4115-token operations-report case used one batch per case, no warmup.
+Total throughput was 37.73/73.76 tokens/s for MTP on at one/four streams, and
+29.11/92.80 with MTP off. MTP draft acceptance was only 51.2%/70.1% on this
+document workload, so it is not directly comparable to the short repeated text.
+
+Current baseline graph sizes `[1,2,4]` and dense native maximum 4 exclude MTP
+verification batches of 8/16 tokens. A graph-only coverage extension is the
+next controlled test; native M8 changes must be measured separately. See
+[full methodology and TTFT](results/throughput/throughput_summary.md) and
+[raw summary](results/throughput/throughput_summary.json). These baseline
+measurements do not isolate the two fallback costs.
 
 ## Candidates tested and not adopted
 

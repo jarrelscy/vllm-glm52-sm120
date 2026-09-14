@@ -95,12 +95,15 @@ def test_fake_preserves_leading_dimensions():
         assert y.dtype == x.dtype
 
 
-def test_runtime_dispatch_crosses_threshold(monkeypatch):
+@pytest.mark.parametrize("native_max", [4, 8, 16])
+def test_runtime_dispatch_crosses_threshold(monkeypatch, native_max):
     from vllm.model_executor.layers.quantization import nvfp4_arvq_hybrid as hybrid
 
     calls = []
 
     def projection(x, cold, hot, tensors, alpha, n, split, parts):
+        assert cold.shape == hot.shape == (x.shape[0],)
+        assert cold.eq(-1).all() and hot.eq(0).all()
         calls.append(("native", x.shape[0], split))
         return torch.ones(x.shape[0], n)
 
@@ -113,19 +116,26 @@ def test_runtime_dispatch_crosses_threshold(monkeypatch):
     monkeypatch.setattr(dense, "_dequantize", dequant)
     packed = torch.empty(1, 1, 1, 4, 32, dtype=torch.int32)
     scales = torch.empty(16, 1, dtype=torch.int32)
-    routes = torch.tensor([[-1] * 4, [0] * 4], dtype=torch.int32)
-    for tokens in (1, 4, 5):
+    routes = torch.tensor([[-1] * native_max, [0] * native_max], dtype=torch.int32)
+    token_cases = (1, 2, 4, 5, 8, 9, 16, 17)
+    expected_splits = {1: 8, 2: 2, 4: 2, 5: 1, 8: 1, 9: 4, 16: 4, 17: 4}
+    for tokens in token_cases:
         out = dense.dense_p4(
             torch.ones(tokens, 64, dtype=torch.bfloat16),
             packed,
             scales,
             torch.ones(1, 1),
             routes,
-            4,
+            native_max,
         )
         assert out.shape == (tokens, 16)
-        assert out.eq(1 if tokens <= 4 else 64).all()
-    assert calls == [("native", 1, 8), ("native", 4, 2), ("prefill", 16, 64)]
+        assert out.eq(1 if tokens <= native_max else 64).all()
+    assert calls == [
+        ("native", tokens, expected_splits[tokens])
+        if tokens <= native_max
+        else ("prefill", 16, 64)
+        for tokens in token_cases
+    ]
 
 
 def test_arvq_hook_precedes_optional_fp8(monkeypatch):

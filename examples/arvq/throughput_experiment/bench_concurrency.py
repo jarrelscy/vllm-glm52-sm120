@@ -18,12 +18,28 @@ import bench_serving as b  # noqa: E402
 
 def document_prompt(base, model, target):
     def make(n):
-        intro = "Review the following synthetic operations report. Summarize the major incidents, distinguish symptoms from likely causes, propose a prioritized investigation plan, and cite record IDs.\n\n"
+        intro = (
+            "Review the following synthetic operations report. Summarize the major "
+            "incidents, distinguish symptoms from likely causes, propose a "
+            "prioritized investigation plan, and cite record IDs.\n\n"
+        )
         services = ["checkout", "catalog", "billing", "search", "shipping", "accounts"]
         records = []
         for i in range(n):
+            observation = (
+                "a cache refresh followed by database connection contention"
+                if i % 4 == 0
+                else "normal upstream responses with occasional queue delays"
+            )
             records.append(
-                f"Record {i + 1:03d}: The {services[i % 6]} service handled {1200 + i * 37} requests during observation window {i + 1}. Median latency was {42 + i % 13 * 7} milliseconds and the error count was {i % 11}. Operators observed {'a cache refresh followed by database connection contention' if i % 4 == 0 else 'normal upstream responses with occasional queue delays'}. The deployment revision was r{200 + i // 7}. No data loss was reported. The team recorded request traces, compared the previous window, and deferred configuration changes until the source of the delay could be checked.\n"
+                f"Record {i + 1:03d}: The {services[i % 6]} service handled "
+                f"{1200 + i * 37} requests during observation window {i + 1}. "
+                f"Median latency was {42 + i % 13 * 7} milliseconds and the error "
+                f"count was {i % 11}. Operators observed {observation}. "
+                f"The deployment revision was r{200 + i // 7}. No data loss was "
+                "reported. The team recorded request traces, compared the previous "
+                "window, and deferred configuration changes until the source of "
+                "the delay could be checked.\n"
             )
         return intro + "\n".join(records)
 
@@ -98,14 +114,31 @@ def run_batch(base, model, prompt, c, args, clock_path):
 
 
 def markdown(report):
-    s = f"# {report['label']}\n\nAggregate throughput is total completed output tokens divided by the concurrent batch wall span, including prefill and final stream completion. It is not the sum of per-request decode rates. Each stream uses the same prompt; prefix reuse and identical text are part of this controlled workload.\n\n| Prompt target | Concurrency | Run | Output tokens | Batch seconds | Aggregate tokens/s | TTFT ms per stream | Emitted/draft step |\n| ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: |\n"
+    s = (
+        f"# {report['label']}\n\nAggregate throughput is total completed output "
+        "tokens divided by the concurrent batch wall span, including prefill and "
+        "final stream completion. It is not the sum of per-request decode rates. "
+        "Each stream uses the same prompt; prefix reuse and identical text are "
+        "part of this controlled workload.\n\n| Prompt target | Concurrency | Run "
+        "| Output tokens | Batch seconds | Aggregate tokens/s | TTFT ms per stream "
+        "| Emitted/draft step |\n"
+        "| ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: |\n"
+    )
     for r in report["runs"]:
         sp = r["speculative"]
         em = sp["emitted_per_draft_request_step"]
-        s += f"| {r['target_prompt_tokens']} | {r['concurrency']} | {r['run']} | {r['completed_output_tokens']} | {r['wall_span_s']:.3f} | {r['aggregate_output_tps']:.3f} | {', '.join(f'{x:.1f}' for x in r['ttft_ms_per_stream'])} | {em if em is not None else '—'} |\n"
+        ttft = ", ".join(f"{x:.1f}" for x in r["ttft_ms_per_stream"])
+        s += (
+            f"| {r['target_prompt_tokens']} | {r['concurrency']} | {r['run']} "
+            f"| {r['completed_output_tokens']} | {r['wall_span_s']:.3f} "
+            f"| {r['aggregate_output_tps']:.3f} | {ttft} "
+            f"| {em if em is not None else '—'} |\n"
+        )
     return (
-        s
-        + "\nSpeculative counters count request-level draft steps, not scheduler iterations. Dividing summed request decode time by these counters does not measure a concurrent GPU batch-step latency. Clock CSVs cover each request batch and include prefill.\n"
+        s + "\nSpeculative counters count request-level draft steps, not scheduler "
+        "iterations. Dividing summed request decode time by these counters does "
+        "not measure a concurrent GPU batch-step latency. Clock CSVs cover each "
+        "request batch and include prefill.\n"
     )
 
 
@@ -152,6 +185,14 @@ def main():
         "image": container["Config"]["Image"],
         "image_id": container["Image"],
         "container_id": container["Id"],
+        "compilation_config": next(
+            (
+                json.loads(container["Config"]["Cmd"][i + 1])
+                for i, arg in enumerate(container["Config"]["Cmd"][:-1])
+                if arg == "--compilation-config"
+            ),
+            None,
+        ),
         "parallel": env["PARALLEL"],
         "model": model,
         "dense_p4": True,
@@ -160,7 +201,12 @@ def main():
         "ignore_eos": a.ignore_eos,
         "warmup_runs_per_case": a.warmup_runs,
         "prompt_kind": a.prompt_kind,
-        "prompt_policy": "Identical prompt for concurrent streams; pangram uses single-stream reference generator, document uses deterministic synthetic operations records plus an early per-concurrency discriminator to prevent cross-case prefix-cache reuse.",
+        "prompt_policy": (
+            "Identical prompt for concurrent streams; pangram uses single-stream "
+            "reference generator, document uses deterministic synthetic operations "
+            "records plus an early per-concurrency discriminator to prevent "
+            "cross-case prefix-cache reuse."
+        ),
         "safe_environment": {
             k: v
             for k, v in env.items()

@@ -92,6 +92,12 @@ include packing, MMA, and split reduction, excluding allocations and conversion.
 
 ## Reproduce
 
+Published weight samples and fitted dictionaries are available in the
+[pinned Hugging Face handoff](https://huggingface.co/jarrelscy/GLM-5.3-Vision-NVFP4-ARVQ-hybrid/tree/3237d6569412a0396e34bc25cc9b8df055ea7035/rotation-prototype-v1).
+`TUNING_HANDOFF.json` pins the matching source revision. There are six layer-3
+prototype weight files (two projections times three transforms) and 18 fit
+files (three layers times two projections times three transforms).
+
 This folder is self-contained. It includes the exact assignment and native
 MMA source dependencies used by the experiment. In a CUDA 12.9+ environment
 with PyTorch, safetensors, and an SM120 GPU, from the repository root:
@@ -108,6 +114,10 @@ bash examples/arvq/rotation/build.sh
 `ARVQ_SOURCE_MODEL` must point to the original AQLM hybrid snapshot containing
 the AQLM codes and dictionaries. The published unrotated ARVQ checkpoint cannot
 replace that input: it no longer contains the source AQLM representation.
+H128 mixes multiple original eight-weight groups, so a full rotated conversion
+must decode and re-encode weight blocks; it cannot reuse the previous
+65536-entry AQLM-to-ARVQ index translation table. Stream expert weights rather
+than materializing the full model in BF16.
 `build.sh` builds `assign.so`, `hybrid.so`, and `rotation.so` locally; binaries
 are ignored by Git. The Python path above is the serving image environment;
 an equivalent activated virtual environment can be used elsewhere.

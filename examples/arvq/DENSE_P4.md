@@ -31,10 +31,13 @@ docker compose -f examples/arvq/compose.yaml \
 ```
 
 The override enables `VLLM_ENABLE_NVFP4_P4_O_PROJ=1`, sets
-`VLLM_NVFP4_P4_MAX_TOKENS=4`, selects no-MTP TP4 by default, and restricts graph
-capture sizes to `[1,2,4]`. It preserves the singleton compile range used by the
-PCIe fusion pass. Larger captured fallback shapes could retain temporary BF16
-matrices in graph memory; they have not been qualified by this experiment.
+`VLLM_NVFP4_P4_MAX_TOKENS=4`, selects no-MTP TP4 by default, and captures graph
+sizes `[1,2,4,8,16]`. It preserves the singleton compile range used by the
+PCIe fusion pass. The original `[1,2,4]` limit disabled graphs for concurrent
+MTP verification at 8/16 positions. Raising only this limit increased total
+short-prompt throughput from 72.726 to 184.806 tokens/s at two streams and
+139.908 to 265.347 at four streams. Capture reported 0.88 GiB per rank;
+there is no preserved old capture-allocation measurement for a memory delta.
 Setting `PARALLEL=tp4-1m-mtp` requests MTP, whose own projection weights remain
 unchanged. The bounded MTP result below covers the repeated-pangram workload;
 acceptance on realistic traffic needs separate measurement.

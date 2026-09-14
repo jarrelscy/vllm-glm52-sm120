@@ -15,4 +15,4 @@ services:
     - --profiler-config.torch_profiler_with_stack=false
     - ${PREFIX_CACHING_FLAG:---enable-prefix-caching}
     - --compilation-config
-    - '{"mode":3,"cudagraph_mode":"${CUDAGRAPH_MODE:-FULL_AND_PIECEWISE}","compile_sizes":[1],"cudagraph_capture_sizes":[1,2,4]}'
+    - '{"mode":3,"cudagraph_mode":"${CUDAGRAPH_MODE:-FULL_AND_PIECEWISE}","compile_sizes":[1],"cudagraph_capture_sizes":[1,2,4,8,16]}'

@@ -1,0 +1,20 @@
+{
+  "dcp_bytepack.py": {
+    "qualified_sha256": "c77a013607d421163fdd1f160e9fa5f99fb9df764d5712b25bad9c6d74f67e89",
+    "repository_sha256": "93bd61ea4789d8f9e2c584558f57d7f64db84020a969ad8a4f35bdd6b15bfb67",
+    "ast_equal_excluding_imports": true,
+    "import_changes": "Ruff split imports; Triton imported through repository triton_utils."
+  },
+  "dcp_bytepack_kernel.py": {
+    "qualified_sha256": "2465435e52f16fdb5e530fa624c9c6f876526c96187cef938108c681c68fadef",
+    "repository_sha256": "d2603be987f51514408963a0558bcc55e14789cd57416f2e54eeb77e498d67ae",
+    "ast_equal_excluding_imports": true,
+    "import_changes": "Ruff split imports; Triton imported through repository triton_utils."
+  },
+  "dcp_bytepack_selector.py": {
+    "qualified_sha256": "549a430ae77c03de981973d3c698b38db7a226855aa54fd2c3ae7aa775a2e5f9",
+    "repository_sha256": "5a8e320ee895c9962ffdac0cc609b1a33537e1bfd7f930e87181fe441b1832b0",
+    "ast_equal_excluding_imports": true,
+    "import_changes": "Ruff split imports; Triton imported through repository triton_utils."
+  }
+}

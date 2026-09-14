@@ -1,0 +1,102 @@
+[
+  {
+    "bytes_per_entry": 6,
+    "rows": 129,
+    "score_bits": true,
+    "ids_exact": true,
+    "canonical_bitwise": true,
+    "selector_extra_allocated_bytes": 0,
+    "graph_replay_bitwise": true,
+    "largest_local_index": 65534
+  },
+  {
+    "bytes_per_entry": 7,
+    "rows": 129,
+    "score_bits": true,
+    "ids_exact": true,
+    "canonical_bitwise": true,
+    "selector_extra_allocated_bytes": 0,
+    "graph_replay_bitwise": true,
+    "largest_local_index": 262143
+  },
+  {
+    "bytes_per_entry": 6,
+    "rows": 496,
+    "score_bits": true,
+    "ids_exact": true,
+    "canonical_bitwise": true,
+    "selector_extra_allocated_bytes": 0,
+    "graph_replay_bitwise": true,
+    "largest_local_index": 65534
+  },
+  {
+    "bytes_per_entry": 7,
+    "rows": 496,
+    "score_bits": true,
+    "ids_exact": true,
+    "canonical_bitwise": true,
+    "selector_extra_allocated_bytes": 0,
+    "graph_replay_bitwise": true,
+    "largest_local_index": 262143
+  },
+  {
+    "bytes_per_entry": 6,
+    "rows": 1008,
+    "score_bits": true,
+    "ids_exact": true,
+    "canonical_bitwise": true,
+    "selector_extra_allocated_bytes": 0,
+    "graph_replay_bitwise": true,
+    "largest_local_index": 65534
+  },
+  {
+    "bytes_per_entry": 7,
+    "rows": 1008,
+    "score_bits": true,
+    "ids_exact": true,
+    "canonical_bitwise": true,
+    "selector_extra_allocated_bytes": 0,
+    "graph_replay_bitwise": true,
+    "largest_local_index": 262143
+  },
+  {
+    "bytes_per_entry": 6,
+    "rows": 2177,
+    "score_bits": true,
+    "ids_exact": true,
+    "canonical_bitwise": true,
+    "selector_extra_allocated_bytes": 0,
+    "graph_replay_bitwise": true,
+    "largest_local_index": 65534
+  },
+  {
+    "bytes_per_entry": 7,
+    "rows": 2177,
+    "score_bits": true,
+    "ids_exact": true,
+    "canonical_bitwise": true,
+    "selector_extra_allocated_bytes": 0,
+    "graph_replay_bitwise": true,
+    "largest_local_index": 262143
+  },
+  {
+    "bytes_per_entry": 6,
+    "rows": 4032,
+    "score_bits": true,
+    "ids_exact": true,
+    "canonical_bitwise": true,
+    "selector_extra_allocated_bytes": 0,
+    "graph_replay_bitwise": true,
+    "largest_local_index": 65534
+  },
+  {
+    "bytes_per_entry": 7,
+    "rows": 4032,
+    "score_bits": true,
+    "ids_exact": true,
+    "canonical_bitwise": true,
+    "selector_extra_allocated_bytes": 0,
+    "graph_replay_bitwise": true,
+    "largest_local_index": 262143
+  }
+]

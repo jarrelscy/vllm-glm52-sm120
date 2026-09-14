@@ -164,6 +164,9 @@ def _merge_dcp_topk_global(
     dcp_world_size: int,
     cp_interleave: int,
     row_starts: torch.Tensor | None = None,
+    bytepack_c1_prefill: bool = False,
+    bytepack_context: int = 0,
+    bytepack_layer: str | None = None,
 ) -> None:
     """Merge each DCP rank's local top-K into the global top-K.
 
@@ -179,6 +182,28 @@ def _merge_dcp_topk_global(
     """
     if dcp_world_size <= 1:
         return
+
+    if topk_tokens == 2048 and os.getenv("VLLM_EXPERIMENT_DCP_BYTEPACK", "0") == "1":
+        from vllm.v1.attention.ops.dcp_bytepack import try_merge
+
+        # The host overlay may supply QUERY_SPLIT; retain its original path.
+        query_split = os.getenv("VLLM_GLM_DCP_QUERY_SPLIT", "0") not in ("", "0")
+        if try_merge(
+            logits,
+            topk_indices,
+            row_starts,
+            dcp_rank,
+            dcp_world_size,
+            cp_interleave,
+            bytepack_layer,
+            bytepack_c1_prefill,
+            bytepack_context,
+            envs.VLLM_GLM_DCP_AG_RAW_TOPK,
+            _CANONICAL_TOPK_INKERNEL,
+            query_split,
+            get_dcp_group(),
+        ):
+            return
 
     # CuteDSL-only path (no PyTorch fallback): Triton-pack each rank's
     # (score, global_id) candidates on-device, all-gather, then the CuteDSL
@@ -692,6 +717,12 @@ def sparse_attn_indexer(
                 dcp_world_size,
                 cp_kv_cache_interleave_size,
                 row_starts=chunk.cu_seqlen_ks,
+                bytepack_c1_prefill=(
+                    attn_metadata_narrowed.num_prefills == 1
+                    and attn_metadata_narrowed.num_decodes == 0
+                ),
+                bytepack_context=attn_metadata_narrowed.max_seq_len,
+                bytepack_layer=k_cache_prefix,
             )
 
     if has_decode:

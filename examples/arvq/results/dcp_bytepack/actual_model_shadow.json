@@ -1,0 +1,1424 @@
+{
+  "container_id": "5316328120bd514b81e1f27a8aaab995ac09bd3844ac31563b34282e362b6fc1",
+  "diagnostic_only": true,
+  "records": [
+    {
+      "layer": "model.layers.0.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.0.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.0.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.0.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.1.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.1.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.1.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.1.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.2.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.2.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.2.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.2.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.6.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.6.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.6.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.6.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.10.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.10.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.10.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.10.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.14.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.14.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.14.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.14.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.18.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.18.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.18.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.18.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.22.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.22.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.22.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.22.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.26.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.26.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.26.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.26.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.30.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.30.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.30.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.30.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.34.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.34.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.34.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.34.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.38.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.38.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.38.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.38.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.42.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.42.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.42.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.42.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.46.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.46.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.46.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.46.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.50.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.50.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.50.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.50.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.54.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.54.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.54.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.54.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.58.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.58.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.58.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.58.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.62.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.62.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.62.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.62.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.66.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.66.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.66.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.66.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.70.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.70.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.70.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.70.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.74.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.74.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.74.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.74.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.78.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.78.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.78.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.78.self_attn.indexer.k_cache",
+      "width": 6,
+      "rows": 4096,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.0.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.0.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.0.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.0.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.1.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.1.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.1.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.1.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.2.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.2.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.2.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.2.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.6.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.6.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.6.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.6.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.10.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.10.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.10.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.10.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.14.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.14.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.14.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.14.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.18.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.18.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.18.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.18.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.22.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.22.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.22.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.22.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.26.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.26.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.26.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.26.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.30.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.30.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.30.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.30.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.34.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.34.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.34.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.34.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.38.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.38.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.38.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.38.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.42.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.42.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.42.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.42.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.46.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.46.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.46.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.46.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.50.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.50.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.50.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.50.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.54.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.54.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.54.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.54.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.58.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.58.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.58.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.58.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.62.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.62.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.62.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.62.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.66.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.66.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.66.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.66.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.70.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.70.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.70.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.70.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.74.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.74.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.74.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.74.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.78.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 2,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.78.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 1,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.78.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 3,
+      "local_pass": true,
+      "all_ranks_pass": true
+    },
+    {
+      "layer": "model.layers.78.self_attn.indexer.k_cache",
+      "width": 7,
+      "rows": 496,
+      "rank": 0,
+      "local_pass": true,
+      "all_ranks_pass": true
+    }
+  ],
+  "widths": {
+    "6": {
+      "layers": 22,
+      "rank_layer_pairs": 88
+    },
+    "7": {
+      "layers": 22,
+      "rank_layer_pairs": 88
+    }
+  }
+}

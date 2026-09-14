@@ -1,0 +1,221 @@
+{
+  "all_four_ranks_all_20_cases_bitwise_pass": true,
+  "all_peaks_lower": true,
+  "rounds": 3,
+  "performance_nonregression_complete": true,
+  "caveat": "Initial width7 rows496 ties elevated samples retained. Separate seven-round repeat improves all samples; actual-model performance remains pending.",
+  "cases": [
+    {
+      "rows": 129,
+      "context": 131072,
+      "case": "balanced",
+      "baseline_ms": 0.4046705241004626,
+      "candidate_ms": 0.2902805184324582,
+      "speedup": 1.3940671123426438,
+      "baseline_peak_bytes": 11624448,
+      "candidate_peak_bytes": 8982528
+    },
+    {
+      "rows": 129,
+      "context": 131072,
+      "case": "ties",
+      "baseline_ms": 0.2731441830595334,
+      "candidate_ms": 0.22828827301661173,
+      "speedup": 1.1964880168840635,
+      "baseline_peak_bytes": 11624448,
+      "candidate_peak_bytes": 8982528
+    },
+    {
+      "rows": 496,
+      "context": 131072,
+      "case": "balanced",
+      "baseline_ms": 0.7814050962527593,
+      "candidate_ms": 0.6170390794674555,
+      "speedup": 1.2663786172622362,
+      "baseline_peak_bytes": 45744128,
+      "candidate_peak_bytes": 34537472
+    },
+    {
+      "rows": 496,
+      "context": 131072,
+      "case": "ties",
+      "baseline_ms": 0.7571795334418615,
+      "candidate_ms": 0.6067731107274691,
+      "speedup": 1.2478791826059463,
+      "baseline_peak_bytes": 45744128,
+      "candidate_peak_bytes": 34537472
+    },
+    {
+      "rows": 1008,
+      "context": 131072,
+      "case": "balanced",
+      "baseline_ms": 1.4482891807953517,
+      "candidate_ms": 1.1527199919025104,
+      "speedup": 1.256410221883129,
+      "baseline_peak_bytes": 91881472,
+      "candidate_peak_bytes": 70189056
+    },
+    {
+      "rows": 1008,
+      "context": 131072,
+      "case": "ties",
+      "baseline_ms": 1.4677190532286961,
+      "candidate_ms": 1.1813792710502942,
+      "speedup": 1.2423775236244279,
+      "baseline_peak_bytes": 91881472,
+      "candidate_peak_bytes": 70189056
+    },
+    {
+      "rows": 2177,
+      "context": 131072,
+      "case": "balanced",
+      "baseline_ms": 3.032846376299858,
+      "candidate_ms": 2.379051720102628,
+      "speedup": 1.2748131327590584,
+      "baseline_peak_bytes": 196173824,
+      "candidate_peak_bytes": 151588864
+    },
+    {
+      "rows": 2177,
+      "context": 131072,
+      "case": "ties",
+      "baseline_ms": 3.0594756826758385,
+      "candidate_ms": 2.4370100970069566,
+      "speedup": 1.2554218328571434,
+      "baseline_peak_bytes": 196173824,
+      "candidate_peak_bytes": 151588864
+    },
+    {
+      "rows": 4032,
+      "context": 131072,
+      "case": "balanced",
+      "baseline_ms": 5.574271082878113,
+      "candidate_ms": 4.353902613123258,
+      "speedup": 1.280293010247059,
+      "baseline_peak_bytes": 364380160,
+      "candidate_peak_bytes": 280756224
+    },
+    {
+      "rows": 4032,
+      "context": 131072,
+      "case": "ties",
+      "baseline_ms": 5.605319514870644,
+      "candidate_ms": 4.5139190430442495,
+      "speedup": 1.241785566249398,
+      "baseline_peak_bytes": 364380160,
+      "candidate_peak_bytes": 280756224
+    },
+    {
+      "rows": 129,
+      "context": 524288,
+      "case": "balanced",
+      "baseline_ms": 0.2943100407719612,
+      "candidate_ms": 0.24015425393978754,
+      "speedup": 1.2255041746866238,
+      "baseline_peak_bytes": 11624448,
+      "candidate_peak_bytes": 10303488
+    },
+    {
+      "rows": 129,
+      "context": 524288,
+      "case": "ties",
+      "baseline_ms": 0.2710074186325073,
+      "candidate_ms": 0.24486053735017776,
+      "speedup": 1.106782748928369,
+      "baseline_peak_bytes": 11624448,
+      "candidate_peak_bytes": 10303488
+    },
+    {
+      "rows": 496,
+      "context": 524288,
+      "case": "balanced",
+      "baseline_ms": 0.770022471745809,
+      "candidate_ms": 0.6906511262059212,
+      "speedup": 1.1149224876761046,
+      "baseline_peak_bytes": 45744128,
+      "candidate_peak_bytes": 39616512
+    },
+    {
+      "rows": 496,
+      "context": 524288,
+      "case": "ties",
+      "baseline_ms": 0.7708324119448662,
+      "candidate_ms": 0.8068879445393881,
+      "speedup": 0.9553153162858268,
+      "baseline_peak_bytes": 45744128,
+      "candidate_peak_bytes": 39616512
+    },
+    {
+      "rows": 1008,
+      "context": 524288,
+      "case": "balanced",
+      "baseline_ms": 1.4842084298531215,
+      "candidate_ms": 1.3187068204085033,
+      "speedup": 1.1255029600842967,
+      "baseline_peak_bytes": 91881472,
+      "candidate_peak_bytes": 80510976
+    },
+    {
+      "rows": 1008,
+      "context": 524288,
+      "case": "ties",
+      "baseline_ms": 1.503485565384229,
+      "candidate_ms": 1.3442452376087506,
+      "speedup": 1.1184607713833137,
+      "baseline_peak_bytes": 91881472,
+      "candidate_peak_bytes": 80510976
+    },
+    {
+      "rows": 2177,
+      "context": 524288,
+      "case": "balanced",
+      "baseline_ms": 3.0729190135995545,
+      "candidate_ms": 2.7500161280234656,
+      "speedup": 1.1174185424898475,
+      "baseline_peak_bytes": 196173824,
+      "candidate_peak_bytes": 173881344
+    },
+    {
+      "rows": 2177,
+      "context": 524288,
+      "case": "ties",
+      "baseline_ms": 3.090858149031798,
+      "candidate_ms": 2.834034152328968,
+      "speedup": 1.0906213485436567,
+      "baseline_peak_bytes": 196173824,
+      "candidate_peak_bytes": 173881344
+    },
+    {
+      "rows": 4032,
+      "context": 524288,
+      "case": "balanced",
+      "baseline_ms": 5.631626273194949,
+      "candidate_ms": 5.080852347115676,
+      "speedup": 1.1084018759946723,
+      "baseline_peak_bytes": 364380160,
+      "candidate_peak_bytes": 322043904
+    },
+    {
+      "rows": 4032,
+      "context": 524288,
+      "case": "ties",
+      "baseline_ms": 5.732497510810693,
+      "candidate_ms": 5.166143799821536,
+      "speedup": 1.1096279416397046,
+      "baseline_peak_bytes": 364380160,
+      "candidate_peak_bytes": 322043904
+    }
+  ],
+  "repeat496": [
+    {
+      "case": "balanced",
+      "baseline_ms": 0.7677503994532994,
+      "candidate_ms": 0.6919532482113157
+    },
+    {
+      "case": "ties",
+      "baseline_ms": 0.7663230810846601,
+      "candidate_ms": 0.7011543161102703
+    }
+  ]
+}

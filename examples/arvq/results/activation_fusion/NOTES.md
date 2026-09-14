@@ -13,8 +13,8 @@ matched activation bits (including NaNs), packed values and scales. Twelve full
 small-route real8x8 MLP cases matched final BF16 bits and graph replay. Nine full
 cold-prefill cases matched final BF16 bits and allocation/reservation peaks.
 Published CUDA source has identical normalized tokens and identical disassembled
-machine code to the tested prototype. A rebuilt binary has not yet undergone a
-separate GPU execution check. Raw results retain unchanged-control timing drift.
+machine code to the tested prototype. The rebuilt binary also passed the
+exhaustive GPU oracle on GPU2. Raw results retain unchanged-control timing drift.
 
 Microbenchmarks are warm fixed layer3 TP3 weights, not full-model throughput.
 Live testing is ongoing; these results do not establish a 3,000 TPS prefill rate.

@@ -1,0 +1,572 @@
+{
+  "container_id": "f7a2d548aed3a20877e6bb02c1a4491e3dbd21faed8e86b1e91ed7fd655a8d87",
+  "configuration": {
+    "model": "GLM-5.3 initial-fit ARVQ8x8 + NVFP4 hot and existing denseP4",
+    "context_limit": 1048576,
+    "request_slots": 8,
+    "kv_token_capacity": 1283584,
+    "mtp_draft_tokens": 3,
+    "vision": true,
+    "lmcache": true
+  },
+  "scope": "Latest experimental cold-activation overlay boot; fresh actual UUID prefixes, cold-prefill counters verified, single-stream warm512-token decode. Not a paired proof of the incremental activation gain. Target3000prefill not achieved.",
+  "cases": [
+    {
+      "context": "8K",
+      "cold_valid": true,
+      "gpu_cache_hits": 0.0,
+      "external_cache_hits": 0.0,
+      "prefill_histogram_tps": 1845.7076699880947,
+      "prefill_wall_tps": 1841.4383968599489,
+      "single_decode_tps": 141.63470950667642,
+      "decode_valid": true
+    },
+    {
+      "context": "128K",
+      "cold_valid": true,
+      "gpu_cache_hits": 0.0,
+      "external_cache_hits": 0.0,
+      "prefill_histogram_tps": 1707.0835389869844,
+      "prefill_wall_tps": 1705.72331074546,
+      "single_decode_tps": null,
+      "decode_valid": null
+    },
+    {
+      "context": "256K",
+      "cold_valid": true,
+      "gpu_cache_hits": 0.0,
+      "external_cache_hits": 0.0,
+      "prefill_histogram_tps": 1588.863671631587,
+      "prefill_wall_tps": 1587.903285006436,
+      "single_decode_tps": 141.28065799113233,
+      "decode_valid": true
+    },
+    {
+      "context": "512K",
+      "cold_valid": true,
+      "gpu_cache_hits": 0.0,
+      "external_cache_hits": 0.0,
+      "prefill_histogram_tps": 1469.8651504254476,
+      "prefill_wall_tps": 1468.998126430222,
+      "single_decode_tps": 142.9603410637115,
+      "decode_valid": true
+    }
+  ],
+  "certificate_observation": {
+    "overall": {
+      "layers_observed": 22,
+      "chunks_observed": 44,
+      "passing_chunks": 44,
+      "passing_rows": 14080,
+      "total_rows": 14080,
+      "nonfinite_rows": 0,
+      "short_rows": 0
+    },
+    "buckets": {
+      "128K": {
+        "layers_observed": 22,
+        "chunks_observed": 22,
+        "passing_chunks": 22,
+        "passing_rows": 11264,
+        "total_rows": 11264,
+        "nonfinite_rows": 0,
+        "short_rows": 0
+      },
+      "512K": {
+        "layers_observed": 22,
+        "chunks_observed": 22,
+        "passing_chunks": 22,
+        "passing_rows": 2816,
+        "total_rows": 2816,
+        "nonfinite_rows": 0,
+        "short_rows": 0
+      }
+    },
+    "records": [
+      {
+        "layer": "model.layers.0.self_attn.indexer.k_cache",
+        "bucket": "128K",
+        "rows": 512,
+        "local_columns": 32768,
+        "passing_rows": 512,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.1.self_attn.indexer.k_cache",
+        "bucket": "128K",
+        "rows": 512,
+        "local_columns": 32768,
+        "passing_rows": 512,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.2.self_attn.indexer.k_cache",
+        "bucket": "128K",
+        "rows": 512,
+        "local_columns": 32768,
+        "passing_rows": 512,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.6.self_attn.indexer.k_cache",
+        "bucket": "128K",
+        "rows": 512,
+        "local_columns": 32768,
+        "passing_rows": 512,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.10.self_attn.indexer.k_cache",
+        "bucket": "128K",
+        "rows": 512,
+        "local_columns": 32768,
+        "passing_rows": 512,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.14.self_attn.indexer.k_cache",
+        "bucket": "128K",
+        "rows": 512,
+        "local_columns": 32768,
+        "passing_rows": 512,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.18.self_attn.indexer.k_cache",
+        "bucket": "128K",
+        "rows": 512,
+        "local_columns": 32768,
+        "passing_rows": 512,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.22.self_attn.indexer.k_cache",
+        "bucket": "128K",
+        "rows": 512,
+        "local_columns": 32768,
+        "passing_rows": 512,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.26.self_attn.indexer.k_cache",
+        "bucket": "128K",
+        "rows": 512,
+        "local_columns": 32768,
+        "passing_rows": 512,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.30.self_attn.indexer.k_cache",
+        "bucket": "128K",
+        "rows": 512,
+        "local_columns": 32768,
+        "passing_rows": 512,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.34.self_attn.indexer.k_cache",
+        "bucket": "128K",
+        "rows": 512,
+        "local_columns": 32768,
+        "passing_rows": 512,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.38.self_attn.indexer.k_cache",
+        "bucket": "128K",
+        "rows": 512,
+        "local_columns": 32768,
+        "passing_rows": 512,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.42.self_attn.indexer.k_cache",
+        "bucket": "128K",
+        "rows": 512,
+        "local_columns": 32768,
+        "passing_rows": 512,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.46.self_attn.indexer.k_cache",
+        "bucket": "128K",
+        "rows": 512,
+        "local_columns": 32768,
+        "passing_rows": 512,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.50.self_attn.indexer.k_cache",
+        "bucket": "128K",
+        "rows": 512,
+        "local_columns": 32768,
+        "passing_rows": 512,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.54.self_attn.indexer.k_cache",
+        "bucket": "128K",
+        "rows": 512,
+        "local_columns": 32768,
+        "passing_rows": 512,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.58.self_attn.indexer.k_cache",
+        "bucket": "128K",
+        "rows": 512,
+        "local_columns": 32768,
+        "passing_rows": 512,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.62.self_attn.indexer.k_cache",
+        "bucket": "128K",
+        "rows": 512,
+        "local_columns": 32768,
+        "passing_rows": 512,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.66.self_attn.indexer.k_cache",
+        "bucket": "128K",
+        "rows": 512,
+        "local_columns": 32768,
+        "passing_rows": 512,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.70.self_attn.indexer.k_cache",
+        "bucket": "128K",
+        "rows": 512,
+        "local_columns": 32768,
+        "passing_rows": 512,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.74.self_attn.indexer.k_cache",
+        "bucket": "128K",
+        "rows": 512,
+        "local_columns": 32768,
+        "passing_rows": 512,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.78.self_attn.indexer.k_cache",
+        "bucket": "128K",
+        "rows": 512,
+        "local_columns": 32768,
+        "passing_rows": 512,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.0.self_attn.indexer.k_cache",
+        "bucket": "512K",
+        "rows": 128,
+        "local_columns": 131072,
+        "passing_rows": 128,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.1.self_attn.indexer.k_cache",
+        "bucket": "512K",
+        "rows": 128,
+        "local_columns": 131072,
+        "passing_rows": 128,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.2.self_attn.indexer.k_cache",
+        "bucket": "512K",
+        "rows": 128,
+        "local_columns": 131072,
+        "passing_rows": 128,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.6.self_attn.indexer.k_cache",
+        "bucket": "512K",
+        "rows": 128,
+        "local_columns": 131072,
+        "passing_rows": 128,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.10.self_attn.indexer.k_cache",
+        "bucket": "512K",
+        "rows": 128,
+        "local_columns": 131072,
+        "passing_rows": 128,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.14.self_attn.indexer.k_cache",
+        "bucket": "512K",
+        "rows": 128,
+        "local_columns": 131072,
+        "passing_rows": 128,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.18.self_attn.indexer.k_cache",
+        "bucket": "512K",
+        "rows": 128,
+        "local_columns": 131072,
+        "passing_rows": 128,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.22.self_attn.indexer.k_cache",
+        "bucket": "512K",
+        "rows": 128,
+        "local_columns": 131072,
+        "passing_rows": 128,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.26.self_attn.indexer.k_cache",
+        "bucket": "512K",
+        "rows": 128,
+        "local_columns": 131072,
+        "passing_rows": 128,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.30.self_attn.indexer.k_cache",
+        "bucket": "512K",
+        "rows": 128,
+        "local_columns": 131072,
+        "passing_rows": 128,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.34.self_attn.indexer.k_cache",
+        "bucket": "512K",
+        "rows": 128,
+        "local_columns": 131072,
+        "passing_rows": 128,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.38.self_attn.indexer.k_cache",
+        "bucket": "512K",
+        "rows": 128,
+        "local_columns": 131072,
+        "passing_rows": 128,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.42.self_attn.indexer.k_cache",
+        "bucket": "512K",
+        "rows": 128,
+        "local_columns": 131072,
+        "passing_rows": 128,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.46.self_attn.indexer.k_cache",
+        "bucket": "512K",
+        "rows": 128,
+        "local_columns": 131072,
+        "passing_rows": 128,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.50.self_attn.indexer.k_cache",
+        "bucket": "512K",
+        "rows": 128,
+        "local_columns": 131072,
+        "passing_rows": 128,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.54.self_attn.indexer.k_cache",
+        "bucket": "512K",
+        "rows": 128,
+        "local_columns": 131072,
+        "passing_rows": 128,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.58.self_attn.indexer.k_cache",
+        "bucket": "512K",
+        "rows": 128,
+        "local_columns": 131072,
+        "passing_rows": 128,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.62.self_attn.indexer.k_cache",
+        "bucket": "512K",
+        "rows": 128,
+        "local_columns": 131072,
+        "passing_rows": 128,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.66.self_attn.indexer.k_cache",
+        "bucket": "512K",
+        "rows": 128,
+        "local_columns": 131072,
+        "passing_rows": 128,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.70.self_attn.indexer.k_cache",
+        "bucket": "512K",
+        "rows": 128,
+        "local_columns": 131072,
+        "passing_rows": 128,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.74.self_attn.indexer.k_cache",
+        "bucket": "512K",
+        "rows": 128,
+        "local_columns": 131072,
+        "passing_rows": 128,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      },
+      {
+        "layer": "model.layers.78.self_attn.indexer.k_cache",
+        "bucket": "512K",
+        "rows": 128,
+        "local_columns": 131072,
+        "passing_rows": 128,
+        "whole_chunk_pass": true,
+        "nonfinite_rows": 0,
+        "short_rows": 0,
+        "output_unchanged": true
+      }
+    ]
+  }
+}

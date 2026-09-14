@@ -43,3 +43,9 @@ allocation. Allocator reservations and whole-model peak require live checks.
 qualified overlay and the reuse helper differs only by extra input assertions.
 CPU tests cover consumed-prefix protection, output bits, repeat calls,
 invalid input, the 256K boundary, default-OFF and unsupported-path fallbacks.
+
+Subsequent live C1 cold requests at 256K and 512K completed successfully with
+512-token warm decode and unchanged 1,283,584-token boot KV capacity. See
+`../../lossless_prefill_campaign/cold_activation_boot.json`. These smoke/stress
+results do not replace the four-rank bitwise micro oracle or qualify concurrent
+512K requests.

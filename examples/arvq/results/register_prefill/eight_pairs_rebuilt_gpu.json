@@ -1,0 +1,317 @@
+{
+  "source": {
+    "source": "current fused-cold-gather/fused-route-sum helper; baseline register4 vs candidate register8 runtime only"
+  },
+  "checkpoint": "/lab/arvq_8x8_experiment/initial_fit_layer3",
+  "tp_rank": 3,
+  "scope": "Rebuilt integrated register8 binary versus qualified register8 prototype; nine full real MLP output-bit and memory parity cases. One timing round is not a performance measurement.",
+  "sort": "0",
+  "results": [
+    {
+      "tokens": 2048,
+      "case": "mixed",
+      "bitwise_int16_equal": true,
+      "median_ms": [
+        11.512349359691143,
+        11.292649433016777
+      ],
+      "samples_ms": [
+        [
+          11.512349359691143
+        ],
+        [
+          11.292649433016777
+        ]
+      ],
+      "speedup": 1.0194551268041687,
+      "memory": [
+        {
+          "incremental_peak_allocated_bytes": 495950336,
+          "incremental_peak_reserved_bytes": 0,
+          "total_peak_allocated_bytes": 1330259968
+        },
+        {
+          "incremental_peak_allocated_bytes": 495950336,
+          "incremental_peak_reserved_bytes": 0,
+          "total_peak_allocated_bytes": 1330259968
+        }
+      ],
+      "additional_peak_allocated_bytes": 0,
+      "serving_free_mib_supplied": null,
+      "headroom_assessment": "not qualified: actual loaded-server headroom not supplied",
+      "routed_bytes": 402653184
+    },
+    {
+      "tokens": 2048,
+      "case": "allhot",
+      "bitwise_int16_equal": true,
+      "median_ms": [
+        10.36967895925045,
+        10.324988514184952
+      ],
+      "samples_ms": [
+        [
+          10.36967895925045
+        ],
+        [
+          10.324988514184952
+        ]
+      ],
+      "speedup": 1.0043283772184444,
+      "memory": [
+        {
+          "incremental_peak_allocated_bytes": 495780864,
+          "incremental_peak_reserved_bytes": 0,
+          "total_peak_allocated_bytes": 1330088448
+        },
+        {
+          "incremental_peak_allocated_bytes": 495780864,
+          "incremental_peak_reserved_bytes": 0,
+          "total_peak_allocated_bytes": 1330088448
+        }
+      ],
+      "additional_peak_allocated_bytes": 0,
+      "serving_free_mib_supplied": null,
+      "headroom_assessment": "not qualified: actual loaded-server headroom not supplied",
+      "routed_bytes": 402653184
+    },
+    {
+      "tokens": 2048,
+      "case": "allcold",
+      "bitwise_int16_equal": true,
+      "median_ms": [
+        10.967603884637356,
+        10.786674916744232
+      ],
+      "samples_ms": [
+        [
+          10.967603884637356
+        ],
+        [
+          10.786674916744232
+        ]
+      ],
+      "speedup": 1.016773377272385,
+      "memory": [
+        {
+          "incremental_peak_allocated_bytes": 428427776,
+          "incremental_peak_reserved_bytes": 0,
+          "total_peak_allocated_bytes": 1262735360
+        },
+        {
+          "incremental_peak_allocated_bytes": 428427776,
+          "incremental_peak_reserved_bytes": 0,
+          "total_peak_allocated_bytes": 1262735360
+        }
+      ],
+      "additional_peak_allocated_bytes": 0,
+      "serving_free_mib_supplied": null,
+      "headroom_assessment": "not qualified: actual loaded-server headroom not supplied",
+      "routed_bytes": 402653184
+    },
+    {
+      "tokens": 4096,
+      "case": "mixed",
+      "bitwise_int16_equal": true,
+      "median_ms": [
+        15.383425168693066,
+        15.274164266884327
+      ],
+      "samples_ms": [
+        [
+          15.383425168693066
+        ],
+        [
+          15.274164266884327
+        ]
+      ],
+      "speedup": 1.0071533145709075,
+      "memory": [
+        {
+          "incremental_peak_allocated_bytes": 899178496,
+          "incremental_peak_reserved_bytes": 0,
+          "total_peak_allocated_bytes": 1758850560
+        },
+        {
+          "incremental_peak_allocated_bytes": 899178496,
+          "incremental_peak_reserved_bytes": 0,
+          "total_peak_allocated_bytes": 1758850560
+        }
+      ],
+      "additional_peak_allocated_bytes": 0,
+      "serving_free_mib_supplied": null,
+      "headroom_assessment": "not qualified: actual loaded-server headroom not supplied",
+      "routed_bytes": 805306368
+    },
+    {
+      "tokens": 4096,
+      "case": "allhot",
+      "bitwise_int16_equal": true,
+      "median_ms": [
+        20.191251300275326,
+        20.141673274338245
+      ],
+      "samples_ms": [
+        [
+          20.191251300275326
+        ],
+        [
+          20.141673274338245
+        ]
+      ],
+      "speedup": 1.0024614651057937,
+      "memory": [
+        {
+          "incremental_peak_allocated_bytes": 898843648,
+          "incremental_peak_reserved_bytes": 0,
+          "total_peak_allocated_bytes": 1758513664
+        },
+        {
+          "incremental_peak_allocated_bytes": 898843648,
+          "incremental_peak_reserved_bytes": 0,
+          "total_peak_allocated_bytes": 1758513664
+        }
+      ],
+      "additional_peak_allocated_bytes": 0,
+      "serving_free_mib_supplied": null,
+      "headroom_assessment": "not qualified: actual loaded-server headroom not supplied",
+      "routed_bytes": 805306368
+    },
+    {
+      "tokens": 4096,
+      "case": "allcold",
+      "bitwise_int16_equal": true,
+      "median_ms": [
+        11.451308615505695,
+        11.320650577545166
+      ],
+      "samples_ms": [
+        [
+          11.451308615505695
+        ],
+        [
+          11.320650577545166
+        ]
+      ],
+      "speedup": 1.0115415661905238,
+      "memory": [
+        {
+          "incremental_peak_allocated_bytes": 856852992,
+          "incremental_peak_reserved_bytes": 0,
+          "total_peak_allocated_bytes": 1716523008
+        },
+        {
+          "incremental_peak_allocated_bytes": 856852992,
+          "incremental_peak_reserved_bytes": 0,
+          "total_peak_allocated_bytes": 1716523008
+        }
+      ],
+      "additional_peak_allocated_bytes": 0,
+      "serving_free_mib_supplied": null,
+      "headroom_assessment": "not qualified: actual loaded-server headroom not supplied",
+      "routed_bytes": 805306368
+    },
+    {
+      "tokens": 2177,
+      "case": "mixed",
+      "bitwise_int16_equal": true,
+      "median_ms": [
+        19.08203214406967,
+        18.94679293036461
+      ],
+      "samples_ms": [
+        [
+          19.08203214406967
+        ],
+        [
+          18.94679293036461
+        ]
+      ],
+      "speedup": 1.0071378419662953,
+      "memory": [
+        {
+          "incremental_peak_allocated_bytes": 521349632,
+          "incremental_peak_reserved_bytes": 0,
+          "total_peak_allocated_bytes": 1357257728
+        },
+        {
+          "incremental_peak_allocated_bytes": 521349632,
+          "incremental_peak_reserved_bytes": 0,
+          "total_peak_allocated_bytes": 1357257728
+        }
+      ],
+      "additional_peak_allocated_bytes": 0,
+      "serving_free_mib_supplied": null,
+      "headroom_assessment": "not qualified: actual loaded-server headroom not supplied",
+      "routed_bytes": 428015616
+    },
+    {
+      "tokens": 2177,
+      "case": "allhot",
+      "bitwise_int16_equal": true,
+      "median_ms": [
+        36.81262582540512,
+        37.20067348331213
+      ],
+      "samples_ms": [
+        [
+          36.81262582540512
+        ],
+        [
+          37.20067348331213
+        ]
+      ],
+      "speedup": 0.9895688001970964,
+      "memory": [
+        {
+          "incremental_peak_allocated_bytes": 521169920,
+          "incremental_peak_reserved_bytes": 0,
+          "total_peak_allocated_bytes": 1357075968
+        },
+        {
+          "incremental_peak_allocated_bytes": 521169920,
+          "incremental_peak_reserved_bytes": 0,
+          "total_peak_allocated_bytes": 1357075968
+        }
+      ],
+      "additional_peak_allocated_bytes": 0,
+      "serving_free_mib_supplied": null,
+      "headroom_assessment": "not qualified: actual loaded-server headroom not supplied",
+      "routed_bytes": 428015616
+    },
+    {
+      "tokens": 2177,
+      "case": "allcold",
+      "bitwise_int16_equal": true,
+      "median_ms": [
+        13.307702727615833,
+        13.215652666985989
+      ],
+      "samples_ms": [
+        [
+          13.307702727615833
+        ],
+        [
+          13.215652666985989
+        ]
+      ],
+      "speedup": 1.0069652300154495,
+      "memory": [
+        {
+          "incremental_peak_allocated_bytes": 483244544,
+          "incremental_peak_reserved_bytes": 0,
+          "total_peak_allocated_bytes": 1319150592
+        },
+        {
+          "incremental_peak_allocated_bytes": 483244544,
+          "incremental_peak_reserved_bytes": 0,
+          "total_peak_allocated_bytes": 1319150592
+        }
+      ],
+      "additional_peak_allocated_bytes": 0,
+      "serving_free_mib_supplied": null,
+      "headroom_assessment": "not qualified: actual loaded-server headroom not supplied",
+      "routed_bytes": 428015616
+    }
+  ]
+}

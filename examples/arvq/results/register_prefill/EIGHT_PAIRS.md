@@ -27,8 +27,12 @@ mapping/ABI tests and two existing runtime-dispatch tests passed. Scoped
 pre-commit checks passed. The unchanged build script successfully compiled the
 integrated binary for SM120a, retaining all five required old/new exports.
 
-No GPU execution was performed during this integration while the server was
-booting. The rebuilt production binary has not been independently run; GPU
-qualification here refers to the source-equivalent lab implementation.
+Initial integration used CPU compilation and source equivalence while the
+server was booting.
 `eight_pairs_source_equivalence.json`, `eight_pairs_manifest.json` and
 `eight_pairs_build.json` record that distinction and the exact hashes.
+
+The rebuilt integrated binary subsequently passed nine full real-MLP GPU cases
+against the qualified register8 prototype (2048/4096/2177 tokens, mixed/hot/cold).
+All final BF16 bits and allocated peaks matched; see `eight_pairs_rebuilt_gpu.json`.
+One timing round was used for this integration check, not a new speed claim.

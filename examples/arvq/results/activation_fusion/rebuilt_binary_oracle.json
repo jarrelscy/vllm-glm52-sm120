@@ -1,0 +1,23 @@
+[
+  {
+    "name": "all_half_gate_up_one",
+    "finite_activation_bits": true,
+    "activation_all_bits": true,
+    "packed_equal": true,
+    "scales_equal": true
+  },
+  {
+    "name": "all_half_gate_up_minus_three",
+    "finite_activation_bits": true,
+    "activation_all_bits": true,
+    "packed_equal": true,
+    "scales_equal": true
+  },
+  {
+    "name": "random_fp32",
+    "finite_activation_bits": true,
+    "activation_all_bits": true,
+    "packed_equal": true,
+    "scales_equal": true
+  }
+]

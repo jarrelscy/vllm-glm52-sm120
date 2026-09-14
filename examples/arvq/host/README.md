@@ -68,3 +68,8 @@ and compaction ON. The final full-context launch uses fixed production mode `1` 
 options, eight slots, LMCache, and no diagnostic overrides.
 The published patch passes a reverse-application check against the updated
 host script. These checks do not invoke the script's global stop loop.
+
+LMCache disk persistence was verified after the final restart: an exact 8192-token
+prompt plus 32 output tokens fell from 8.284 to 0.528 seconds, with all four ranks
+restoring, zero GPU-prefix hits, and identical completion text.
+[Proof and scope](../results/lmcache/README.md).

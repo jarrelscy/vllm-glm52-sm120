@@ -35,7 +35,13 @@ cd /home/jarrelscy/homeassistant
 ./switch.sh glm5.3-arvq
 ```
 
-This selects the optimized hybrid with MTP, paired dense FP4 execution, grouped cold prefill, and route compaction. The OpenAI-compatible API is at `http://localhost:8001/v1`, with model name `jarrelscy/GLM-5.3-Vision-NVFP4-ARVQ-hybrid`. Health is at `http://localhost:8001/health`; use the host's configured API key for inference.
+This selects the optimized hybrid with MTP, paired dense FP4 execution, grouped cold prefill, route compaction, LMCache, the full 1,048,576-token position limit, and eight request slots.
+
+To use four slots instead:
+
+```bash
+MAX_NUM_SEQS=4 ARVQ_CAPTURE_SIZES='[1,2,4,8,16]' ./switch.sh glm5.3-arvq
+``` The OpenAI-compatible API is at `http://localhost:8001/v1`, with model name `jarrelscy/GLM-5.3-Vision-NVFP4-ARVQ-hybrid`. Health is at `http://localhost:8001/health`; use the host's configured API key for inference.
 
 For a separate deployment, the fork contains a standalone Compose profile:
 
@@ -53,7 +59,7 @@ curl --fail http://localhost:8001/health
 
 **Build prerequisite:** [`Dockerfile.arvq`](https://github.com/jarrelscy/vllm-glm52-sm120/blob/arvq-hybrid-sm120/Dockerfile.arvq) layers this fork and its kernels over the compatible local base image `glm52-vision-sm120:latest`. That base supplies the compiled vLLM/SM120 and vision dependencies; this is not yet a self-contained public-image installation. The standalone Compose configuration has been validated, while the serving measurements use the [host deployment override](https://github.com/jarrelscy/vllm-glm52-sm120/tree/arvq-hybrid-sm120/examples/arvq/host). A new host needs the compatible base image, Docker GPU support, and the complete checkpoint before running the command.
 
-The measured hardware is **4 × NVIDIA RTX PRO 6000 Blackwell Max-Q, 96 GiB each (SM120), PCIe without NVLink**. The speed measurements below used TP4 + DCP4, three MTP draft tokens, four concurrent requests, 4096 batched tokens, CUDA graph sizes `[1,2,4,8,16]`, memory utilization 0.96, and a 950,000-token request limit. **Deployment update:** startup with the full **1,048,576-token** model position limit and four request slots has now been verified, with 1,222,912 shared KV-cache tokens. Eight request slots and LMCache integration are being validated. Input and generated output both count toward the request limit; configured capacity does not establish full-length accuracy or a completed million-token request test.
+The measured hardware is **4 × NVIDIA RTX PRO 6000 Blackwell Max-Q, 96 GiB each (SM120), PCIe without NVLink**. The speed measurements below used TP4 + DCP4, three MTP draft tokens, four concurrent requests, 4096 batched tokens, CUDA graph sizes `[1,2,4,8,16]`, memory utilization 0.96, and a 950,000-token request limit. **Current deployment:** the full **1,048,576-token** model position limit, **eight request slots**, LMCache ON, utilization **0.94**, and graph sizes `[1,2,4,8,16,32]` have been validated at startup and with bounded serving tests. The shared GPU KV pool is **1,073,920 tokens** across all requests, not a million tokens for each of eight simultaneous requests. Input and generated output both count toward the request limit; configured capacity does not establish full-length accuracy or a completed million-token request test.
 
 The optimized override enables:
 
@@ -63,13 +69,27 @@ VLLM_NVFP4_P4_PAIRED=1
 VLLM_NVFP4_P4_MAX_TOKENS=16
 VLLM_ARVQ_GROUPED_PREFILL=1
 VLLM_ARVQ_COMPACT_PREFILL=1
+MAXLEN=1048576
+MAX_NUM_SEQS=8
+ENABLE_LMCACHE=1
+UTIL=0.94
 ```
 
 Set `PARALLEL=tp4-1m` before launching to disable MTP. Paired dense dispatch is fixed during CUDA graph capture; change its settings by restarting, not by changing a live marker. Prefill options must be enabled before startup memory profiling.
 
 ## Measured decode throughput
 
-Latest local optimized serving results:
+Current full-position/eight-slot profile, **LMCache ON**:
+
+| Simultaneous streams | Total output tokens/s |
+| --- | ---: |
+| 1 | **136.2** |
+| 4 | **277.3** |
+| 8 | **344.9** |
+
+Single-stream decode excluding initial latency measured **144.9 tokens/s**. The full-position four-slot reference with LMCache OFF measured 136.3/280.2 total tokens/s at one/four streams. The eight-slot configuration preserved those rates within about 1%; this comparison also changes LMCache and memory reservation, so it does not isolate the request-slot limit. All drafts were accepted on these short benchmark inputs. [Current configuration and raw results](https://github.com/jarrelscy/vllm-glm52-sm120/blob/67684eeac/examples/arvq/results/context_concurrency/NOTES.md).
+
+Earlier paired-kernel comparison at 950k context, four slots, and LMCache OFF:
 
 | Simultaneous streams | Previous total output tokens/s | Optimized total output tokens/s |
 | --- | ---: | ---: |
@@ -77,7 +97,7 @@ Latest local optimized serving results:
 | 2 | 192.7 | **200.5** |
 | 4 | 264.2 | **274.1** |
 
-**Single-stream decode excluding initial latency: 144.8 tokens/s.** Total throughput above includes request startup/first-token latency and divides completed output tokens by the full batch wall time; it does not sum per-request rates.
+**Earlier single-stream decode excluding initial latency: 144.8 tokens/s.** Total throughput above includes request startup/first-token latency and divides completed output tokens by the full batch wall time; it does not sum per-request rates.
 
 Each stream used a 136-token repetitive prompt and generated 512 tokens, with one warmup and two measured batches per concurrency. **Every draft was accepted: four emitted tokens per speculative step.** These are high-acceptance synthetic-workload numbers, not a production acceptance forecast. Previous/current decode comparisons span server boots; some output sequences differed, so they do not establish identical model behavior or general accuracy preservation.
 
@@ -85,7 +105,7 @@ An earlier dense-P4 no-MTP run measured **53.28 decode tokens/s**. No-MTP was no
 
 ## Measured prefill throughput
 
-Cold-cache requests, one generated output token:
+Cold-cache requests, one generated output token, from the earlier 950k/four-slot/LMCache-OFF speed round:
 
 | Input tokens | Latest request latency | Effective input tokens/s |
 | --- | ---: | ---: |
@@ -98,6 +118,25 @@ Effective input throughput is input tokens divided by HTTP request wall time, in
 Before grouped prefill and compaction, the 4096/8192-token requests took **7.192/15.595 seconds**. Latest latency is **4.165/8.571 seconds**, approximately **1.73×/1.82× faster across rounds**. Compaction alone was isolated in the final same-boot A/B: **4.688 → 4.165 seconds** and **9.724 → 8.571 seconds**, or **12.6–13.5% more input throughput**. The 1024-token control remains below the 2048-token grouped-prefill threshold and was unchanged within that A/B.
 
 [Raw results, methodology, output comparisons, and the fresh decode profile](https://github.com/jarrelscy/vllm-glm52-sm120/blob/460457d2a/examples/arvq/results/prefill/PAIRED_COMPACT_NOTES.md) are available alongside the [speed inventory](https://github.com/jarrelscy/vllm-glm52-sm120/blob/460457d2a/examples/arvq/SPEED_INVENTORY.md).
+
+## LMCache persistence
+
+LMCache is enabled in the current full-position profile, alongside vLLM GPU prefix caching. The image contains the DCP4/multi-KV-group-aware [LMCache fork](https://github.com/jarrelscy/LMCache/tree/glm52-dcp-dsa), version `0.5.2.dev51`, revision `b339be5a7fd091109479e998c8716084d60fc4f9`. Stock LMCache was not used for these results.
+
+The configuration uses V3 GPU connector, 256-token chunks, SHA256-CBOR hashing, CPU storage capped at 24 GiB per worker, and disk storage configured at 100 GiB per worker. The development host uses the dedicated `/data/lmcache/glm5.3-arvq` directory. Worker limits are not a single shared global quota. GPU utilization is reduced to 0.94 to leave room for LMCache staging and runtime workspaces.
+
+A bounded persistence test stored a fresh **8192-token prompt**, stopped the server, and replayed the exact prompt as the **first generation after a clean restart**, generating 32 output tokens in each case:
+
+| Request | End-to-end time |
+| --- | ---: |
+| Cold, no external/GPU cache hits | **8.284 s** |
+| Restored after restart | **0.528 s** |
+
+This was a **15.68× request-latency improvement** on one cache-reuse test, not a decode-throughput multiplier. The restore recorded **8191 external-cache hits and zero GPU-prefix-cache hits**; the last token is recomputed for logits. All four ranks retrieved their 2048-token shards. The 128 persisted chunks contained 448,331,776 data bytes, and the completion text was byte-identical. A full-million-token restore was not tested in this round.
+
+[Persistence proof and per-rank evidence](https://github.com/jarrelscy/vllm-glm52-sm120/tree/arvq-hybrid-sm120/examples/arvq/results/lmcache) are published with the code.
+
+CPU/disk persistence can avoid re-prefilling reusable context, but it does not turn the shared GPU pool into eight simultaneous million-token windows. Cache reuse must match the checkpoint and supported TP4/DCP4 topology; use a fresh cache namespace when changing weights.
 
 ## How the FP4 MMA tile is used
 

@@ -1,0 +1,60 @@
+# Tested ARVQ + dense P4 + MTP profile. Loaded by switch.sh for glm5.3-hybrid-1m.
+# Current full checkpoint is unrotated; H128 rotation artifacts remain prototypes.
+services:
+  vllm-glm5.3-hybrid-1m:
+    environment:
+      ENABLE_LMCACHE: '0'
+      MODEL_DIR: /data/models/jarrelscy/GLM-5.3-Vision-NVFP4-ARVQ-hybrid
+      SERVED_NAME: jarrelscy/GLM-5.3-Vision-NVFP4-ARVQ-hybrid
+      VLLM_ARVQ_CHUNK_TOKENS: '128'
+      VLLM_MTP_INDEX_SHARE: '1'
+      GLM_MOE_LANE_ROWS: '1'
+      GLM_NVFP4_LUT256: '1'
+      NCCL_P2P_LEVEL: SYS
+      DCP_BACKEND: ag_rs
+      VLLM_ENABLE_PCIE_ALLREDUCE: '1'
+      VLLM_PCIE_ALLREDUCE_BACKEND: b12x
+      B12X_PCIE_TP4_REMOTE_PUSH: '1'
+      B12X_PCIE_FUSED_THREADS: '512'
+      B12X_PCIE_FUSED_CTAS_PER_ROW: '1'
+      VLLM_PCIE_ONESHOT_ALLREDUCE_MAX_SIZE: '0'
+      VLLM_PCIE_ONESHOT_FUSED_ADD_RMS_NORM_MAX_SIZE: '12288'
+      VLLM_PCIE_TWOSHOT_ALLREDUCE_MAX_SIZE: 'off'
+      VLLM_PCIE_DMA_MIN_BYTES: 24MB
+      VLLM_PCIE_DMA_FP8: 'off'
+      VLLM_GLM_PCIE_FUSED_AR_RMS: '1'
+      VLLM_ENABLE_NVFP4_P4_O_PROJ: '1'
+      VLLM_NVFP4_P4_MAX_TOKENS: '8'
+      PARALLEL: ${PARALLEL:-tp4-1m-mtp}
+      MAX_NUM_SEQS: '4'
+      MAX_NUM_BATCHED_TOKENS: '4096'
+      MAXLEN: '950000'
+      UTIL: '0.96'
+      CUDAGRAPH_MODE: FULL_AND_PIECEWISE
+    volumes:
+    - /home/jarrelscy/homeassistant/cold-format-lab/runtime-cache/flashinfer:/root/.cache/flashinfer
+    - /home/jarrelscy/homeassistant/cold-format-lab/runtime-cache/torch_extensions:/root/.cache/torch_extensions
+    - /data/models:/data/models:ro
+    - /home/jarrelscy/glm52/vllm-arvq-serving/vllm/model_executor/models/deepseek_v2.py:/opt/vllm/vllm/model_executor/models/deepseek_v2.py:ro
+    - /data/lmcache/glm5.3-arvq:/lmcache/disk
+    - /data/triton_cache/glm5.3-arvq:/data/triton_cache
+    - /data/triton_cache/glm5.3-arvq-vllm:/root/.cache/vllm
+    - /data/profiles/glm5.3-arvq:/profiles
+    - /home/jarrelscy/glm52/vllm-arvq-serving/vllm/distributed/device_communicators/b12x_pcie_all_reduce.py:/opt/vllm/vllm/distributed/device_communicators/b12x_pcie_all_reduce.py:ro
+    - /home/jarrelscy/glm52/vllm-arvq-serving/vllm/distributed/device_communicators/cuda_communicator.py:/opt/vllm/vllm/distributed/device_communicators/cuda_communicator.py:ro
+    - /home/jarrelscy/glm52/vllm-arvq-serving/vllm/distributed/parallel_state.py:/opt/vllm/vllm/distributed/parallel_state.py:ro
+    - /home/jarrelscy/glm52/vllm-arvq-serving/vllm/model_executor/layers/pcie_fused_ar_rms.py:/opt/vllm/vllm/model_executor/layers/pcie_fused_ar_rms.py:ro
+    image: glm53-arvq-sm120:dense-p4-m8
+    command:
+    - --trust-remote-code
+    - --reasoning-parser
+    - glm47
+    - --profiler-config.profiler=torch
+    - --profiler-config.torch_profiler_dir=/profiles
+    - --profiler-config.torch_profiler_with_stack=false
+    - --enable-prefix-caching
+    - --compilation-config
+    - '{"mode":3,"cudagraph_mode":"FULL_AND_PIECEWISE","compile_sizes":[1],"cudagraph_capture_sizes":[1,2,4,8,16]}'
+    build:
+      context: /home/jarrelscy/glm52/vllm-arvq-serving
+      dockerfile: Dockerfile.arvq

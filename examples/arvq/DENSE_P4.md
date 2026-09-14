@@ -13,9 +13,10 @@ scale. Resident storage is 4.5 bits per weight plus that global scale
 (4.50000127 bpw for the measured 6144×4096 shard). It releases the resident BF16
 parameter; restarting without the override restores ordinary BF16 loading.
 
-For one to four tokens, the custom operator packs activations into four FP4
+For one to eight tokens in the example profile, the custom operator packs activations into four FP4
 planes and runs the existing native hot-expert MMA path with one weight expert.
-The split count is eight for one token and two for two to four tokens. Larger
+The split count is eight for one token, two for two to four tokens, and one
+for five to eight tokens. Larger
 calls reconstruct a temporary BF16 matrix and use BF16 linear multiplication.
 This fallback uses the quantized weights, so it does not restore original BF16
 accuracy. Token dispatch stays inside an opaque custom operator so Dynamo does
@@ -31,13 +32,16 @@ docker compose -f examples/arvq/compose.yaml \
 ```
 
 The override enables `VLLM_ENABLE_NVFP4_P4_O_PROJ=1`, sets
-`VLLM_NVFP4_P4_MAX_TOKENS=4`, selects no-MTP TP4 by default, and captures graph
+`VLLM_NVFP4_P4_MAX_TOKENS=8`, selects no-MTP TP4 by default, and captures graph
 sizes `[1,2,4,8,16]`. It preserves the singleton compile range used by the
 PCIe fusion pass. The original `[1,2,4]` limit disabled graphs for concurrent
 MTP verification at 8/16 positions. Raising only this limit increased total
 short-prompt throughput from 72.726 to 184.806 tokens/s at two streams and
 139.908 to 265.347 at four streams. Capture reported 0.88 GiB per rank;
 there is no preserved old capture-allocation measurement for a memory delta.
+Enabling the measured eight-position native path on top of corrected graphs
+raises two-stream total throughput further to 192.740 tokens/s (+4.29%).
+The Python method's default remains four unless the profile opts into eight.
 Setting `PARALLEL=tp4-1m-mtp` requests MTP, whose own projection weights remain
 unchanged. The bounded MTP result below covers the repeated-pangram workload;
 acceptance on realistic traffic needs separate measurement.

@@ -54,7 +54,8 @@
           "gpu_util_percent_median": 99.0
         }
       },
-      "raw_report": "dense_p4_mtp_on_concurrency.json"
+      "raw_report": "dense_p4_mtp_on_concurrency.json",
+      "configuration": "MTP on, caps4/native4"
     },
     {
       "mtp": "on",
@@ -110,7 +111,8 @@
           "gpu_util_percent_median": 100.0
         }
       },
-      "raw_report": "dense_p4_mtp_on_concurrency.json"
+      "raw_report": "dense_p4_mtp_on_concurrency.json",
+      "configuration": "MTP on, caps4/native4"
     },
     {
       "mtp": "on",
@@ -166,7 +168,8 @@
           "gpu_util_percent_median": 100.0
         }
       },
-      "raw_report": "dense_p4_mtp_on_concurrency.json"
+      "raw_report": "dense_p4_mtp_on_concurrency.json",
+      "configuration": "MTP on, caps4/native4"
     },
     {
       "mtp": "on",
@@ -222,7 +225,8 @@
           "gpu_util_percent_median": 100.0
         }
       },
-      "raw_report": "dense_p4_mtp_on_long.json"
+      "raw_report": "dense_p4_mtp_on_long.json",
+      "configuration": "MTP on, caps4/native4"
     },
     {
       "mtp": "on",
@@ -278,7 +282,8 @@
           "gpu_util_percent_median": 50.0
         }
       },
-      "raw_report": "dense_p4_mtp_on_long.json"
+      "raw_report": "dense_p4_mtp_on_long.json",
+      "configuration": "MTP on, caps4/native4"
     },
     {
       "mtp": "off",
@@ -334,7 +339,8 @@
           "gpu_util_percent_median": 98.0
         }
       },
-      "raw_report": "dense_p4_mtp_off_concurrency.json"
+      "raw_report": "dense_p4_mtp_off_concurrency.json",
+      "configuration": "MTP off, caps4/native4"
     },
     {
       "mtp": "off",
@@ -390,7 +396,8 @@
           "gpu_util_percent_median": 98.0
         }
       },
-      "raw_report": "dense_p4_mtp_off_concurrency.json"
+      "raw_report": "dense_p4_mtp_off_concurrency.json",
+      "configuration": "MTP off, caps4/native4"
     },
     {
       "mtp": "off",
@@ -446,7 +453,8 @@
           "gpu_util_percent_median": 98.0
         }
       },
-      "raw_report": "dense_p4_mtp_off_concurrency.json"
+      "raw_report": "dense_p4_mtp_off_concurrency.json",
+      "configuration": "MTP off, caps4/native4"
     },
     {
       "mtp": "off",
@@ -502,7 +510,8 @@
           "gpu_util_percent_median": 98.0
         }
       },
-      "raw_report": "dense_p4_mtp_off_long.json"
+      "raw_report": "dense_p4_mtp_off_long.json",
+      "configuration": "MTP off, caps4/native4"
     },
     {
       "mtp": "off",
@@ -558,15 +567,593 @@
           "gpu_util_percent_median": 98.0
         }
       },
-      "raw_report": "dense_p4_mtp_off_long.json"
+      "raw_report": "dense_p4_mtp_off_long.json",
+      "configuration": "MTP off, caps4/native4"
+    },
+    {
+      "configuration": "MTP on, caps16/native4",
+      "mtp": "on",
+      "workload": "concurrency",
+      "actual_prompt_tokens": [
+        136
+      ],
+      "concurrency": 1,
+      "measured_batches": 2,
+      "warmup_batches": 1,
+      "aggregate_output_tps_mean": 133.33575964209712,
+      "aggregate_output_tps_pooled": 133.33575054437617,
+      "per_stream_decode_tps_mean": 141.78195186076553,
+      "request_latency_s_median": 3.839802942238748,
+      "ttft_ms_median": 235.59145024046302,
+      "ttft_ms_min": 235.34956481307745,
+      "ttft_ms_max": 235.8333356678486,
+      "accepted_draft_fraction": 1.0,
+      "emitted_per_draft_request_step": 4.0,
+      "all_token_ids_verified": true,
+      "all_counter_isolation_passed": true,
+      "compilation_config": {
+        "mode": 3,
+        "cudagraph_mode": "FULL_AND_PIECEWISE",
+        "compile_sizes": [
+          1
+        ],
+        "cudagraph_capture_sizes": [
+          1,
+          2,
+          4,
+          8,
+          16
+        ]
+      },
+      "native_dense_max_tokens": "4",
+      "clocks_per_gpu": {
+        "0": {
+          "samples": 38,
+          "sm_mhz_median": 2212.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 293.37131578947367,
+          "temperature_c_max": 88.0,
+          "gpu_util_percent_median": 99.0
+        },
+        "1": {
+          "samples": 38,
+          "sm_mhz_median": 2250.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 267.32684210526315,
+          "temperature_c_max": 75.0,
+          "gpu_util_percent_median": 99.0
+        },
+        "2": {
+          "samples": 38,
+          "sm_mhz_median": 2242.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 289.89394736842104,
+          "temperature_c_max": 85.0,
+          "gpu_util_percent_median": 99.0
+        },
+        "3": {
+          "samples": 38,
+          "sm_mhz_median": 2220.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 289.6123684210526,
+          "temperature_c_max": 82.0,
+          "gpu_util_percent_median": 99.0
+        }
+      },
+      "raw_report": "dense_p4_mtp_on_graphs.json"
+    },
+    {
+      "configuration": "MTP on, caps16/native4",
+      "mtp": "on",
+      "workload": "concurrency",
+      "actual_prompt_tokens": [
+        136
+      ],
+      "concurrency": 2,
+      "measured_batches": 2,
+      "warmup_batches": 1,
+      "aggregate_output_tps_mean": 184.80622128758387,
+      "aggregate_output_tps_pooled": 184.80618940955242,
+      "per_stream_decode_tps_mean": 99.41402247248419,
+      "request_latency_s_median": 5.520920040784404,
+      "ttft_ms_median": 377.9663417953998,
+      "ttft_ms_min": 240.21091731265187,
+      "ttft_ms_max": 516.7720392346382,
+      "accepted_draft_fraction": 1.0,
+      "emitted_per_draft_request_step": 4.0,
+      "all_token_ids_verified": true,
+      "all_counter_isolation_passed": true,
+      "compilation_config": {
+        "mode": 3,
+        "cudagraph_mode": "FULL_AND_PIECEWISE",
+        "compile_sizes": [
+          1
+        ],
+        "cudagraph_capture_sizes": [
+          1,
+          2,
+          4,
+          8,
+          16
+        ]
+      },
+      "native_dense_max_tokens": "4",
+      "clocks_per_gpu": {
+        "0": {
+          "samples": 56,
+          "sm_mhz_median": 1976.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 298.00964285714286,
+          "temperature_c_max": 91.0,
+          "gpu_util_percent_median": 99.0
+        },
+        "1": {
+          "samples": 56,
+          "sm_mhz_median": 2182.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 293.5130357142857,
+          "temperature_c_max": 80.0,
+          "gpu_util_percent_median": 99.0
+        },
+        "2": {
+          "samples": 56,
+          "sm_mhz_median": 2043.5,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 298.2108928571429,
+          "temperature_c_max": 90.0,
+          "gpu_util_percent_median": 99.0
+        },
+        "3": {
+          "samples": 56,
+          "sm_mhz_median": 2021.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 298.08517857142857,
+          "temperature_c_max": 87.0,
+          "gpu_util_percent_median": 99.0
+        }
+      },
+      "raw_report": "dense_p4_mtp_on_graphs.json"
+    },
+    {
+      "configuration": "MTP on, caps16/native4",
+      "mtp": "on",
+      "workload": "concurrency",
+      "actual_prompt_tokens": [
+        136
+      ],
+      "concurrency": 4,
+      "measured_batches": 2,
+      "warmup_batches": 1,
+      "aggregate_output_tps_mean": 265.3472265698738,
+      "aggregate_output_tps_pooled": 265.34694267316763,
+      "per_stream_decode_tps_mean": 73.33532896561259,
+      "request_latency_s_median": 7.690894632134587,
+      "ttft_ms_median": 763.1445499137044,
+      "ttft_ms_min": 242.2802927903831,
+      "ttft_ms_max": 1021.8928679823875,
+      "accepted_draft_fraction": 1.0,
+      "emitted_per_draft_request_step": 4.0,
+      "all_token_ids_verified": true,
+      "all_counter_isolation_passed": true,
+      "compilation_config": {
+        "mode": 3,
+        "cudagraph_mode": "FULL_AND_PIECEWISE",
+        "compile_sizes": [
+          1
+        ],
+        "cudagraph_capture_sizes": [
+          1,
+          2,
+          4,
+          8,
+          16
+        ]
+      },
+      "native_dense_max_tokens": "4",
+      "clocks_per_gpu": {
+        "0": {
+          "samples": 78,
+          "sm_mhz_median": 1867.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 296.08794871794873,
+          "temperature_c_max": 91.0,
+          "gpu_util_percent_median": 99.0
+        },
+        "1": {
+          "samples": 78,
+          "sm_mhz_median": 2055.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 294.9821794871795,
+          "temperature_c_max": 85.0,
+          "gpu_util_percent_median": 99.0
+        },
+        "2": {
+          "samples": 78,
+          "sm_mhz_median": 1920.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 295.6525641025641,
+          "temperature_c_max": 91.0,
+          "gpu_util_percent_median": 99.0
+        },
+        "3": {
+          "samples": 78,
+          "sm_mhz_median": 1875.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 296.1157692307692,
+          "temperature_c_max": 90.0,
+          "gpu_util_percent_median": 99.0
+        }
+      },
+      "raw_report": "dense_p4_mtp_on_graphs.json"
+    },
+    {
+      "configuration": "MTP on, caps16/native8",
+      "mtp": "on",
+      "workload": "concurrency",
+      "actual_prompt_tokens": [
+        136
+      ],
+      "concurrency": 1,
+      "measured_batches": 2,
+      "warmup_batches": 1,
+      "aggregate_output_tps_mean": 133.195508565463,
+      "aggregate_output_tps_pooled": 133.1954984895082,
+      "per_stream_decode_tps_mean": 141.6910415440206,
+      "request_latency_s_median": 3.8438041545450687,
+      "ttft_ms_median": 237.27760440669954,
+      "ttft_ms_min": 236.8854987435043,
+      "ttft_ms_max": 237.6697100698948,
+      "accepted_draft_fraction": 1.0,
+      "emitted_per_draft_request_step": 4.0,
+      "all_token_ids_verified": true,
+      "all_counter_isolation_passed": true,
+      "compilation_config": {
+        "mode": 3,
+        "cudagraph_mode": "FULL_AND_PIECEWISE",
+        "compile_sizes": [
+          1
+        ],
+        "cudagraph_capture_sizes": [
+          1,
+          2,
+          4,
+          8,
+          16
+        ]
+      },
+      "native_dense_max_tokens": "8",
+      "clocks_per_gpu": {
+        "0": {
+          "samples": 38,
+          "sm_mhz_median": 2212.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 294.4715789473684,
+          "temperature_c_max": 89.0,
+          "gpu_util_percent_median": 99.0
+        },
+        "1": {
+          "samples": 38,
+          "sm_mhz_median": 2250.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 266.92605263157895,
+          "temperature_c_max": 75.0,
+          "gpu_util_percent_median": 99.0
+        },
+        "2": {
+          "samples": 38,
+          "sm_mhz_median": 2242.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 290.73394736842107,
+          "temperature_c_max": 86.0,
+          "gpu_util_percent_median": 99.0
+        },
+        "3": {
+          "samples": 38,
+          "sm_mhz_median": 2220.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 291.6563157894737,
+          "temperature_c_max": 83.0,
+          "gpu_util_percent_median": 99.0
+        }
+      },
+      "raw_report": "dense_p4_mtp_on_m8.json"
+    },
+    {
+      "configuration": "MTP on, caps16/native8",
+      "mtp": "on",
+      "workload": "concurrency",
+      "actual_prompt_tokens": [
+        136
+      ],
+      "concurrency": 2,
+      "measured_batches": 2,
+      "warmup_batches": 1,
+      "aggregate_output_tps_mean": 192.73952056472683,
+      "aggregate_output_tps_pooled": 192.7392851117735,
+      "per_stream_decode_tps_mean": 104.08406644834358,
+      "request_latency_s_median": 5.293757286155596,
+      "ttft_ms_median": 380.9062810614705,
+      "ttft_ms_min": 241.70798901468515,
+      "ttft_ms_max": 522.5695101544261,
+      "accepted_draft_fraction": 1.0,
+      "emitted_per_draft_request_step": 4.0,
+      "all_token_ids_verified": true,
+      "all_counter_isolation_passed": true,
+      "compilation_config": {
+        "mode": 3,
+        "cudagraph_mode": "FULL_AND_PIECEWISE",
+        "compile_sizes": [
+          1
+        ],
+        "cudagraph_capture_sizes": [
+          1,
+          2,
+          4,
+          8,
+          16
+        ]
+      },
+      "native_dense_max_tokens": "8",
+      "clocks_per_gpu": {
+        "0": {
+          "samples": 54,
+          "sm_mhz_median": 2040.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 297.30425925925925,
+          "temperature_c_max": 91.0,
+          "gpu_util_percent_median": 99.0
+        },
+        "1": {
+          "samples": 54,
+          "sm_mhz_median": 2205.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 286.1066666666667,
+          "temperature_c_max": 80.0,
+          "gpu_util_percent_median": 99.0
+        },
+        "2": {
+          "samples": 54,
+          "sm_mhz_median": 2103.5,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 297.57259259259257,
+          "temperature_c_max": 90.0,
+          "gpu_util_percent_median": 99.0
+        },
+        "3": {
+          "samples": 54,
+          "sm_mhz_median": 2070.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 297.3653703703704,
+          "temperature_c_max": 88.0,
+          "gpu_util_percent_median": 99.0
+        }
+      },
+      "raw_report": "dense_p4_mtp_on_m8.json"
+    },
+    {
+      "configuration": "MTP on, caps16/native8",
+      "mtp": "on",
+      "workload": "concurrency",
+      "actual_prompt_tokens": [
+        136
+      ],
+      "concurrency": 4,
+      "measured_batches": 2,
+      "warmup_batches": 1,
+      "aggregate_output_tps_mean": 264.2136355537941,
+      "aggregate_output_tps_pooled": 264.2114664384145,
+      "per_stream_decode_tps_mean": 73.00900901861729,
+      "request_latency_s_median": 7.719747907016426,
+      "ttft_ms_median": 745.0413769111037,
+      "ttft_ms_min": 243.20711102336645,
+      "ttft_ms_max": 1027.5521888397634,
+      "accepted_draft_fraction": 1.0,
+      "emitted_per_draft_request_step": 4.0,
+      "all_token_ids_verified": true,
+      "all_counter_isolation_passed": true,
+      "compilation_config": {
+        "mode": 3,
+        "cudagraph_mode": "FULL_AND_PIECEWISE",
+        "compile_sizes": [
+          1
+        ],
+        "cudagraph_capture_sizes": [
+          1,
+          2,
+          4,
+          8,
+          16
+        ]
+      },
+      "native_dense_max_tokens": "8",
+      "clocks_per_gpu": {
+        "0": {
+          "samples": 77,
+          "sm_mhz_median": 1860.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 296.95675324675324,
+          "temperature_c_max": 91.0,
+          "gpu_util_percent_median": 99.0
+        },
+        "1": {
+          "samples": 77,
+          "sm_mhz_median": 2055.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 295.8454545454546,
+          "temperature_c_max": 85.0,
+          "gpu_util_percent_median": 99.0
+        },
+        "2": {
+          "samples": 77,
+          "sm_mhz_median": 1920.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 296.74233766233766,
+          "temperature_c_max": 91.0,
+          "gpu_util_percent_median": 99.0
+        },
+        "3": {
+          "samples": 77,
+          "sm_mhz_median": 1867.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 296.8432467532468,
+          "temperature_c_max": 90.0,
+          "gpu_util_percent_median": 99.0
+        }
+      },
+      "raw_report": "dense_p4_mtp_on_m8.json"
+    },
+    {
+      "configuration": "MTP on, caps16/native8",
+      "mtp": "on",
+      "workload": "long",
+      "actual_prompt_tokens": [
+        4115
+      ],
+      "concurrency": 1,
+      "measured_batches": 1,
+      "warmup_batches": 0,
+      "aggregate_output_tps_mean": 42.847197785790755,
+      "aggregate_output_tps_pooled": 42.847197785790755,
+      "per_stream_decode_tps_mean": 132.39637765438513,
+      "request_latency_s_median": 11.949152208864689,
+      "ttft_ms_median": 8089.483867865056,
+      "ttft_ms_min": 8089.483867865056,
+      "ttft_ms_max": 8089.483867865056,
+      "accepted_draft_fraction": 0.9308641975308642,
+      "emitted_per_draft_request_step": 3.7925925925925927,
+      "all_token_ids_verified": true,
+      "all_counter_isolation_passed": true,
+      "compilation_config": {
+        "mode": 3,
+        "cudagraph_mode": "FULL_AND_PIECEWISE",
+        "compile_sizes": [
+          1
+        ],
+        "cudagraph_capture_sizes": [
+          1,
+          2,
+          4,
+          8,
+          16
+        ]
+      },
+      "native_dense_max_tokens": "8",
+      "clocks_per_gpu": {
+        "0": {
+          "samples": 60,
+          "sm_mhz_median": 1417.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 297.2626666666667,
+          "temperature_c_max": 92.0,
+          "gpu_util_percent_median": 100.0
+        },
+        "1": {
+          "samples": 60,
+          "sm_mhz_median": 1830.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 290.3346666666667,
+          "temperature_c_max": 86.0,
+          "gpu_util_percent_median": 100.0
+        },
+        "2": {
+          "samples": 60,
+          "sm_mhz_median": 1815.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 296.623,
+          "temperature_c_max": 91.0,
+          "gpu_util_percent_median": 100.0
+        },
+        "3": {
+          "samples": 60,
+          "sm_mhz_median": 1717.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 297.0271666666667,
+          "temperature_c_max": 90.0,
+          "gpu_util_percent_median": 100.0
+        }
+      },
+      "raw_report": "dense_p4_mtp_on_m8_long.json"
+    },
+    {
+      "configuration": "MTP on, caps16/native8",
+      "mtp": "on",
+      "workload": "long",
+      "actual_prompt_tokens": [
+        4115
+      ],
+      "concurrency": 4,
+      "measured_batches": 1,
+      "warmup_batches": 0,
+      "aggregate_output_tps_mean": 105.89690482245965,
+      "aggregate_output_tps_pooled": 105.89690482245965,
+      "per_stream_decode_tps_mean": 58.44640156975684,
+      "request_latency_s_median": 18.356006160145625,
+      "ttft_ms_median": 9688.92695568502,
+      "ttft_ms_min": 8045.168082695454,
+      "ttft_ms_max": 9689.25679475069,
+      "accepted_draft_fraction": 0.712608473711077,
+      "emitted_per_draft_request_step": 3.1378254211332313,
+      "all_token_ids_verified": true,
+      "all_counter_isolation_passed": true,
+      "compilation_config": {
+        "mode": 3,
+        "cudagraph_mode": "FULL_AND_PIECEWISE",
+        "compile_sizes": [
+          1
+        ],
+        "cudagraph_capture_sizes": [
+          1,
+          2,
+          4,
+          8,
+          16
+        ]
+      },
+      "native_dense_max_tokens": "8",
+      "clocks_per_gpu": {
+        "0": {
+          "samples": 97,
+          "sm_mhz_median": 1807.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 298.4503092783505,
+          "temperature_c_max": 92.0,
+          "gpu_util_percent_median": 99.0
+        },
+        "1": {
+          "samples": 97,
+          "sm_mhz_median": 1957.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 295.76257731958765,
+          "temperature_c_max": 87.0,
+          "gpu_util_percent_median": 99.0
+        },
+        "2": {
+          "samples": 97,
+          "sm_mhz_median": 1882.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 298.1078350515464,
+          "temperature_c_max": 91.0,
+          "gpu_util_percent_median": 99.0
+        },
+        "3": {
+          "samples": 97,
+          "sm_mhz_median": 1830.0,
+          "memory_mhz_median": 13365.0,
+          "power_w_mean": 298.57907216494846,
+          "temperature_c_max": 90.0,
+          "gpu_util_percent_median": 99.0
+        }
+      },
+      "raw_report": "dense_p4_mtp_on_m8_long.json"
     }
   ],
   "methodology": {
     "aggregate": "Per batch: sum final usage.completion_tokens / (latest stream completion - earliest stream request start). Table uses mean of batch rates, never sum of per-stream rates.",
     "short": "Actual136-token repeated-pangram prompt,512output perstream,onewarmup+2measuredbatches perconcurrency,temperature0,seed173,ignoreEOS. Sameprompt acrossstreams andcases;prefixcaching enabled.",
     "long": "Actual4115-token synthetic operations report,512output perstream,one measured batch/no warmup atC1andC4. Earlyper-concurrency prefixprevents cross-case cache reuse; concurrentstreams shareprompt. Lowerdifferentdraftacceptance prevents generalizationfrompangram.",
-    "runtime": "DenseP4o_proj enabled,native_max4,capture_sizes[1,2,4],maxseqs4,LMCacheoff. MTPonusesV2,offusesV1 asnaturalprofiledefaults.",
+    "runtime": "Baselinecapture[1,2,4]/native4; graph-onlycapture[1,2,4,8,16]/native4; finalsameexpandedcaptures/native8 withsplit1at5..8. DenseP4o_proj enabled,maxseqs4,LMCacheoff. NaturalMTPonV2/offV1.",
     "limitations": "Closed simultaneous batches,notsteadyopen-loop arrival load. Includesprefill andfinalcompletion. Requestlatenciesanddraftcounterstepsare notGPUbatchstepdurations. Clocks200mssamplesincludeprefill.",
-    "left_running": "denseP4 enabled,PARALLELtp4-1m(noMTP). No furtherAPIrequests aftersweep."
+    "left_running": "DenseP4 native8,captures[1,2,4,8,16],MTPon(PARALLELtp4-1m-mtp),imageglm53-arvq-sm120:dense-p4-m8.",
+    "long_acceptance_caveat": "Sameprompt hashes verified; old/final longC1acceptance51.16%/93.09%,longC470.05%/71.26%. Singlebatchpercase; longC1speedgaincannotbeassignedsolelytokernels."
   }
 }

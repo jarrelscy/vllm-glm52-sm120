@@ -1,0 +1,65 @@
+{
+  "comparisons": [
+    {
+      "concurrency": 1,
+      "stream": 0,
+      "identical_prompt_sha256": "59ec4bfc1b7bec3a578cc59c49f89c175678c9a9c04f5ef3134b11aa73a1eab3",
+      "old_output_sha256": "e62b7a87d76e7f76a97e512ebc9efb9c0b450b3bbb29413f8332d915946658d7",
+      "new_output_sha256": "178c5c1c82f89cb3bd8a3798f61db621c9f6d308ff8ae303e6f49c2a4a46de14",
+      "common_output_token_prefix": 40,
+      "old_first_different_id": 27766,
+      "new_first_different_id": 7177,
+      "old_text_prefix": "Record 050: The catalog service handled 3013 requests during observation window 50. Median latency was 112 milliseconds and the error count was 5. Operators observed normal upstream responses with occasional occasional queue delays. The dep",
+      "new_text_prefix": "Record 050: The catalog service handled 3013 requests during observation window 50. Median latency was 112 milliseconds and the error count was 5. Operators observed normal upstream responses with occasional queue  delays. The deployment re"
+    },
+    {
+      "concurrency": 4,
+      "stream": 0,
+      "identical_prompt_sha256": "57aa55a727d3b897d8d12845c10d3949dc46db0b8c8ed3f0b89a6e428c4b658a",
+      "old_output_sha256": "040eeff74ef6f15e0d4c82f65fac8eba4ab0249c58d7fda0fd473891110fec2f",
+      "new_output_sha256": "a64e0ad83705fb4acf42c07ac2992c12784a8539ed3b2d6ef9567d4a054eb1d8",
+      "common_output_token_prefix": 0,
+      "old_first_different_id": 2,
+      "new_first_different_id": 6471,
+      "old_text_prefix": "# Synthetic Operations Report Review\n\n## Executive Summary\n\nThis report covers 50 observation windows across five services (checkout, catalog, billing, search, shipping, accounts) with deployment revisions r200 through r207. The data shows ",
+      "new_text_prefix": "Record 050: The catalog service handled 3013 requests during observation window 50. Median latency was 112 milliseconds and the error count was 5. Operators observed normal upstream responses with occasional occasional queue delays. The dep"
+    },
+    {
+      "concurrency": 4,
+      "stream": 1,
+      "identical_prompt_sha256": "57aa55a727d3b897d8d12845c10d3949dc46db0b8c8ed3f0b89a6e428c4b658a",
+      "old_output_sha256": "4bc5d55f375c9fc611178b5306016148c118673f5d88be4ef2ebb659855230b8",
+      "new_output_sha256": "96b0cbd6e3c602398483611e5fdd3f50e330725eabd73d2eca93dfbe7ba7acf3",
+      "common_output_token_prefix": 0,
+      "old_first_different_id": 2,
+      "new_first_different_id": 6471,
+      "old_text_prefix": "# Synthetic Operations Report Review\n\n## Executive Summary\n\nThis report covers 50 observation windows across six services (checkout, catalog, billing, search, shipping, accounts), spanning deployment revisions r200 through r207. The data sh",
+      "new_text_prefix": "Record 050: The catalog service handled 3013 requests during observation window 50. Median latency was 112 milliseconds and the error count was 5. Operators observed normal upstream responses with occasional queue  delays. The deployment re"
+    },
+    {
+      "concurrency": 4,
+      "stream": 2,
+      "identical_prompt_sha256": "57aa55a727d3b897d8d12845c10d3949dc46db0b8c8ed3f0b89a6e428c4b658a",
+      "old_output_sha256": "0e40a9296d3b464ab6eed44c470104be4a8e702324bbc809a7877ff5c5884890",
+      "new_output_sha256": "4d71de0b7f2a5422b6e69257e6017b8ec2b6e2edf65d11bd5a18fd2ba416004c",
+      "common_output_token_prefix": 0,
+      "old_first_different_id": 2,
+      "new_first_different_id": 6471,
+      "old_text_prefix": "# Synthetic Operations Report Review\n\n## Executive Summary\n\nThe report covers 50 observation windows across five services (checkout, catalog, billing, search, shipping, accounts) with deployment revisions r200 through r207. The data shows a",
+      "new_text_prefix": "Record 051: The billing service handled 3050 requests during observation window 51. Median latency was 119 milliseconds and the error count was 6. Operators observed normal upstream responses with occasional queue delays. The deployment rev"
+    },
+    {
+      "concurrency": 4,
+      "stream": 3,
+      "identical_prompt_sha256": "57aa55a727d3b897d8d12845c10d3949dc46db0b8c8ed3f0b89a6e428c4b658a",
+      "old_output_sha256": "7418c8c15fe00b7f8fb2c8dce4868dd79666bc35b2777665dbbe128340edcc4a",
+      "new_output_sha256": "1a75a1514fc036ec1e9025b7c566f91d5fcb05f7e6673d84076eec3007f42af8",
+      "common_output_token_prefix": 2,
+      "old_first_different_id": 100002,
+      "new_first_different_id": 15,
+      "old_text_prefix": "Record 051: The billing service handled 3050 requests during observation window 51. Median latency was 119 milliseconds and the error count was 6. Operators observed normal upstream responses with occasional queue delays. The deployment rev",
+      "new_text_prefix": "Record 050: The catalog service handled 3013 requests during observation window 50. Median latency was 112 milliseconds and the error count was 5. Operators observed normal upstream responses with occasional queue delays. The deployment rev"
+    }
+  ],
+  "interpretation": "Outputs differ despite identical prompt hashes and temperature0. Cross-boot non-determinism is already documented for the profile. This observation is not evidence of a new kernel bug or isolated accuracy change; it reinforces the long-acceptance caveat."
+}

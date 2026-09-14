@@ -1,0 +1,32 @@
+--- a/switch.sh
++++ b/switch.sh
+@@ -24,0 +25 @@
++  glm5.3-arvq|glm5.3-arvq-mtp) echo "Alias: $1 → glm5.3-hybrid-1m (ARVQ + dense P4 + MTP)"; set -- "glm5.3-hybrid-1m" ;;
+@@ -109 +110 @@
+-  shards=$(grep -oE '"model[^"]*\.safetensors"' "$idx" 2>/dev/null | tr -d '"' | sort -u)
++  shards=$(grep -oE '"[^"]+\.safetensors"' "$idx" 2>/dev/null | tr -d '"' | sort -u)
+@@ -223 +224 @@
+-  glm5.3-hybrid-1m) echo "Switching to GLM-5.3 re-tiered 1M hybrid (jarrelscy GLM-5.3-Vision-NVFP4-AQLM-hybrid-1m, 29.9% hot experts vs 37.0%, self-contained vision tower+projector; TP4+DCP4+MTP ns3, target 950K window — NOT yet fit-gated; served as glm-5.3; aliases: glm5.3-1m, glm-5.3-1m)..." ;;
++  glm5.3-hybrid-1m) echo "Switching to GLM-5.3 Vision NVFP4+ARVQ hybrid with dense P4, TP4+DCP4+MTP ns3, 950K window, four streams, native dense through 8 positions and CUDA graphs through 16 (aliases: glm5.3-arvq, glm5.3-1m, glm-5.3)..." ;;
+@@ -288,0 +290 @@
++    echo "    glm5.3-arvq             GLM-5.3 Vision ARVQ hybrid + dense P4, TP4+DCP4+MTP3, 950K ctx; tested short-prompt total throughput ~133/193/264 tok/s at 1/2/4 streams"
+@@ -307,0 +310,19 @@
++
++# Use the measured ARVQ deployment for the existing 1M hybrid profile. Validate
++# its local inputs before stopping the currently serving model. Other profiles
++# continue to use the base compose file; the older AQLM hybrid remains available
++# as glm5.3-hybrid. Rotation has not been converted into this full checkpoint.
++if [ "$1" = "glm5.3-hybrid-1m" ]; then
++  ARVQ_COMPOSE="$SCRIPT_DIR/docker-compose.glm53-arvq.yaml"
++  ARVQ_MODEL="/data/models/jarrelscy/GLM-5.3-Vision-NVFP4-ARVQ-hybrid"
++  if [ ! -f "$ARVQ_COMPOSE" ] || [ ! -f /home/jarrelscy/glm52/vllm-arvq-serving/Dockerfile.arvq ]; then
++    echo "ERROR: ARVQ compose override or vllm-arvq-serving build source is missing." >&2
++    exit 1
++  fi
++  if ! _shards_complete "$ARVQ_MODEL"; then
++    echo "ERROR: ARVQ checkpoint is incomplete at $ARVQ_MODEL; keeping the current server running." >&2
++    exit 1
++  fi
++  export COMPOSE_FILE="$SCRIPT_DIR/docker-compose.yaml:$ARVQ_COMPOSE"
++  docker compose --profile glm5.3-hybrid-1m config --quiet
++fi

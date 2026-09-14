@@ -116,33 +116,37 @@ call counts match the 75 shared-expert layers and measured isolated latencies
 are close. This mapping remains an inference rather than direct launch
 correlation; do not attribute them to indexer projections from names alone.
 
-### Measured concurrency and the next controlled test
+### Fixed MTP concurrency
 
-Total output throughput includes prefill and final completion, measured as all
-completed output tokens divided by concurrent batch wall span. It is not a sum
-of per-stream decode rates. Short cases use identical 136-token prompts and
-512 output tokens per stream, one warmup and two measured batches.
+The main regression was missing graph coverage for verification batches of 8
+and 16 tokens. Expanding capture sizes to `[1,2,4,8,16]` fixes it. The separate
+native-M8 change adds another 4.29% at two streams; four-stream performance is
+nearly unchanged from the graph-only fix.
 
-| MTP | Streams | Total tokens/s | Per-stream decode tokens/s | Median request seconds |
-| --- | ---: | ---: | ---: | ---: |
-| On | 1 | 133.71 | 142.05 | 3.829 |
-| On | 2 | 72.73 | 37.46 | 14.014 |
-| On | 4 | 139.91 | 37.13 | 14.597 |
-| Off | 1 | 52.21 | 53.40 | 9.806 |
-| Off | 2 | 79.63 | 40.94 | 12.850 |
-| Off | 4 | 140.24 | 36.92 | 14.588 |
+| Configuration | One stream total tokens/s | Two streams total tokens/s | Four streams total tokens/s |
+| --- | ---: | ---: | ---: |
+| No MTP, original caps | 52.21 | 79.63 | 140.24 |
+| MTP, original caps4/native4 | 133.71 | 72.73 | 139.91 |
+| MTP, caps16/native4 | 133.34 | 184.81 | 265.35 |
+| MTP, caps16/native8 (live) | 133.20 | 192.74 | 264.21 |
 
-A separate 4115-token operations-report case used one batch per case, no warmup.
-Total throughput was 37.73/73.76 tokens/s for MTP on at one/four streams, and
-29.11/92.80 with MTP off. MTP draft acceptance was only 51.2%/70.1% on this
-document workload, so it is not directly comparable to the short repeated text.
+Totals are actual completed tokens divided by concurrent batch wall span,
+including prefill; they are not summed per-stream decode rates. Each short case
+uses 136 prompt tokens and 512 output tokens per stream, one warmup and two
+measured batches. The full report includes per-stream decode rates, latency
+and TTFT so throughput is not confused with individual request experience.
 
-Current baseline graph sizes `[1,2,4]` and dense native maximum 4 exclude MTP
-verification batches of 8/16 tokens. A graph-only coverage extension is the
-next controlled test; native M8 changes must be measured separately. See
-[full methodology and TTFT](results/throughput/throughput_summary.md) and
-[raw summary](results/throughput/throughput_summary.json). These baseline
-measurements do not isolate the two fallback costs.
+On the separate 4115-token document workload, the final one/four-stream totals
+are 42.85/105.90 tokens/s. Each is one cold-prefill batch. One-stream acceptance
+changed from 51.2% to 93.1% despite identical prompt hashes, so its speed gain
+cannot be attributed solely to kernels. Four-stream acceptance was 70.1%/71.3%
+before/after. See [full measured comparison](results/throughput/throughput_summary.md),
+[raw summary and clocks](results/throughput/throughput_summary.json), and
+[isolated graph-only evidence](results/throughput/graph_only_summary.md).
+
+The live server is left on the winning MTP profile with native dense maximum 8
+and capture sizes `[1,2,4,8,16]`. Native M16 and heterogeneous/open-loop traffic
+remain separate tuning opportunities; no unmeasured benefit is claimed.
 
 ## Candidates tested and not adopted
 

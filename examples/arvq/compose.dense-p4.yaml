@@ -4,7 +4,7 @@ services:
     environment:
       PARALLEL: ${PARALLEL:-tp4-1m}
       VLLM_ENABLE_NVFP4_P4_O_PROJ: '1'
-      VLLM_NVFP4_P4_MAX_TOKENS: '4'
+      VLLM_NVFP4_P4_MAX_TOKENS: '8'
       MAX_NUM_SEQS: '4'
     command:
     - --trust-remote-code

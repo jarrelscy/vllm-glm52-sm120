@@ -20,10 +20,10 @@ def library():
             [ctypes.c_void_p] * 3 + [ctypes.c_int] * 3 + [ctypes.c_void_p]
         )
         LIB.hybrid_pack.restype = ctypes.c_int
-        LIB.hybrid_pack_pairs.argtypes = (
+        LIB.hybrid_pack_register_pairs.argtypes = (
             [ctypes.c_void_p] * 6 + [ctypes.c_int] * 3 + [ctypes.c_void_p]
         )
-        LIB.hybrid_pack_pairs.restype = ctypes.c_int
+        LIB.hybrid_pack_register_pairs.restype = ctypes.c_int
     return LIB
 
 
@@ -53,9 +53,9 @@ class WideHot:
         ptr = lambda t: ctypes.c_void_p(t.data_ptr())
         if self.groups is None:
             self.groups = torch.empty(
-                ((slots + 31) // 32, 11), device=x.device, dtype=torch.int32
+                ((slots + 31) // 32, 7), device=x.device, dtype=torch.int32
             )
-            err = lib.hybrid_pack_pairs(
+            err = lib.hybrid_pack_register_pairs(
                 *map(ptr, [x, packed, scales, cold, hot, self.groups]),
                 k,
                 slots,

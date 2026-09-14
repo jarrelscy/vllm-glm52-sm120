@@ -1,0 +1,9 @@
+{
+  "mma -> register_mma": true,
+  "pack_planes -> register_pack_planes": true,
+  "hybrid_pack_pairs -> hybrid_pack_register_pairs": true,
+  "wide_kernel -> register_kernel": true,
+  "hybrid_reduce -> register_reduce": true,
+  "wide_launch -> wide_launch_register": true,
+  "runtime only pack symbol and descriptor width changed": true
+}

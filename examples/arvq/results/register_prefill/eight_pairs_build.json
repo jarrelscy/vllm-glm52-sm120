@@ -1,0 +1,15 @@
+{
+  "build_command": "bash vllm/model_executor/layers/quantization/arvq/build_prefill_wide.sh",
+  "cuda_arch": "sm_120a",
+  "GPU_execution": false,
+  "success": true,
+  "exports": [
+    "hybrid_pack",
+    "hybrid_pack_pairs",
+    "hybrid_pack_register_pairs",
+    "wide_launch",
+    "wide_launch_register"
+  ],
+  "binary_sha256": "f64806bd85cd9d15bef990beaa75f25bbff18e502dea913069cf49b15c0a11cf",
+  "rebuilt_production_binary_GPU_parity": "not rerun; qualified lab arithmetic source equivalence checked"
+}

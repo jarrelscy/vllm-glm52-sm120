@@ -134,7 +134,7 @@ def test_wide_dispatches_register_kernel_and_reuses_pair_descriptors(monkeypatch
         return invoke
 
     lib = SimpleNamespace(
-        hybrid_pack_pairs=record("pack_pairs"),
+        hybrid_pack_register_pairs=record("pack_pairs"),
         hybrid_pack=record("pack"),
         wide_launch_register=record("register"),
     )
@@ -151,7 +151,7 @@ def test_wide_dispatches_register_kernel_and_reuses_pair_descriptors(monkeypatch
     groups = projection.groups
     projection(rows, cold, hot, tensors, 1.0, 64, 2, 1)
     assert result.shape == (33, 64)
-    assert projection.groups is groups and groups.shape == (2, 11)
+    assert projection.groups is groups and groups.shape == (2, 7)
     assert [name for name, _ in calls] == ["pack_pairs", "register", "pack", "register"]
     assert calls[1][1][10:16] == (64, 128, 33, 8, 2, mode)
     assert calls[3][1][10:16] == (64, 128, 33, 2, 1, mode)

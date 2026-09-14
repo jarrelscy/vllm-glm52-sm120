@@ -1,0 +1,11 @@
+{
+  "source": "/home/jarrelscy/homeassistant/cold-format-lab/prefill_register8_experiment/register_hot.cu",
+  "source_sha256": "bbcd575e84e18885f16b20f81945e9ad76b59d557ca5b1f4e8708e941f6c1c31",
+  "repository_files": {
+    "vllm/model_executor/layers/quantization/arvq/prefill_register.cu": "0a6b28e5db0518ba2273638df657c741403536995262682877d9cac1b3a053a6",
+    "vllm/model_executor/layers/quantization/nvfp4_arvq_wide_runtime.py": "b4d8228056f9cdb0fe0cbcf19baf5fe0b94529ad3787214062d5ceef71d172c4",
+    "tests/quantization/test_arvq_register_prefill.py": "ca158cb96f807459a9b06b6f55f620a3245a3fc53a6ef3bb078f72818b29f643",
+    "tests/quantization/test_arvq_paired_prefill.py": "1d284d1f6b2dfc73abdcecdf20cd7f06c6f0b2d32e48d3a40b040b71d7b62022"
+  },
+  "build_sha256": "f64806bd85cd9d15bef990beaa75f25bbff18e502dea913069cf49b15c0a11cf"
+}

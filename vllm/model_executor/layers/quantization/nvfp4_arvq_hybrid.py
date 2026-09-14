@@ -195,12 +195,32 @@ def arvq_mlp(
             16 if slots <= 32 else 8,
             2,
         )
-        h13 = h13.to(torch.float16)
-        gate, up = h13.chunk(2, dim=-1)
-        hact = (torch.nn.functional.silu(gate) * up).to(torch.float16)
-        down = _projection(
-            hact, cold_ids, hot_ids, tensors[6:], alphas[1], hidden, 2, 1
-        )
+        if (
+            slots <= 64
+            and os.environ.get("VLLM_ARVQ_FUSED_ACTIVATION_PACK", "0") == "1"
+        ):
+            from vllm.model_executor.layers.quantization import (
+                nvfp4_arvq_activation_pack as activation_pack,
+            )
+
+            packed_activation, activation_scales = activation_pack.pack_activation(h13)
+            del h13
+            down = activation_pack.down_prepacked(
+                packed_activation,
+                activation_scales,
+                cold_ids,
+                hot_ids,
+                tensors[6:],
+                alphas[1],
+                hidden,
+            )
+        else:
+            h13 = h13.to(torch.float16)
+            gate, up = h13.chunk(2, dim=-1)
+            hact = (torch.nn.functional.silu(gate) * up).to(torch.float16)
+            down = _projection(
+                hact, cold_ids, hot_ids, tensors[6:], alphas[1], hidden, 2, 1
+            )
         weighted = down.reshape(stop - start, top_k, hidden)
         weighted = weighted * topk_weights[start:stop, :, None].float()
         outputs.append(weighted.sum(1).to(x.dtype))

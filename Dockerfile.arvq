@@ -23,3 +23,6 @@ COPY vllm /opt/vllm/vllm
 RUN NVCC=/usr/local/cuda/bin/nvcc bash /opt/vllm/vllm/model_executor/layers/quantization/arvq/build.sh
 RUN NVCC=/usr/local/cuda/bin/nvcc bash /opt/vllm/vllm/model_executor/layers/quantization/arvq/build_dense.sh
 RUN NVCC=/usr/local/cuda/bin/nvcc bash /opt/vllm/vllm/model_executor/layers/quantization/arvq/build_prefill.sh
+RUN NVCC=/usr/local/cuda/bin/nvcc bash /opt/vllm/vllm/model_executor/layers/quantization/arvq/build_prefill_pairs.sh
+RUN NVCC=/usr/local/cuda/bin/nvcc bash /opt/vllm/vllm/model_executor/layers/quantization/arvq/build_prefill_wide.sh
+RUN NVCC=/usr/local/cuda/bin/nvcc bash /opt/vllm/vllm/model_executor/layers/quantization/arvq/build_activation.sh

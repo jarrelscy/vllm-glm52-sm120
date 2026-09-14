@@ -282,11 +282,21 @@ def grouped_cold_prefill(
             else:
                 rows = x[route_slots // top_k].to(torch.float16)
                 w13 = decode("w13", expert)
-            h13 = torch.mm(rows, w13.T, out_dtype=torch.float32).half()
-            del rows, w13
-            gate, up = h13.chunk(2, dim=-1)
-            act = (torch.nn.functional.silu(gate) * up).to(torch.float16)
-            del h13, gate, up
+            if os.environ.get("VLLM_ARVQ_FUSED_COLD_ACTIVATION", "0") == "1":
+                from vllm.model_executor.layers.quantization import (
+                    nvfp4_arvq_cold_activation as cold_activation,
+                )
+
+                h13 = torch.mm(rows, w13.T, out_dtype=torch.float32)
+                del rows, w13
+                act = cold_activation.run(h13)
+                del h13
+            else:
+                h13 = torch.mm(rows, w13.T, out_dtype=torch.float32).half()
+                del rows, w13
+                gate, up = h13.chunk(2, dim=-1)
+                act = (torch.nn.functional.silu(gate) * up).to(torch.float16)
+                del h13, gate, up
             w2 = decode("w2", expert)
             out = torch.mm(act, w2.T, out_dtype=torch.float32)
             # Unique route destinations: no atomic accumulation or ordering race.

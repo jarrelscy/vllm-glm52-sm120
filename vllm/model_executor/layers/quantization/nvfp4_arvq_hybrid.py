@@ -233,10 +233,14 @@ class NvFp4ArvqHybridConfig(NvFp4AqlmHybridConfig):
         expected = {
             "activation_planes": 4,
             "weight_scale_group": 128,
-            "version": 1,
         }
-        if marker.get("format") not in _FORMATS or any(
-            marker.get(k) != v for k, v in expected.items()
+        # Published 8+8 checkpoints use version 2 for the same native layout.
+        # Preserve version 1 support and the original 8+7 version policy.
+        versions = (1, 2) if marker.get("format") == "rvq256_256x8" else (1,)
+        if (
+            marker.get("format") not in _FORMATS
+            or marker.get("version") not in versions
+            or any(marker.get(k) != v for k, v in expected.items())
         ):
             raise ValueError(f"Unsupported ARVQ checkpoint metadata: {marker}")
         books = {

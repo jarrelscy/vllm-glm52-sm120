@@ -166,8 +166,18 @@ def test_real_model_loader_remaps_serialized_arvq(monkeypatch, draft):
     assert all(torch.equal(p, torch.tensor([3.0])) for p in params.values())
 
 
-@pytest.mark.parametrize("fmt", ["rvq256_128x8", "rvq256_256x8"])
-def test_both_checkpoint_markers(monkeypatch, fmt):
+@pytest.mark.parametrize(
+    "fmt,version,accepted",
+    [
+        ("rvq256_128x8", 1, True),
+        ("rvq256_128x8", 2, False),
+        ("rvq256_256x8", 1, True),
+        ("rvq256_256x8", 2, True),
+        ("rvq256_256x8", 3, False),
+        ("rvq256_256x8", None, False),
+    ],
+)
+def test_both_checkpoint_markers(monkeypatch, fmt, version, accepted):
     from vllm.model_executor.layers.quantization.modelopt import ModelOptNvFp4Config
 
     monkeypatch.setattr(ModelOptNvFp4Config, "from_config", lambda config: None)
@@ -176,13 +186,15 @@ def test_both_checkpoint_markers(monkeypatch, fmt):
             "format": fmt,
             "activation_planes": 4,
             "weight_scale_group": 128,
-            "version": 1,
+            "version": version,
         },
         "nvfp4": {},
         "aqlm_layer_books": {"3": {"n_base": 0, "n_cold": 1, "n_nvfp4": 1}},
     }
-    assert NvFp4ArvqHybridConfig.from_config(config).arvq_format == fmt
-    config["arvq"]["version"] = 2
+    if accepted:
+        assert NvFp4ArvqHybridConfig.from_config(config).arvq_format == fmt
+        # A recognized version does not relax activation/scale semantics.
+        config["arvq"]["activation_planes"] = 1
     with pytest.raises(ValueError, match="Unsupported ARVQ"):
         NvFp4ArvqHybridConfig.from_config(config)
 

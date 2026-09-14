@@ -1,0 +1,787 @@
+{
+  "case": "t262144_c1",
+  "phase": "warm",
+  "requests": [
+    {
+      "usage": {
+        "prompt_tokens": 262144,
+        "total_tokens": 262656,
+        "completion_tokens": 512
+      },
+      "completion_tokens": 512,
+      "total_s": 3.874159762635827,
+      "ttft_s": 0.25110451504588127,
+      "decode_wall_s": 3.6229676390066743,
+      "first_emission_token_count": 1,
+      "post_first_emission_tokens": 511,
+      "decode_tps": 141.0445940776063,
+      "completion_tokens_over_decode_wall_tps": 141.32061089576206,
+      "end_to_end_tps": 132.1576887298151,
+      "streamed_token_ids_count": 512,
+      "token_ids_match_usage": true,
+      "text_event_count_diagnostic_only": 128,
+      "finish_reasons": [
+        "length"
+      ],
+      "token_event_timeline": [
+        [
+          0.25110451504588127,
+          1
+        ],
+        [
+          0.2627488151192665,
+          8
+        ],
+        [
+          0.26278092432767153,
+          4
+        ],
+        [
+          0.28897646628320217,
+          4
+        ],
+        [
+          0.317503672093153,
+          4
+        ],
+        [
+          0.34646428003907204,
+          4
+        ],
+        [
+          0.3754321364685893,
+          4
+        ],
+        [
+          0.4046499989926815,
+          4
+        ],
+        [
+          0.43371632508933544,
+          4
+        ],
+        [
+          0.46284814924001694,
+          4
+        ],
+        [
+          0.4918233957141638,
+          4
+        ],
+        [
+          0.5203601513057947,
+          4
+        ],
+        [
+          0.549012535251677,
+          4
+        ],
+        [
+          0.5775244608521461,
+          4
+        ],
+        [
+          0.6063889302313328,
+          4
+        ],
+        [
+          0.6352417096495628,
+          4
+        ],
+        [
+          0.6639574123546481,
+          4
+        ],
+        [
+          0.6928361216560006,
+          4
+        ],
+        [
+          0.7217529900372028,
+          4
+        ],
+        [
+          0.7510424023494124,
+          4
+        ],
+        [
+          0.7803718615323305,
+          4
+        ],
+        [
+          0.8091586027294397,
+          4
+        ],
+        [
+          0.8379967026412487,
+          4
+        ],
+        [
+          0.8666872158646584,
+          4
+        ],
+        [
+          0.8956845328211784,
+          4
+        ],
+        [
+          0.9243372771888971,
+          4
+        ],
+        [
+          0.9530583498999476,
+          4
+        ],
+        [
+          0.9820230472832918,
+          4
+        ],
+        [
+          1.0111135225743055,
+          4
+        ],
+        [
+          1.0397543469443917,
+          4
+        ],
+        [
+          1.0685188081115484,
+          4
+        ],
+        [
+          1.0977171007543802,
+          4
+        ],
+        [
+          1.1269837524741888,
+          4
+        ],
+        [
+          1.156152456998825,
+          4
+        ],
+        [
+          1.1849585864692926,
+          4
+        ],
+        [
+          1.2141962796449661,
+          4
+        ],
+        [
+          1.243228086270392,
+          4
+        ],
+        [
+          1.271935898810625,
+          4
+        ],
+        [
+          1.3006602711975574,
+          4
+        ],
+        [
+          1.3292786059901118,
+          4
+        ],
+        [
+          1.3581778351217508,
+          4
+        ],
+        [
+          1.3870304552838206,
+          4
+        ],
+        [
+          1.4156730193644762,
+          4
+        ],
+        [
+          1.4451419059187174,
+          4
+        ],
+        [
+          1.4748901380226016,
+          4
+        ],
+        [
+          1.5037975469604135,
+          4
+        ],
+        [
+          1.5326661365106702,
+          4
+        ],
+        [
+          1.5617341520264745,
+          4
+        ],
+        [
+          1.5904394146054983,
+          4
+        ],
+        [
+          1.618959141895175,
+          4
+        ],
+        [
+          1.6478893300518394,
+          4
+        ],
+        [
+          1.676550974138081,
+          4
+        ],
+        [
+          1.705409144051373,
+          4
+        ],
+        [
+          1.7343409629538655,
+          4
+        ],
+        [
+          1.7631821129471064,
+          4
+        ],
+        [
+          1.7924027061089873,
+          4
+        ],
+        [
+          1.8215582501143217,
+          4
+        ],
+        [
+          1.850750533863902,
+          4
+        ],
+        [
+          1.879552274942398,
+          4
+        ],
+        [
+          1.9086660500615835,
+          4
+        ],
+        [
+          1.9373069945722818,
+          4
+        ],
+        [
+          1.9661171156913042,
+          4
+        ],
+        [
+          1.9951194925233722,
+          4
+        ],
+        [
+          2.0238090055063367,
+          4
+        ],
+        [
+          2.0525528388097882,
+          4
+        ],
+        [
+          2.0816740337759256,
+          4
+        ],
+        [
+          2.1107709892094135,
+          4
+        ],
+        [
+          2.139960402622819,
+          4
+        ],
+        [
+          2.1691132867708802,
+          4
+        ],
+        [
+          2.1980574252083898,
+          4
+        ],
+        [
+          2.226921385154128,
+          4
+        ],
+        [
+          2.255848583765328,
+          4
+        ],
+        [
+          2.284452519379556,
+          4
+        ],
+        [
+          2.313213790766895,
+          4
+        ],
+        [
+          2.342170959338546,
+          4
+        ],
+        [
+          2.3708602925762534,
+          4
+        ],
+        [
+          2.3995875250548124,
+          4
+        ],
+        [
+          2.4285781225189567,
+          4
+        ],
+        [
+          2.4578395849093795,
+          4
+        ],
+        [
+          2.4867985928431153,
+          4
+        ],
+        [
+          2.515860768966377,
+          4
+        ],
+        [
+          2.5445886021479964,
+          4
+        ],
+        [
+          2.573393702507019,
+          4
+        ],
+        [
+          2.602214204147458,
+          4
+        ],
+        [
+          2.6309574963524938,
+          4
+        ],
+        [
+          2.6597516676411033,
+          4
+        ],
+        [
+          2.688362803310156,
+          4
+        ],
+        [
+          2.717270023189485,
+          4
+        ],
+        [
+          2.746020625345409,
+          4
+        ],
+        [
+          2.77466432005167,
+          4
+        ],
+        [
+          2.803972100839019,
+          4
+        ],
+        [
+          2.8331438759341836,
+          4
+        ],
+        [
+          2.862101604230702,
+          4
+        ],
+        [
+          2.891035692766309,
+          4
+        ],
+        [
+          2.9201879175379872,
+          4
+        ],
+        [
+          2.9490257492288947,
+          4
+        ],
+        [
+          2.9777283715084195,
+          4
+        ],
+        [
+          3.006592832505703,
+          4
+        ],
+        [
+          3.0351777179166675,
+          4
+        ],
+        [
+          3.063896211795509,
+          4
+        ],
+        [
+          3.0930462954565883,
+          4
+        ],
+        [
+          3.121666330844164,
+          4
+        ],
+        [
+          3.1507636168971658,
+          4
+        ],
+        [
+          3.17980401404202,
+          4
+        ],
+        [
+          3.208684293553233,
+          4
+        ],
+        [
+          3.237344487570226,
+          4
+        ],
+        [
+          3.2662083888426423,
+          4
+        ],
+        [
+          3.2949834810569882,
+          4
+        ],
+        [
+          3.323984927497804,
+          4
+        ],
+        [
+          3.352816148661077,
+          4
+        ],
+        [
+          3.381442624144256,
+          4
+        ],
+        [
+          3.4100445294752717,
+          4
+        ],
+        [
+          3.439067686907947,
+          4
+        ],
+        [
+          3.468014015816152,
+          4
+        ],
+        [
+          3.4972189385443926,
+          4
+        ],
+        [
+          3.5262578558176756,
+          4
+        ],
+        [
+          3.554973440244794,
+          4
+        ],
+        [
+          3.5836263839155436,
+          4
+        ],
+        [
+          3.612672700546682,
+          4
+        ],
+        [
+          3.64172818697989,
+          3
+        ],
+        [
+          3.670561298727989,
+          4
+        ],
+        [
+          3.699497267603874,
+          4
+        ],
+        [
+          3.7281436529010534,
+          4
+        ],
+        [
+          3.756855866871774,
+          4
+        ],
+        [
+          3.7860998595133424,
+          4
+        ],
+        [
+          3.815179015509784,
+          4
+        ],
+        [
+          3.8442114628851414,
+          4
+        ],
+        [
+          3.8740721540525556,
+          4
+        ]
+      ],
+      "stream": 0,
+      "batch_start_offset_s": 0.001226845197379589,
+      "batch_end_offset_s": 3.8766950629651546,
+      "raw_file": "t262144_c1_warm_stream0.json.gz"
+    }
+  ],
+  "metrics_before": {
+    "vllm:spec_decode_num_drafts_total{engine=\"0\",model_name=\"glm-5.3\"}": 2731.0,
+    "vllm:spec_decode_num_draft_tokens_total{engine=\"0\",model_name=\"glm-5.3\"}": 8193.0,
+    "vllm:spec_decode_num_accepted_tokens_total{engine=\"0\",model_name=\"glm-5.3\"}": 8051.0,
+    "vllm:spec_decode_num_accepted_tokens_per_pos_total{engine=\"0\",model_name=\"glm-5.3\",position=\"0\"}": 2715.0,
+    "vllm:spec_decode_num_accepted_tokens_per_pos_total{engine=\"0\",model_name=\"glm-5.3\",position=\"1\"}": 2693.0,
+    "vllm:spec_decode_num_accepted_tokens_per_pos_total{engine=\"0\",model_name=\"glm-5.3\",position=\"2\"}": 2643.0,
+    "vllm:prefix_cache_queries_total{engine=\"0\",model_name=\"glm-5.3\"}": 581632.0,
+    "vllm:prefix_cache_hits_total{engine=\"0\",model_name=\"glm-5.3\"}": 7680.0,
+    "vllm:external_prefix_cache_queries_total{engine=\"0\",model_name=\"glm-5.3\"}": 573952.0,
+    "vllm:external_prefix_cache_hits_total{engine=\"0\",model_name=\"glm-5.3\"}": 164331.0,
+    "vllm:prompt_tokens_total{engine=\"0\",model_name=\"glm-5.3\"}": 581632.0,
+    "vllm:prompt_tokens_by_source_total{engine=\"0\",model_name=\"glm-5.3\",source=\"local_compute\"}": 409621.0,
+    "vllm:prompt_tokens_by_source_total{engine=\"0\",model_name=\"glm-5.3\",source=\"local_cache_hit\"}": 7680.0,
+    "vllm:prompt_tokens_by_source_total{engine=\"0\",model_name=\"glm-5.3\",source=\"external_kv_transfer\"}": 164331.0,
+    "vllm:prompt_tokens_cached_total{engine=\"0\",model_name=\"glm-5.3\"}": 172011.0,
+    "vllm:generation_tokens_total{engine=\"0\",model_name=\"glm-5.3\"}": 10756.0,
+    "vllm:request_success_total{engine=\"0\",finished_reason=\"stop\",model_name=\"glm-5.3\"}": 0.0,
+    "vllm:request_success_total{engine=\"0\",finished_reason=\"length\",model_name=\"glm-5.3\"}": 25.0,
+    "vllm:request_success_total{engine=\"0\",finished_reason=\"abort\",model_name=\"glm-5.3\"}": 0.0,
+    "vllm:request_success_total{engine=\"0\",finished_reason=\"error\",model_name=\"glm-5.3\"}": 0.0,
+    "vllm:request_success_total{engine=\"0\",finished_reason=\"repetition\",model_name=\"glm-5.3\"}": 0.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"0.3\",model_name=\"glm-5.3\"}": 17.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"0.5\",model_name=\"glm-5.3\"}": 21.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"0.8\",model_name=\"glm-5.3\"}": 21.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"1.0\",model_name=\"glm-5.3\"}": 21.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"1.5\",model_name=\"glm-5.3\"}": 21.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"2.0\",model_name=\"glm-5.3\"}": 21.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"2.5\",model_name=\"glm-5.3\"}": 21.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"5.0\",model_name=\"glm-5.3\"}": 22.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"10.0\",model_name=\"glm-5.3\"}": 23.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"15.0\",model_name=\"glm-5.3\"}": 23.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"20.0\",model_name=\"glm-5.3\"}": 23.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"30.0\",model_name=\"glm-5.3\"}": 23.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"40.0\",model_name=\"glm-5.3\"}": 23.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"50.0\",model_name=\"glm-5.3\"}": 23.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"60.0\",model_name=\"glm-5.3\"}": 23.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"120.0\",model_name=\"glm-5.3\"}": 24.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"240.0\",model_name=\"glm-5.3\"}": 25.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"480.0\",model_name=\"glm-5.3\"}": 25.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"960.0\",model_name=\"glm-5.3\"}": 25.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"1920.0\",model_name=\"glm-5.3\"}": 25.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"7680.0\",model_name=\"glm-5.3\"}": 25.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"+Inf\",model_name=\"glm-5.3\"}": 25.0,
+    "vllm:request_prefill_time_seconds_count{engine=\"0\",model_name=\"glm-5.3\"}": 25.0,
+    "vllm:request_prefill_time_seconds_sum{engine=\"0\",model_name=\"glm-5.3\"}": 227.06549838092178,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"0.3\",model_name=\"glm-5.3\"}": 4.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"0.5\",model_name=\"glm-5.3\"}": 4.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"0.8\",model_name=\"glm-5.3\"}": 4.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"1.0\",model_name=\"glm-5.3\"}": 4.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"1.5\",model_name=\"glm-5.3\"}": 4.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"2.0\",model_name=\"glm-5.3\"}": 4.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"2.5\",model_name=\"glm-5.3\"}": 4.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"5.0\",model_name=\"glm-5.3\"}": 5.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"10.0\",model_name=\"glm-5.3\"}": 17.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"15.0\",model_name=\"glm-5.3\"}": 25.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"20.0\",model_name=\"glm-5.3\"}": 25.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"30.0\",model_name=\"glm-5.3\"}": 25.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"40.0\",model_name=\"glm-5.3\"}": 25.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"50.0\",model_name=\"glm-5.3\"}": 25.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"60.0\",model_name=\"glm-5.3\"}": 25.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"120.0\",model_name=\"glm-5.3\"}": 25.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"240.0\",model_name=\"glm-5.3\"}": 25.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"480.0\",model_name=\"glm-5.3\"}": 25.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"960.0\",model_name=\"glm-5.3\"}": 25.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"1920.0\",model_name=\"glm-5.3\"}": 25.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"7680.0\",model_name=\"glm-5.3\"}": 25.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"+Inf\",model_name=\"glm-5.3\"}": 25.0,
+    "vllm:request_decode_time_seconds_count{engine=\"0\",model_name=\"glm-5.3\"}": 25.0,
+    "vllm:request_decode_time_seconds_sum{engine=\"0\",model_name=\"glm-5.3\"}": 188.60463184583932
+  },
+  "metrics_after": {
+    "vllm:spec_decode_num_drafts_total{engine=\"0\",model_name=\"glm-5.3\"}": 2859.0,
+    "vllm:spec_decode_num_draft_tokens_total{engine=\"0\",model_name=\"glm-5.3\"}": 8577.0,
+    "vllm:spec_decode_num_accepted_tokens_total{engine=\"0\",model_name=\"glm-5.3\"}": 8434.0,
+    "vllm:spec_decode_num_accepted_tokens_per_pos_total{engine=\"0\",model_name=\"glm-5.3\",position=\"0\"}": 2843.0,
+    "vllm:spec_decode_num_accepted_tokens_per_pos_total{engine=\"0\",model_name=\"glm-5.3\",position=\"1\"}": 2821.0,
+    "vllm:spec_decode_num_accepted_tokens_per_pos_total{engine=\"0\",model_name=\"glm-5.3\",position=\"2\"}": 2770.0,
+    "vllm:prefix_cache_queries_total{engine=\"0\",model_name=\"glm-5.3\"}": 843776.0,
+    "vllm:prefix_cache_hits_total{engine=\"0\",model_name=\"glm-5.3\"}": 269312.0,
+    "vllm:external_prefix_cache_queries_total{engine=\"0\",model_name=\"glm-5.3\"}": 574464.0,
+    "vllm:external_prefix_cache_hits_total{engine=\"0\",model_name=\"glm-5.3\"}": 164842.0,
+    "vllm:prompt_tokens_total{engine=\"0\",model_name=\"glm-5.3\"}": 843776.0,
+    "vllm:prompt_tokens_by_source_total{engine=\"0\",model_name=\"glm-5.3\",source=\"local_compute\"}": 409622.0,
+    "vllm:prompt_tokens_by_source_total{engine=\"0\",model_name=\"glm-5.3\",source=\"local_cache_hit\"}": 269312.0,
+    "vllm:prompt_tokens_by_source_total{engine=\"0\",model_name=\"glm-5.3\",source=\"external_kv_transfer\"}": 164842.0,
+    "vllm:prompt_tokens_cached_total{engine=\"0\",model_name=\"glm-5.3\"}": 434154.0,
+    "vllm:generation_tokens_total{engine=\"0\",model_name=\"glm-5.3\"}": 11268.0,
+    "vllm:request_success_total{engine=\"0\",finished_reason=\"stop\",model_name=\"glm-5.3\"}": 0.0,
+    "vllm:request_success_total{engine=\"0\",finished_reason=\"length\",model_name=\"glm-5.3\"}": 26.0,
+    "vllm:request_success_total{engine=\"0\",finished_reason=\"abort\",model_name=\"glm-5.3\"}": 0.0,
+    "vllm:request_success_total{engine=\"0\",finished_reason=\"error\",model_name=\"glm-5.3\"}": 0.0,
+    "vllm:request_success_total{engine=\"0\",finished_reason=\"repetition\",model_name=\"glm-5.3\"}": 0.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"0.3\",model_name=\"glm-5.3\"}": 18.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"0.5\",model_name=\"glm-5.3\"}": 22.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"0.8\",model_name=\"glm-5.3\"}": 22.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"1.0\",model_name=\"glm-5.3\"}": 22.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"1.5\",model_name=\"glm-5.3\"}": 22.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"2.0\",model_name=\"glm-5.3\"}": 22.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"2.5\",model_name=\"glm-5.3\"}": 22.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"5.0\",model_name=\"glm-5.3\"}": 23.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"10.0\",model_name=\"glm-5.3\"}": 24.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"15.0\",model_name=\"glm-5.3\"}": 24.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"20.0\",model_name=\"glm-5.3\"}": 24.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"30.0\",model_name=\"glm-5.3\"}": 24.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"40.0\",model_name=\"glm-5.3\"}": 24.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"50.0\",model_name=\"glm-5.3\"}": 24.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"60.0\",model_name=\"glm-5.3\"}": 24.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"120.0\",model_name=\"glm-5.3\"}": 25.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"240.0\",model_name=\"glm-5.3\"}": 26.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"480.0\",model_name=\"glm-5.3\"}": 26.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"960.0\",model_name=\"glm-5.3\"}": 26.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"1920.0\",model_name=\"glm-5.3\"}": 26.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"7680.0\",model_name=\"glm-5.3\"}": 26.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"+Inf\",model_name=\"glm-5.3\"}": 26.0,
+    "vllm:request_prefill_time_seconds_count{engine=\"0\",model_name=\"glm-5.3\"}": 26.0,
+    "vllm:request_prefill_time_seconds_sum{engine=\"0\",model_name=\"glm-5.3\"}": 227.2048641052097,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"0.3\",model_name=\"glm-5.3\"}": 4.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"0.5\",model_name=\"glm-5.3\"}": 4.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"0.8\",model_name=\"glm-5.3\"}": 4.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"1.0\",model_name=\"glm-5.3\"}": 4.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"1.5\",model_name=\"glm-5.3\"}": 4.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"2.0\",model_name=\"glm-5.3\"}": 4.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"2.5\",model_name=\"glm-5.3\"}": 4.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"5.0\",model_name=\"glm-5.3\"}": 6.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"10.0\",model_name=\"glm-5.3\"}": 18.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"15.0\",model_name=\"glm-5.3\"}": 26.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"20.0\",model_name=\"glm-5.3\"}": 26.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"30.0\",model_name=\"glm-5.3\"}": 26.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"40.0\",model_name=\"glm-5.3\"}": 26.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"50.0\",model_name=\"glm-5.3\"}": 26.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"60.0\",model_name=\"glm-5.3\"}": 26.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"120.0\",model_name=\"glm-5.3\"}": 26.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"240.0\",model_name=\"glm-5.3\"}": 26.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"480.0\",model_name=\"glm-5.3\"}": 26.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"960.0\",model_name=\"glm-5.3\"}": 26.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"1920.0\",model_name=\"glm-5.3\"}": 26.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"7680.0\",model_name=\"glm-5.3\"}": 26.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"+Inf\",model_name=\"glm-5.3\"}": 26.0,
+    "vllm:request_decode_time_seconds_count{engine=\"0\",model_name=\"glm-5.3\"}": 26.0,
+    "vllm:request_decode_time_seconds_sum{engine=\"0\",model_name=\"glm-5.3\"}": 192.30291135702282
+  },
+  "metrics_delta": {
+    "vllm:request_success_total{engine=\"0\",finished_reason=\"repetition\",model_name=\"glm-5.3\"}": 0.0,
+    "vllm:spec_decode_num_accepted_tokens_total{engine=\"0\",model_name=\"glm-5.3\"}": 383.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"50.0\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:external_prefix_cache_hits_total{engine=\"0\",model_name=\"glm-5.3\"}": 511.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"15.0\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"120.0\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"1.5\",model_name=\"glm-5.3\"}": 0.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"240.0\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"2.0\",model_name=\"glm-5.3\"}": 0.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"0.3\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"2.5\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"5.0\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"1920.0\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:generation_tokens_total{engine=\"0\",model_name=\"glm-5.3\"}": 512.0,
+    "vllm:spec_decode_num_accepted_tokens_per_pos_total{engine=\"0\",model_name=\"glm-5.3\",position=\"2\"}": 127.0,
+    "vllm:prompt_tokens_total{engine=\"0\",model_name=\"glm-5.3\"}": 262144.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"120.0\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"960.0\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:spec_decode_num_draft_tokens_total{engine=\"0\",model_name=\"glm-5.3\"}": 384.0,
+    "vllm:request_decode_time_seconds_count{engine=\"0\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"60.0\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"960.0\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"7680.0\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:prompt_tokens_cached_total{engine=\"0\",model_name=\"glm-5.3\"}": 262143.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"1.0\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:prefix_cache_hits_total{engine=\"0\",model_name=\"glm-5.3\"}": 261632.0,
+    "vllm:prompt_tokens_by_source_total{engine=\"0\",model_name=\"glm-5.3\",source=\"local_compute\"}": 1.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"5.0\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"20.0\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"480.0\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"2.0\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"1920.0\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:request_success_total{engine=\"0\",finished_reason=\"abort\",model_name=\"glm-5.3\"}": 0.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"+Inf\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:external_prefix_cache_queries_total{engine=\"0\",model_name=\"glm-5.3\"}": 512.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"40.0\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"1.5\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:prompt_tokens_by_source_total{engine=\"0\",model_name=\"glm-5.3\",source=\"external_kv_transfer\"}": 511.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"0.8\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:request_prefill_time_seconds_sum{engine=\"0\",model_name=\"glm-5.3\"}": 0.13936572428792715,
+    "vllm:request_success_total{engine=\"0\",finished_reason=\"stop\",model_name=\"glm-5.3\"}": 0.0,
+    "vllm:request_success_total{engine=\"0\",finished_reason=\"error\",model_name=\"glm-5.3\"}": 0.0,
+    "vllm:request_prefill_time_seconds_count{engine=\"0\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"480.0\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"10.0\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"15.0\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"2.5\",model_name=\"glm-5.3\"}": 0.0,
+    "vllm:prefix_cache_queries_total{engine=\"0\",model_name=\"glm-5.3\"}": 262144.0,
+    "vllm:request_success_total{engine=\"0\",finished_reason=\"length\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"0.5\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"10.0\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"30.0\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"240.0\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"40.0\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"30.0\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"0.8\",model_name=\"glm-5.3\"}": 0.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"0.3\",model_name=\"glm-5.3\"}": 0.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"60.0\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"7680.0\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"50.0\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:prompt_tokens_by_source_total{engine=\"0\",model_name=\"glm-5.3\",source=\"local_cache_hit\"}": 261632.0,
+    "vllm:spec_decode_num_accepted_tokens_per_pos_total{engine=\"0\",model_name=\"glm-5.3\",position=\"0\"}": 128.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"20.0\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:request_decode_time_seconds_sum{engine=\"0\",model_name=\"glm-5.3\"}": 3.6982795111835003,
+    "vllm:spec_decode_num_drafts_total{engine=\"0\",model_name=\"glm-5.3\"}": 128.0,
+    "vllm:spec_decode_num_accepted_tokens_per_pos_total{engine=\"0\",model_name=\"glm-5.3\",position=\"1\"}": 128.0,
+    "vllm:request_prefill_time_seconds_bucket{engine=\"0\",le=\"+Inf\",model_name=\"glm-5.3\"}": 1.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"0.5\",model_name=\"glm-5.3\"}": 0.0,
+    "vllm:request_decode_time_seconds_bucket{engine=\"0\",le=\"1.0\",model_name=\"glm-5.3\"}": 0.0
+  },
+  "valid": true,
+  "errors": [],
+  "gpu_cache_hits": 261632.0,
+  "external_cache_hits": 511.0,
+  "prefill_wall_s": 0.25110451504588127,
+  "cold_aggregate_prefill_wall_tps": null,
+  "mean_server_prefill_s": 0.13936572428792715,
+  "server_prefill_histogram_tps": 1880978.994938634,
+  "per_request_decode_tps": [
+    141.0445940776063
+  ],
+  "steady_decode": {
+    "valid": true,
+    "start_offset_s": 0.25233136024326086,
+    "end_offset_s": 3.875298999249935,
+    "duration_s": 3.6229676390066743,
+    "tokens_per_stream": [
+      511
+    ],
+    "aggregate_decode_tps": 141.0445940776063
+  },
+  "speculative": {
+    "drafts": 128.0,
+    "accepted": 383.0,
+    "proposed": 384.0,
+    "expected_emitted_per_step": 3.9921875,
+    "acceptance_rate": 0.9973958333333334
+  }
+}

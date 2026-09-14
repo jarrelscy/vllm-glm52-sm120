@@ -71,5 +71,8 @@ but one of eight streams omitted a token at position494; the remaining seven
 matched, including the same prompt in another stream. A repeat measured413.74
 with all eight matching. The first discrepancy remains unresolved and is
 preserved under `corrected_live/`; the repeat does not establish correctness.
-Long-context validation remains in progress. The3000-token/s prefill target
-is not achieved.
+Single-stream long-context stress completed at 256K and 512K: cold prefill
+measured 1801.24 and 1664.80 tokens/s, with warm decode 141.04 and 142.41 tokens/s,
+respectively. Health and metric checks passed. These long outputs have no
+numerical reference comparison; this does not resolve the C8 discrepancy.
+See `corrected_live/long_stress/`. The 3000-token/s prefill target is not achieved.

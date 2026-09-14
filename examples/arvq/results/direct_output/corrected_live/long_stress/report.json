@@ -1,0 +1,192 @@
+{
+  "started_utc": "2026-09-14T20:51:28.555621+00:00",
+  "model": "glm-5.3",
+  "image": "glm53-arvq-sm120:prefill-runtime-counts-candidate",
+  "image_id": "sha256:8b29470277e17e0e556ae3884233aa17543591ce531a7f19ec0d310900960209",
+  "container_id": "1f84adcae19524fb0d5e993c5248765fe0398e3630ae43e65825b621080f267b",
+  "config": {
+    "MAXLEN": "1048576",
+    "MAX_NUM_SEQS": "8",
+    "UTIL": "0.94",
+    "PARALLEL": "tp4-1m-mtp",
+    "ENABLE_LMCACHE": "1",
+    "VLLM_SM120_COMPACT_WORKSPACE": "1",
+    "VLLM_NVFP4_P4_MAX_TOKENS": "16"
+  },
+  "matrix": [
+    [
+      8192,
+      1
+    ],
+    [
+      8192,
+      4
+    ],
+    [
+      8192,
+      8
+    ],
+    [
+      16384,
+      1
+    ],
+    [
+      16384,
+      4
+    ],
+    [
+      16384,
+      8
+    ],
+    [
+      32768,
+      1
+    ],
+    [
+      32768,
+      4
+    ],
+    [
+      32768,
+      8
+    ],
+    [
+      131072,
+      1
+    ],
+    [
+      131072,
+      4
+    ],
+    [
+      131072,
+      8
+    ],
+    [
+      262144,
+      1
+    ],
+    [
+      262144,
+      4
+    ],
+    [
+      524288,
+      1
+    ],
+    [
+      524288,
+      2
+    ]
+  ],
+  "cases": [
+    {
+      "case": "t262144_c1",
+      "input_tokens_per_stream": 262144,
+      "concurrency": 1,
+      "cold_file": "t262144_c1_cold.json",
+      "cold_valid": true,
+      "warm_file": "t262144_c1_warm.json",
+      "warm_valid": true,
+      "steady_decode": {
+        "valid": true,
+        "start_offset_s": 0.25233136024326086,
+        "end_offset_s": 3.875298999249935,
+        "duration_s": 3.6229676390066743,
+        "tokens_per_stream": [
+          511
+        ],
+        "aggregate_decode_tps": 141.0445940776063
+      },
+      "cold_aggregate_prefill_wall_tps": 1799.9553295132678,
+      "server_prefill_histogram_tps": 1801.2377414794446,
+      "per_request_decode_tps": [
+        141.0445940776063
+      ]
+    },
+    {
+      "case": "t524288_c1",
+      "input_tokens_per_stream": 524288,
+      "concurrency": 1,
+      "cold_file": "t524288_c1_cold.json",
+      "cold_valid": true,
+      "warm_file": "t524288_c1_warm.json",
+      "warm_valid": true,
+      "steady_decode": {
+        "valid": true,
+        "start_offset_s": 0.41879704408347607,
+        "end_offset_s": 4.007047832943499,
+        "duration_s": 3.588250788860023,
+        "tokens_per_stream": [
+          511
+        ],
+        "aggregate_decode_tps": 142.40922111309374
+      },
+      "cold_aggregate_prefill_wall_tps": 1663.6333340420822,
+      "server_prefill_histogram_tps": 1664.8002791804938,
+      "per_request_decode_tps": [
+        142.40922111309374
+      ]
+    }
+  ],
+  "method": "Cold independent concurrent requests: 1 output, exact UUID-prefixed token inputs and per-request cache salts. Warm decode reuses identical inputs/salts with 512 output tokens. Prefill wall includes admission/queue; histogram scheduled-to-first-token includes first emission. Common decode window excludes initial token batches and TTFT. No cache/config changes.",
+  "pending_cases": [
+    [
+      8192,
+      1
+    ],
+    [
+      8192,
+      4
+    ],
+    [
+      8192,
+      8
+    ],
+    [
+      16384,
+      1
+    ],
+    [
+      16384,
+      4
+    ],
+    [
+      16384,
+      8
+    ],
+    [
+      32768,
+      1
+    ],
+    [
+      32768,
+      4
+    ],
+    [
+      32768,
+      8
+    ],
+    [
+      131072,
+      1
+    ],
+    [
+      131072,
+      4
+    ],
+    [
+      131072,
+      8
+    ],
+    [
+      262144,
+      4
+    ],
+    [
+      524288,
+      2
+    ]
+  ],
+  "last_invocation_finished_utc": "2026-09-14T20:59:17.851790+00:00"
+}

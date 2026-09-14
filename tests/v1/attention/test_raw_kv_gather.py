@@ -130,7 +130,7 @@ class GateTest(unittest.TestCase):
 
     def test_shape_context_concurrency_fallback(self):
         with patch.dict(os.environ, self.env, clear=True):
-            self.meta.max_seq_len = 524288
+            self.meta.max_seq_len = 524289
             self.assertFalse(self.eligible())
             self.meta.max_seq_len = 131072
             self.meta.num_reqs = 4
@@ -141,10 +141,10 @@ class GateTest(unittest.TestCase):
 
     def test_layout_and_backend_fallback(self):
         with patch.dict(os.environ, self.env, clear=True):
-            for length in (4096, 4097, 8193, 131072):
+            for length in (4096, 4097, 8193, 131072, 262144, 262145, 524288):
                 self.meta.max_seq_len = length
                 self.assertTrue(self.eligible())
-            for length in (4095, 131073):
+            for length in (4095, 524289):
                 self.meta.max_seq_len = length
                 self.assertFalse(self.eligible())
             self.meta.max_seq_len = 8192

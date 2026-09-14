@@ -12,12 +12,15 @@ that order on every rank; otherwise all ranks retain the original path.
 This is a runtime numerical guard, not a diagnostic dependency.
 
 Eligibility is deliberately narrow: SM120, DCP4, one prefill request,
-4,096 query tokens, context from 4,096 through 131,072, and the validated
+4,096 query tokens, context from 4,096 through 524,288, and the validated
 query/weight/cache layouts and collective settings. Decode, longer contexts,
 other batch shapes, and unsupported settings retain the original path.
-The option does not allocate a persistent global cache.
+The option does not allocate a persistent global cache. Through 262,144 tokens,
+the original raw-gather path is retained. Above that boundary, completed
+outputs reuse consumed gather scratch. See [scratch reuse qualification](scratch_reuse/NOTES.md);
+live 512K validation remains pending.
 
-## Evidence
+## Original integration evidence
 
 `pipeline_rank0.json` through `pipeline_rank3.json` contain the isolated
 complete attention-stage checks. All ranks passed intermediate and final

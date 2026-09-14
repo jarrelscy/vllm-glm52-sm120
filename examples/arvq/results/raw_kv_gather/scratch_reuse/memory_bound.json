@@ -1,0 +1,7190 @@
+{
+  "scope": "explicit tensor allocations, not CUDA allocator/opaque backend proof",
+  "assumptions": [
+    "current-stream backend returns fresh contiguous output and separate LSE",
+    "backend shared workspace already allocated, no context-dependent hidden allocation",
+    "rank-major gather owns exactly four peer slices; no extra gather copy",
+    "all peer buffers use rounded block count, not unrounded context",
+    "up to two index/count/empty mappings counted concurrently",
+    "all output LSEs plus stack counted in every loop/merge phase"
+  ],
+  "baseline_measured_peak_bytes": 635191296,
+  "worst": {
+    "blocks": 2048,
+    "context_min": 524033,
+    "context_max": 524288,
+    "bound_bytes": 555794432,
+    "limiting_phase": "attention_peer0"
+  },
+  "minimum_margin_bytes": 79396864,
+  "all_1024_rounded_block_counts": [
+    {
+      "blocks": 1025,
+      "context_min": 262145,
+      "context_max": 262400,
+      "bound_bytes": 518209540,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1026,
+      "context_min": 262401,
+      "context_max": 262656,
+      "bound_bytes": 518377480,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1027,
+      "context_min": 262657,
+      "context_max": 262912,
+      "bound_bytes": 518545420,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1028,
+      "context_min": 262913,
+      "context_max": 263168,
+      "bound_bytes": 518713360,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1029,
+      "context_min": 263169,
+      "context_max": 263424,
+      "bound_bytes": 518881300,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1030,
+      "context_min": 263425,
+      "context_max": 263680,
+      "bound_bytes": 519049240,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1031,
+      "context_min": 263681,
+      "context_max": 263936,
+      "bound_bytes": 519217180,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1032,
+      "context_min": 263937,
+      "context_max": 264192,
+      "bound_bytes": 519385120,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1033,
+      "context_min": 264193,
+      "context_max": 264448,
+      "bound_bytes": 519553060,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1034,
+      "context_min": 264449,
+      "context_max": 264704,
+      "bound_bytes": 519721000,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1035,
+      "context_min": 264705,
+      "context_max": 264960,
+      "bound_bytes": 519888940,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1036,
+      "context_min": 264961,
+      "context_max": 265216,
+      "bound_bytes": 520056880,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1037,
+      "context_min": 265217,
+      "context_max": 265472,
+      "bound_bytes": 520224820,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1038,
+      "context_min": 265473,
+      "context_max": 265728,
+      "bound_bytes": 520392760,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1039,
+      "context_min": 265729,
+      "context_max": 265984,
+      "bound_bytes": 520560700,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1040,
+      "context_min": 265985,
+      "context_max": 266240,
+      "bound_bytes": 520728640,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1041,
+      "context_min": 266241,
+      "context_max": 266496,
+      "bound_bytes": 520896580,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1042,
+      "context_min": 266497,
+      "context_max": 266752,
+      "bound_bytes": 521064520,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1043,
+      "context_min": 266753,
+      "context_max": 267008,
+      "bound_bytes": 521232460,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1044,
+      "context_min": 267009,
+      "context_max": 267264,
+      "bound_bytes": 521400400,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1045,
+      "context_min": 267265,
+      "context_max": 267520,
+      "bound_bytes": 521568340,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1046,
+      "context_min": 267521,
+      "context_max": 267776,
+      "bound_bytes": 521736280,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1047,
+      "context_min": 267777,
+      "context_max": 268032,
+      "bound_bytes": 521904220,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1048,
+      "context_min": 268033,
+      "context_max": 268288,
+      "bound_bytes": 522072160,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1049,
+      "context_min": 268289,
+      "context_max": 268544,
+      "bound_bytes": 522240100,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1050,
+      "context_min": 268545,
+      "context_max": 268800,
+      "bound_bytes": 522408040,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1051,
+      "context_min": 268801,
+      "context_max": 269056,
+      "bound_bytes": 522575980,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1052,
+      "context_min": 269057,
+      "context_max": 269312,
+      "bound_bytes": 522743920,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1053,
+      "context_min": 269313,
+      "context_max": 269568,
+      "bound_bytes": 522911860,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1054,
+      "context_min": 269569,
+      "context_max": 269824,
+      "bound_bytes": 523079800,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1055,
+      "context_min": 269825,
+      "context_max": 270080,
+      "bound_bytes": 523247740,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1056,
+      "context_min": 270081,
+      "context_max": 270336,
+      "bound_bytes": 523415680,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1057,
+      "context_min": 270337,
+      "context_max": 270592,
+      "bound_bytes": 523583620,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1058,
+      "context_min": 270593,
+      "context_max": 270848,
+      "bound_bytes": 523751560,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1059,
+      "context_min": 270849,
+      "context_max": 271104,
+      "bound_bytes": 523919500,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1060,
+      "context_min": 271105,
+      "context_max": 271360,
+      "bound_bytes": 524087440,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1061,
+      "context_min": 271361,
+      "context_max": 271616,
+      "bound_bytes": 524255380,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1062,
+      "context_min": 271617,
+      "context_max": 271872,
+      "bound_bytes": 524423320,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1063,
+      "context_min": 271873,
+      "context_max": 272128,
+      "bound_bytes": 524591260,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1064,
+      "context_min": 272129,
+      "context_max": 272384,
+      "bound_bytes": 524759200,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1065,
+      "context_min": 272385,
+      "context_max": 272640,
+      "bound_bytes": 524927140,
+      "limiting_phase": "attention_peer3"
+    },
+    {
+      "blocks": 1066,
+      "context_min": 272641,
+      "context_max": 272896,
+      "bound_bytes": 525095080,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1067,
+      "context_min": 272897,
+      "context_max": 273152,
+      "bound_bytes": 525263020,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1068,
+      "context_min": 273153,
+      "context_max": 273408,
+      "bound_bytes": 525430960,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1069,
+      "context_min": 273409,
+      "context_max": 273664,
+      "bound_bytes": 525598900,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1070,
+      "context_min": 273665,
+      "context_max": 273920,
+      "bound_bytes": 525766840,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1071,
+      "context_min": 273921,
+      "context_max": 274176,
+      "bound_bytes": 525934780,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1072,
+      "context_min": 274177,
+      "context_max": 274432,
+      "bound_bytes": 526102720,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1073,
+      "context_min": 274433,
+      "context_max": 274688,
+      "bound_bytes": 526270660,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1074,
+      "context_min": 274689,
+      "context_max": 274944,
+      "bound_bytes": 526438600,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1075,
+      "context_min": 274945,
+      "context_max": 275200,
+      "bound_bytes": 526606540,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1076,
+      "context_min": 275201,
+      "context_max": 275456,
+      "bound_bytes": 526774480,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1077,
+      "context_min": 275457,
+      "context_max": 275712,
+      "bound_bytes": 526942420,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1078,
+      "context_min": 275713,
+      "context_max": 275968,
+      "bound_bytes": 527110360,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1079,
+      "context_min": 275969,
+      "context_max": 276224,
+      "bound_bytes": 527278300,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1080,
+      "context_min": 276225,
+      "context_max": 276480,
+      "bound_bytes": 527446240,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1081,
+      "context_min": 276481,
+      "context_max": 276736,
+      "bound_bytes": 527614180,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1082,
+      "context_min": 276737,
+      "context_max": 276992,
+      "bound_bytes": 527782120,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1083,
+      "context_min": 276993,
+      "context_max": 277248,
+      "bound_bytes": 527950060,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1084,
+      "context_min": 277249,
+      "context_max": 277504,
+      "bound_bytes": 528118000,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1085,
+      "context_min": 277505,
+      "context_max": 277760,
+      "bound_bytes": 528285940,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1086,
+      "context_min": 277761,
+      "context_max": 278016,
+      "bound_bytes": 528453880,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1087,
+      "context_min": 278017,
+      "context_max": 278272,
+      "bound_bytes": 528621820,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1088,
+      "context_min": 278273,
+      "context_max": 278528,
+      "bound_bytes": 528789760,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1089,
+      "context_min": 278529,
+      "context_max": 278784,
+      "bound_bytes": 528957700,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1090,
+      "context_min": 278785,
+      "context_max": 279040,
+      "bound_bytes": 529125640,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1091,
+      "context_min": 279041,
+      "context_max": 279296,
+      "bound_bytes": 529293580,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1092,
+      "context_min": 279297,
+      "context_max": 279552,
+      "bound_bytes": 529461520,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1093,
+      "context_min": 279553,
+      "context_max": 279808,
+      "bound_bytes": 529629460,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1094,
+      "context_min": 279809,
+      "context_max": 280064,
+      "bound_bytes": 529797400,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1095,
+      "context_min": 280065,
+      "context_max": 280320,
+      "bound_bytes": 529965340,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1096,
+      "context_min": 280321,
+      "context_max": 280576,
+      "bound_bytes": 530133280,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1097,
+      "context_min": 280577,
+      "context_max": 280832,
+      "bound_bytes": 530301220,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1098,
+      "context_min": 280833,
+      "context_max": 281088,
+      "bound_bytes": 530469160,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1099,
+      "context_min": 281089,
+      "context_max": 281344,
+      "bound_bytes": 530637100,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1100,
+      "context_min": 281345,
+      "context_max": 281600,
+      "bound_bytes": 530805040,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1101,
+      "context_min": 281601,
+      "context_max": 281856,
+      "bound_bytes": 530972980,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1102,
+      "context_min": 281857,
+      "context_max": 282112,
+      "bound_bytes": 531140920,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1103,
+      "context_min": 282113,
+      "context_max": 282368,
+      "bound_bytes": 531308860,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1104,
+      "context_min": 282369,
+      "context_max": 282624,
+      "bound_bytes": 531476800,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1105,
+      "context_min": 282625,
+      "context_max": 282880,
+      "bound_bytes": 531644740,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1106,
+      "context_min": 282881,
+      "context_max": 283136,
+      "bound_bytes": 531812680,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1107,
+      "context_min": 283137,
+      "context_max": 283392,
+      "bound_bytes": 531980620,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1108,
+      "context_min": 283393,
+      "context_max": 283648,
+      "bound_bytes": 532148560,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1109,
+      "context_min": 283649,
+      "context_max": 283904,
+      "bound_bytes": 532316500,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1110,
+      "context_min": 283905,
+      "context_max": 284160,
+      "bound_bytes": 532484440,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1111,
+      "context_min": 284161,
+      "context_max": 284416,
+      "bound_bytes": 532652380,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1112,
+      "context_min": 284417,
+      "context_max": 284672,
+      "bound_bytes": 532820320,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1113,
+      "context_min": 284673,
+      "context_max": 284928,
+      "bound_bytes": 532988260,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1114,
+      "context_min": 284929,
+      "context_max": 285184,
+      "bound_bytes": 533156200,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1115,
+      "context_min": 285185,
+      "context_max": 285440,
+      "bound_bytes": 533324140,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1116,
+      "context_min": 285441,
+      "context_max": 285696,
+      "bound_bytes": 533492080,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1117,
+      "context_min": 285697,
+      "context_max": 285952,
+      "bound_bytes": 533660020,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1118,
+      "context_min": 285953,
+      "context_max": 286208,
+      "bound_bytes": 533827960,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1119,
+      "context_min": 286209,
+      "context_max": 286464,
+      "bound_bytes": 533995900,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1120,
+      "context_min": 286465,
+      "context_max": 286720,
+      "bound_bytes": 534163840,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1121,
+      "context_min": 286721,
+      "context_max": 286976,
+      "bound_bytes": 534331780,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1122,
+      "context_min": 286977,
+      "context_max": 287232,
+      "bound_bytes": 534499720,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1123,
+      "context_min": 287233,
+      "context_max": 287488,
+      "bound_bytes": 534667660,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1124,
+      "context_min": 287489,
+      "context_max": 287744,
+      "bound_bytes": 534835600,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1125,
+      "context_min": 287745,
+      "context_max": 288000,
+      "bound_bytes": 535003540,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1126,
+      "context_min": 288001,
+      "context_max": 288256,
+      "bound_bytes": 535171480,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1127,
+      "context_min": 288257,
+      "context_max": 288512,
+      "bound_bytes": 535339420,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1128,
+      "context_min": 288513,
+      "context_max": 288768,
+      "bound_bytes": 535507360,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1129,
+      "context_min": 288769,
+      "context_max": 289024,
+      "bound_bytes": 535675300,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1130,
+      "context_min": 289025,
+      "context_max": 289280,
+      "bound_bytes": 535843240,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1131,
+      "context_min": 289281,
+      "context_max": 289536,
+      "bound_bytes": 536011180,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1132,
+      "context_min": 289537,
+      "context_max": 289792,
+      "bound_bytes": 536179120,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1133,
+      "context_min": 289793,
+      "context_max": 290048,
+      "bound_bytes": 536347060,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1134,
+      "context_min": 290049,
+      "context_max": 290304,
+      "bound_bytes": 536515000,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1135,
+      "context_min": 290305,
+      "context_max": 290560,
+      "bound_bytes": 536682940,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1136,
+      "context_min": 290561,
+      "context_max": 290816,
+      "bound_bytes": 536850880,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1137,
+      "context_min": 290817,
+      "context_max": 291072,
+      "bound_bytes": 537018820,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1138,
+      "context_min": 291073,
+      "context_max": 291328,
+      "bound_bytes": 537186760,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1139,
+      "context_min": 291329,
+      "context_max": 291584,
+      "bound_bytes": 537354700,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1140,
+      "context_min": 291585,
+      "context_max": 291840,
+      "bound_bytes": 537522640,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1141,
+      "context_min": 291841,
+      "context_max": 292096,
+      "bound_bytes": 537690580,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1142,
+      "context_min": 292097,
+      "context_max": 292352,
+      "bound_bytes": 537858520,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1143,
+      "context_min": 292353,
+      "context_max": 292608,
+      "bound_bytes": 538026460,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1144,
+      "context_min": 292609,
+      "context_max": 292864,
+      "bound_bytes": 538194400,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1145,
+      "context_min": 292865,
+      "context_max": 293120,
+      "bound_bytes": 538362340,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1146,
+      "context_min": 293121,
+      "context_max": 293376,
+      "bound_bytes": 538530280,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1147,
+      "context_min": 293377,
+      "context_max": 293632,
+      "bound_bytes": 538698220,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1148,
+      "context_min": 293633,
+      "context_max": 293888,
+      "bound_bytes": 538866160,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1149,
+      "context_min": 293889,
+      "context_max": 294144,
+      "bound_bytes": 539034100,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1150,
+      "context_min": 294145,
+      "context_max": 294400,
+      "bound_bytes": 539202040,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1151,
+      "context_min": 294401,
+      "context_max": 294656,
+      "bound_bytes": 539369980,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1152,
+      "context_min": 294657,
+      "context_max": 294912,
+      "bound_bytes": 539537920,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1153,
+      "context_min": 294913,
+      "context_max": 295168,
+      "bound_bytes": 539705860,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1154,
+      "context_min": 295169,
+      "context_max": 295424,
+      "bound_bytes": 539873800,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1155,
+      "context_min": 295425,
+      "context_max": 295680,
+      "bound_bytes": 540041740,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1156,
+      "context_min": 295681,
+      "context_max": 295936,
+      "bound_bytes": 540209680,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1157,
+      "context_min": 295937,
+      "context_max": 296192,
+      "bound_bytes": 540377620,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1158,
+      "context_min": 296193,
+      "context_max": 296448,
+      "bound_bytes": 540545560,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1159,
+      "context_min": 296449,
+      "context_max": 296704,
+      "bound_bytes": 540713500,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1160,
+      "context_min": 296705,
+      "context_max": 296960,
+      "bound_bytes": 540881440,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1161,
+      "context_min": 296961,
+      "context_max": 297216,
+      "bound_bytes": 541049380,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1162,
+      "context_min": 297217,
+      "context_max": 297472,
+      "bound_bytes": 541217320,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1163,
+      "context_min": 297473,
+      "context_max": 297728,
+      "bound_bytes": 541385260,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1164,
+      "context_min": 297729,
+      "context_max": 297984,
+      "bound_bytes": 541553200,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1165,
+      "context_min": 297985,
+      "context_max": 298240,
+      "bound_bytes": 541721140,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1166,
+      "context_min": 298241,
+      "context_max": 298496,
+      "bound_bytes": 541889080,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1167,
+      "context_min": 298497,
+      "context_max": 298752,
+      "bound_bytes": 542057020,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1168,
+      "context_min": 298753,
+      "context_max": 299008,
+      "bound_bytes": 542224960,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1169,
+      "context_min": 299009,
+      "context_max": 299264,
+      "bound_bytes": 542392900,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1170,
+      "context_min": 299265,
+      "context_max": 299520,
+      "bound_bytes": 542560840,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1171,
+      "context_min": 299521,
+      "context_max": 299776,
+      "bound_bytes": 542728780,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1172,
+      "context_min": 299777,
+      "context_max": 300032,
+      "bound_bytes": 542896720,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1173,
+      "context_min": 300033,
+      "context_max": 300288,
+      "bound_bytes": 543064660,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1174,
+      "context_min": 300289,
+      "context_max": 300544,
+      "bound_bytes": 543232600,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1175,
+      "context_min": 300545,
+      "context_max": 300800,
+      "bound_bytes": 543400540,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1176,
+      "context_min": 300801,
+      "context_max": 301056,
+      "bound_bytes": 543568480,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1177,
+      "context_min": 301057,
+      "context_max": 301312,
+      "bound_bytes": 543736420,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1178,
+      "context_min": 301313,
+      "context_max": 301568,
+      "bound_bytes": 543904360,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1179,
+      "context_min": 301569,
+      "context_max": 301824,
+      "bound_bytes": 544072300,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1180,
+      "context_min": 301825,
+      "context_max": 302080,
+      "bound_bytes": 544240240,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1181,
+      "context_min": 302081,
+      "context_max": 302336,
+      "bound_bytes": 544408180,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1182,
+      "context_min": 302337,
+      "context_max": 302592,
+      "bound_bytes": 544576120,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1183,
+      "context_min": 302593,
+      "context_max": 302848,
+      "bound_bytes": 544744060,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1184,
+      "context_min": 302849,
+      "context_max": 303104,
+      "bound_bytes": 544912000,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1185,
+      "context_min": 303105,
+      "context_max": 303360,
+      "bound_bytes": 545079940,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1186,
+      "context_min": 303361,
+      "context_max": 303616,
+      "bound_bytes": 545247880,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1187,
+      "context_min": 303617,
+      "context_max": 303872,
+      "bound_bytes": 545415820,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1188,
+      "context_min": 303873,
+      "context_max": 304128,
+      "bound_bytes": 545583760,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1189,
+      "context_min": 304129,
+      "context_max": 304384,
+      "bound_bytes": 545751700,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1190,
+      "context_min": 304385,
+      "context_max": 304640,
+      "bound_bytes": 545919640,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1191,
+      "context_min": 304641,
+      "context_max": 304896,
+      "bound_bytes": 546087580,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1192,
+      "context_min": 304897,
+      "context_max": 305152,
+      "bound_bytes": 546255520,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1193,
+      "context_min": 305153,
+      "context_max": 305408,
+      "bound_bytes": 546423460,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1194,
+      "context_min": 305409,
+      "context_max": 305664,
+      "bound_bytes": 546591400,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1195,
+      "context_min": 305665,
+      "context_max": 305920,
+      "bound_bytes": 546759340,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1196,
+      "context_min": 305921,
+      "context_max": 306176,
+      "bound_bytes": 546927280,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1197,
+      "context_min": 306177,
+      "context_max": 306432,
+      "bound_bytes": 547095220,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1198,
+      "context_min": 306433,
+      "context_max": 306688,
+      "bound_bytes": 547263160,
+      "limiting_phase": "merge"
+    },
+    {
+      "blocks": 1199,
+      "context_min": 306689,
+      "context_max": 306944,
+      "bound_bytes": 480322236,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1200,
+      "context_min": 306945,
+      "context_max": 307200,
+      "bound_bytes": 480490176,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1201,
+      "context_min": 307201,
+      "context_max": 307456,
+      "bound_bytes": 480658116,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1202,
+      "context_min": 307457,
+      "context_max": 307712,
+      "bound_bytes": 480826056,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1203,
+      "context_min": 307713,
+      "context_max": 307968,
+      "bound_bytes": 480993996,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1204,
+      "context_min": 307969,
+      "context_max": 308224,
+      "bound_bytes": 481161936,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1205,
+      "context_min": 308225,
+      "context_max": 308480,
+      "bound_bytes": 481329876,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1206,
+      "context_min": 308481,
+      "context_max": 308736,
+      "bound_bytes": 481497816,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1207,
+      "context_min": 308737,
+      "context_max": 308992,
+      "bound_bytes": 481665756,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1208,
+      "context_min": 308993,
+      "context_max": 309248,
+      "bound_bytes": 481833696,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1209,
+      "context_min": 309249,
+      "context_max": 309504,
+      "bound_bytes": 482001636,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1210,
+      "context_min": 309505,
+      "context_max": 309760,
+      "bound_bytes": 482169576,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1211,
+      "context_min": 309761,
+      "context_max": 310016,
+      "bound_bytes": 482337516,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1212,
+      "context_min": 310017,
+      "context_max": 310272,
+      "bound_bytes": 482505456,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1213,
+      "context_min": 310273,
+      "context_max": 310528,
+      "bound_bytes": 482673396,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1214,
+      "context_min": 310529,
+      "context_max": 310784,
+      "bound_bytes": 482841336,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1215,
+      "context_min": 310785,
+      "context_max": 311040,
+      "bound_bytes": 483009276,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1216,
+      "context_min": 311041,
+      "context_max": 311296,
+      "bound_bytes": 483177216,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1217,
+      "context_min": 311297,
+      "context_max": 311552,
+      "bound_bytes": 483345156,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1218,
+      "context_min": 311553,
+      "context_max": 311808,
+      "bound_bytes": 483513096,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1219,
+      "context_min": 311809,
+      "context_max": 312064,
+      "bound_bytes": 483681036,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1220,
+      "context_min": 312065,
+      "context_max": 312320,
+      "bound_bytes": 483848976,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1221,
+      "context_min": 312321,
+      "context_max": 312576,
+      "bound_bytes": 484016916,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1222,
+      "context_min": 312577,
+      "context_max": 312832,
+      "bound_bytes": 484184856,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1223,
+      "context_min": 312833,
+      "context_max": 313088,
+      "bound_bytes": 484352796,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1224,
+      "context_min": 313089,
+      "context_max": 313344,
+      "bound_bytes": 484520736,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1225,
+      "context_min": 313345,
+      "context_max": 313600,
+      "bound_bytes": 484688676,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1226,
+      "context_min": 313601,
+      "context_max": 313856,
+      "bound_bytes": 484856616,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1227,
+      "context_min": 313857,
+      "context_max": 314112,
+      "bound_bytes": 485024556,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1228,
+      "context_min": 314113,
+      "context_max": 314368,
+      "bound_bytes": 485192496,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1229,
+      "context_min": 314369,
+      "context_max": 314624,
+      "bound_bytes": 485360436,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1230,
+      "context_min": 314625,
+      "context_max": 314880,
+      "bound_bytes": 485528376,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1231,
+      "context_min": 314881,
+      "context_max": 315136,
+      "bound_bytes": 485696316,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1232,
+      "context_min": 315137,
+      "context_max": 315392,
+      "bound_bytes": 485864256,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1233,
+      "context_min": 315393,
+      "context_max": 315648,
+      "bound_bytes": 486032196,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1234,
+      "context_min": 315649,
+      "context_max": 315904,
+      "bound_bytes": 486200136,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1235,
+      "context_min": 315905,
+      "context_max": 316160,
+      "bound_bytes": 486368076,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1236,
+      "context_min": 316161,
+      "context_max": 316416,
+      "bound_bytes": 486536016,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1237,
+      "context_min": 316417,
+      "context_max": 316672,
+      "bound_bytes": 486703956,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1238,
+      "context_min": 316673,
+      "context_max": 316928,
+      "bound_bytes": 486871896,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1239,
+      "context_min": 316929,
+      "context_max": 317184,
+      "bound_bytes": 487039836,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1240,
+      "context_min": 317185,
+      "context_max": 317440,
+      "bound_bytes": 487207776,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1241,
+      "context_min": 317441,
+      "context_max": 317696,
+      "bound_bytes": 487375716,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1242,
+      "context_min": 317697,
+      "context_max": 317952,
+      "bound_bytes": 487543656,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1243,
+      "context_min": 317953,
+      "context_max": 318208,
+      "bound_bytes": 487711596,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1244,
+      "context_min": 318209,
+      "context_max": 318464,
+      "bound_bytes": 487879536,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1245,
+      "context_min": 318465,
+      "context_max": 318720,
+      "bound_bytes": 488047476,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1246,
+      "context_min": 318721,
+      "context_max": 318976,
+      "bound_bytes": 488215416,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1247,
+      "context_min": 318977,
+      "context_max": 319232,
+      "bound_bytes": 488383356,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1248,
+      "context_min": 319233,
+      "context_max": 319488,
+      "bound_bytes": 488551296,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1249,
+      "context_min": 319489,
+      "context_max": 319744,
+      "bound_bytes": 488719236,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1250,
+      "context_min": 319745,
+      "context_max": 320000,
+      "bound_bytes": 488887176,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1251,
+      "context_min": 320001,
+      "context_max": 320256,
+      "bound_bytes": 489055116,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1252,
+      "context_min": 320257,
+      "context_max": 320512,
+      "bound_bytes": 489223056,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1253,
+      "context_min": 320513,
+      "context_max": 320768,
+      "bound_bytes": 489390996,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1254,
+      "context_min": 320769,
+      "context_max": 321024,
+      "bound_bytes": 489558936,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1255,
+      "context_min": 321025,
+      "context_max": 321280,
+      "bound_bytes": 489726876,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1256,
+      "context_min": 321281,
+      "context_max": 321536,
+      "bound_bytes": 489894816,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1257,
+      "context_min": 321537,
+      "context_max": 321792,
+      "bound_bytes": 490062756,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1258,
+      "context_min": 321793,
+      "context_max": 322048,
+      "bound_bytes": 490230696,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1259,
+      "context_min": 322049,
+      "context_max": 322304,
+      "bound_bytes": 490398636,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1260,
+      "context_min": 322305,
+      "context_max": 322560,
+      "bound_bytes": 490566576,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1261,
+      "context_min": 322561,
+      "context_max": 322816,
+      "bound_bytes": 490734516,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1262,
+      "context_min": 322817,
+      "context_max": 323072,
+      "bound_bytes": 490902456,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1263,
+      "context_min": 323073,
+      "context_max": 323328,
+      "bound_bytes": 491070396,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1264,
+      "context_min": 323329,
+      "context_max": 323584,
+      "bound_bytes": 491238336,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1265,
+      "context_min": 323585,
+      "context_max": 323840,
+      "bound_bytes": 491406276,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1266,
+      "context_min": 323841,
+      "context_max": 324096,
+      "bound_bytes": 491574216,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1267,
+      "context_min": 324097,
+      "context_max": 324352,
+      "bound_bytes": 491742156,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1268,
+      "context_min": 324353,
+      "context_max": 324608,
+      "bound_bytes": 491910096,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1269,
+      "context_min": 324609,
+      "context_max": 324864,
+      "bound_bytes": 492078036,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1270,
+      "context_min": 324865,
+      "context_max": 325120,
+      "bound_bytes": 492245976,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1271,
+      "context_min": 325121,
+      "context_max": 325376,
+      "bound_bytes": 492413916,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1272,
+      "context_min": 325377,
+      "context_max": 325632,
+      "bound_bytes": 492581856,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1273,
+      "context_min": 325633,
+      "context_max": 325888,
+      "bound_bytes": 492749796,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1274,
+      "context_min": 325889,
+      "context_max": 326144,
+      "bound_bytes": 492917736,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1275,
+      "context_min": 326145,
+      "context_max": 326400,
+      "bound_bytes": 493085676,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1276,
+      "context_min": 326401,
+      "context_max": 326656,
+      "bound_bytes": 493253616,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1277,
+      "context_min": 326657,
+      "context_max": 326912,
+      "bound_bytes": 493421556,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1278,
+      "context_min": 326913,
+      "context_max": 327168,
+      "bound_bytes": 493589496,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1279,
+      "context_min": 327169,
+      "context_max": 327424,
+      "bound_bytes": 493757436,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1280,
+      "context_min": 327425,
+      "context_max": 327680,
+      "bound_bytes": 493925376,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1281,
+      "context_min": 327681,
+      "context_max": 327936,
+      "bound_bytes": 494093316,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1282,
+      "context_min": 327937,
+      "context_max": 328192,
+      "bound_bytes": 494261256,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1283,
+      "context_min": 328193,
+      "context_max": 328448,
+      "bound_bytes": 494429196,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1284,
+      "context_min": 328449,
+      "context_max": 328704,
+      "bound_bytes": 494597136,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1285,
+      "context_min": 328705,
+      "context_max": 328960,
+      "bound_bytes": 494765076,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1286,
+      "context_min": 328961,
+      "context_max": 329216,
+      "bound_bytes": 494933016,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1287,
+      "context_min": 329217,
+      "context_max": 329472,
+      "bound_bytes": 495100956,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1288,
+      "context_min": 329473,
+      "context_max": 329728,
+      "bound_bytes": 495268896,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1289,
+      "context_min": 329729,
+      "context_max": 329984,
+      "bound_bytes": 495436836,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1290,
+      "context_min": 329985,
+      "context_max": 330240,
+      "bound_bytes": 495604776,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1291,
+      "context_min": 330241,
+      "context_max": 330496,
+      "bound_bytes": 495772716,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1292,
+      "context_min": 330497,
+      "context_max": 330752,
+      "bound_bytes": 495940656,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1293,
+      "context_min": 330753,
+      "context_max": 331008,
+      "bound_bytes": 496108596,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1294,
+      "context_min": 331009,
+      "context_max": 331264,
+      "bound_bytes": 496276536,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1295,
+      "context_min": 331265,
+      "context_max": 331520,
+      "bound_bytes": 496444476,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1296,
+      "context_min": 331521,
+      "context_max": 331776,
+      "bound_bytes": 496612416,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1297,
+      "context_min": 331777,
+      "context_max": 332032,
+      "bound_bytes": 496780356,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1298,
+      "context_min": 332033,
+      "context_max": 332288,
+      "bound_bytes": 496948296,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1299,
+      "context_min": 332289,
+      "context_max": 332544,
+      "bound_bytes": 497116236,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1300,
+      "context_min": 332545,
+      "context_max": 332800,
+      "bound_bytes": 497284176,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1301,
+      "context_min": 332801,
+      "context_max": 333056,
+      "bound_bytes": 497452116,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1302,
+      "context_min": 333057,
+      "context_max": 333312,
+      "bound_bytes": 497620056,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1303,
+      "context_min": 333313,
+      "context_max": 333568,
+      "bound_bytes": 497787996,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1304,
+      "context_min": 333569,
+      "context_max": 333824,
+      "bound_bytes": 497955936,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1305,
+      "context_min": 333825,
+      "context_max": 334080,
+      "bound_bytes": 498123876,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1306,
+      "context_min": 334081,
+      "context_max": 334336,
+      "bound_bytes": 498291816,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1307,
+      "context_min": 334337,
+      "context_max": 334592,
+      "bound_bytes": 498459756,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1308,
+      "context_min": 334593,
+      "context_max": 334848,
+      "bound_bytes": 498627696,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1309,
+      "context_min": 334849,
+      "context_max": 335104,
+      "bound_bytes": 498795636,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1310,
+      "context_min": 335105,
+      "context_max": 335360,
+      "bound_bytes": 498963576,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1311,
+      "context_min": 335361,
+      "context_max": 335616,
+      "bound_bytes": 499131516,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1312,
+      "context_min": 335617,
+      "context_max": 335872,
+      "bound_bytes": 499299456,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1313,
+      "context_min": 335873,
+      "context_max": 336128,
+      "bound_bytes": 499467396,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1314,
+      "context_min": 336129,
+      "context_max": 336384,
+      "bound_bytes": 499635336,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1315,
+      "context_min": 336385,
+      "context_max": 336640,
+      "bound_bytes": 499803276,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1316,
+      "context_min": 336641,
+      "context_max": 336896,
+      "bound_bytes": 499971216,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1317,
+      "context_min": 336897,
+      "context_max": 337152,
+      "bound_bytes": 500139156,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1318,
+      "context_min": 337153,
+      "context_max": 337408,
+      "bound_bytes": 500307096,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1319,
+      "context_min": 337409,
+      "context_max": 337664,
+      "bound_bytes": 500475036,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1320,
+      "context_min": 337665,
+      "context_max": 337920,
+      "bound_bytes": 500642976,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1321,
+      "context_min": 337921,
+      "context_max": 338176,
+      "bound_bytes": 500810916,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1322,
+      "context_min": 338177,
+      "context_max": 338432,
+      "bound_bytes": 500978856,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1323,
+      "context_min": 338433,
+      "context_max": 338688,
+      "bound_bytes": 501146796,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1324,
+      "context_min": 338689,
+      "context_max": 338944,
+      "bound_bytes": 501314736,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1325,
+      "context_min": 338945,
+      "context_max": 339200,
+      "bound_bytes": 501482676,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1326,
+      "context_min": 339201,
+      "context_max": 339456,
+      "bound_bytes": 501650616,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1327,
+      "context_min": 339457,
+      "context_max": 339712,
+      "bound_bytes": 501818556,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1328,
+      "context_min": 339713,
+      "context_max": 339968,
+      "bound_bytes": 501986496,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1329,
+      "context_min": 339969,
+      "context_max": 340224,
+      "bound_bytes": 502154436,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1330,
+      "context_min": 340225,
+      "context_max": 340480,
+      "bound_bytes": 502322376,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1331,
+      "context_min": 340481,
+      "context_max": 340736,
+      "bound_bytes": 502490316,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1332,
+      "context_min": 340737,
+      "context_max": 340992,
+      "bound_bytes": 502658256,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1333,
+      "context_min": 340993,
+      "context_max": 341248,
+      "bound_bytes": 502826196,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1334,
+      "context_min": 341249,
+      "context_max": 341504,
+      "bound_bytes": 502994136,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1335,
+      "context_min": 341505,
+      "context_max": 341760,
+      "bound_bytes": 503162076,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1336,
+      "context_min": 341761,
+      "context_max": 342016,
+      "bound_bytes": 503330016,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1337,
+      "context_min": 342017,
+      "context_max": 342272,
+      "bound_bytes": 503497956,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1338,
+      "context_min": 342273,
+      "context_max": 342528,
+      "bound_bytes": 503665896,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1339,
+      "context_min": 342529,
+      "context_max": 342784,
+      "bound_bytes": 503833836,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1340,
+      "context_min": 342785,
+      "context_max": 343040,
+      "bound_bytes": 504001776,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1341,
+      "context_min": 343041,
+      "context_max": 343296,
+      "bound_bytes": 504169716,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1342,
+      "context_min": 343297,
+      "context_max": 343552,
+      "bound_bytes": 504337656,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1343,
+      "context_min": 343553,
+      "context_max": 343808,
+      "bound_bytes": 504505596,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1344,
+      "context_min": 343809,
+      "context_max": 344064,
+      "bound_bytes": 504673536,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1345,
+      "context_min": 344065,
+      "context_max": 344320,
+      "bound_bytes": 504841476,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1346,
+      "context_min": 344321,
+      "context_max": 344576,
+      "bound_bytes": 505009416,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1347,
+      "context_min": 344577,
+      "context_max": 344832,
+      "bound_bytes": 505177356,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1348,
+      "context_min": 344833,
+      "context_max": 345088,
+      "bound_bytes": 505345296,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1349,
+      "context_min": 345089,
+      "context_max": 345344,
+      "bound_bytes": 505513236,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1350,
+      "context_min": 345345,
+      "context_max": 345600,
+      "bound_bytes": 505681176,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1351,
+      "context_min": 345601,
+      "context_max": 345856,
+      "bound_bytes": 505849116,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1352,
+      "context_min": 345857,
+      "context_max": 346112,
+      "bound_bytes": 506017056,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1353,
+      "context_min": 346113,
+      "context_max": 346368,
+      "bound_bytes": 506184996,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1354,
+      "context_min": 346369,
+      "context_max": 346624,
+      "bound_bytes": 506352936,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1355,
+      "context_min": 346625,
+      "context_max": 346880,
+      "bound_bytes": 506520876,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1356,
+      "context_min": 346881,
+      "context_max": 347136,
+      "bound_bytes": 506688816,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1357,
+      "context_min": 347137,
+      "context_max": 347392,
+      "bound_bytes": 506856756,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1358,
+      "context_min": 347393,
+      "context_max": 347648,
+      "bound_bytes": 507024696,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1359,
+      "context_min": 347649,
+      "context_max": 347904,
+      "bound_bytes": 507192636,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1360,
+      "context_min": 347905,
+      "context_max": 348160,
+      "bound_bytes": 507360576,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1361,
+      "context_min": 348161,
+      "context_max": 348416,
+      "bound_bytes": 507528516,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1362,
+      "context_min": 348417,
+      "context_max": 348672,
+      "bound_bytes": 507696456,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1363,
+      "context_min": 348673,
+      "context_max": 348928,
+      "bound_bytes": 507864396,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1364,
+      "context_min": 348929,
+      "context_max": 349184,
+      "bound_bytes": 508032336,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1365,
+      "context_min": 349185,
+      "context_max": 349440,
+      "bound_bytes": 508200276,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1366,
+      "context_min": 349441,
+      "context_max": 349696,
+      "bound_bytes": 508368216,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1367,
+      "context_min": 349697,
+      "context_max": 349952,
+      "bound_bytes": 508536156,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1368,
+      "context_min": 349953,
+      "context_max": 350208,
+      "bound_bytes": 508704096,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1369,
+      "context_min": 350209,
+      "context_max": 350464,
+      "bound_bytes": 508872036,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1370,
+      "context_min": 350465,
+      "context_max": 350720,
+      "bound_bytes": 509039976,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1371,
+      "context_min": 350721,
+      "context_max": 350976,
+      "bound_bytes": 509207916,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1372,
+      "context_min": 350977,
+      "context_max": 351232,
+      "bound_bytes": 509375856,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1373,
+      "context_min": 351233,
+      "context_max": 351488,
+      "bound_bytes": 509543796,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1374,
+      "context_min": 351489,
+      "context_max": 351744,
+      "bound_bytes": 509711736,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1375,
+      "context_min": 351745,
+      "context_max": 352000,
+      "bound_bytes": 509879676,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1376,
+      "context_min": 352001,
+      "context_max": 352256,
+      "bound_bytes": 510047616,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1377,
+      "context_min": 352257,
+      "context_max": 352512,
+      "bound_bytes": 510215556,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1378,
+      "context_min": 352513,
+      "context_max": 352768,
+      "bound_bytes": 510383496,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1379,
+      "context_min": 352769,
+      "context_max": 353024,
+      "bound_bytes": 510551436,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1380,
+      "context_min": 353025,
+      "context_max": 353280,
+      "bound_bytes": 510719376,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1381,
+      "context_min": 353281,
+      "context_max": 353536,
+      "bound_bytes": 510887316,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1382,
+      "context_min": 353537,
+      "context_max": 353792,
+      "bound_bytes": 511055256,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1383,
+      "context_min": 353793,
+      "context_max": 354048,
+      "bound_bytes": 511223196,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1384,
+      "context_min": 354049,
+      "context_max": 354304,
+      "bound_bytes": 511391136,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1385,
+      "context_min": 354305,
+      "context_max": 354560,
+      "bound_bytes": 511559076,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1386,
+      "context_min": 354561,
+      "context_max": 354816,
+      "bound_bytes": 511727016,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1387,
+      "context_min": 354817,
+      "context_max": 355072,
+      "bound_bytes": 511894956,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1388,
+      "context_min": 355073,
+      "context_max": 355328,
+      "bound_bytes": 512062896,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1389,
+      "context_min": 355329,
+      "context_max": 355584,
+      "bound_bytes": 512230836,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1390,
+      "context_min": 355585,
+      "context_max": 355840,
+      "bound_bytes": 512398776,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1391,
+      "context_min": 355841,
+      "context_max": 356096,
+      "bound_bytes": 512566716,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1392,
+      "context_min": 356097,
+      "context_max": 356352,
+      "bound_bytes": 512734656,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1393,
+      "context_min": 356353,
+      "context_max": 356608,
+      "bound_bytes": 512902596,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1394,
+      "context_min": 356609,
+      "context_max": 356864,
+      "bound_bytes": 513070536,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1395,
+      "context_min": 356865,
+      "context_max": 357120,
+      "bound_bytes": 513238476,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1396,
+      "context_min": 357121,
+      "context_max": 357376,
+      "bound_bytes": 513406416,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1397,
+      "context_min": 357377,
+      "context_max": 357632,
+      "bound_bytes": 513574356,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1398,
+      "context_min": 357633,
+      "context_max": 357888,
+      "bound_bytes": 513742296,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1399,
+      "context_min": 357889,
+      "context_max": 358144,
+      "bound_bytes": 513910236,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1400,
+      "context_min": 358145,
+      "context_max": 358400,
+      "bound_bytes": 514078176,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1401,
+      "context_min": 358401,
+      "context_max": 358656,
+      "bound_bytes": 514246116,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1402,
+      "context_min": 358657,
+      "context_max": 358912,
+      "bound_bytes": 514414056,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1403,
+      "context_min": 358913,
+      "context_max": 359168,
+      "bound_bytes": 514581996,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1404,
+      "context_min": 359169,
+      "context_max": 359424,
+      "bound_bytes": 514749936,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1405,
+      "context_min": 359425,
+      "context_max": 359680,
+      "bound_bytes": 514917876,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1406,
+      "context_min": 359681,
+      "context_max": 359936,
+      "bound_bytes": 515085816,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1407,
+      "context_min": 359937,
+      "context_max": 360192,
+      "bound_bytes": 515253756,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1408,
+      "context_min": 360193,
+      "context_max": 360448,
+      "bound_bytes": 515421696,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1409,
+      "context_min": 360449,
+      "context_max": 360704,
+      "bound_bytes": 515589636,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1410,
+      "context_min": 360705,
+      "context_max": 360960,
+      "bound_bytes": 515757576,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1411,
+      "context_min": 360961,
+      "context_max": 361216,
+      "bound_bytes": 515925516,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1412,
+      "context_min": 361217,
+      "context_max": 361472,
+      "bound_bytes": 516093456,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1413,
+      "context_min": 361473,
+      "context_max": 361728,
+      "bound_bytes": 516261396,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1414,
+      "context_min": 361729,
+      "context_max": 361984,
+      "bound_bytes": 516429336,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1415,
+      "context_min": 361985,
+      "context_max": 362240,
+      "bound_bytes": 516597276,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1416,
+      "context_min": 362241,
+      "context_max": 362496,
+      "bound_bytes": 516765216,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1417,
+      "context_min": 362497,
+      "context_max": 362752,
+      "bound_bytes": 516933156,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1418,
+      "context_min": 362753,
+      "context_max": 363008,
+      "bound_bytes": 517101096,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1419,
+      "context_min": 363009,
+      "context_max": 363264,
+      "bound_bytes": 517269036,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1420,
+      "context_min": 363265,
+      "context_max": 363520,
+      "bound_bytes": 517436976,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1421,
+      "context_min": 363521,
+      "context_max": 363776,
+      "bound_bytes": 517604916,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1422,
+      "context_min": 363777,
+      "context_max": 364032,
+      "bound_bytes": 517772856,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1423,
+      "context_min": 364033,
+      "context_max": 364288,
+      "bound_bytes": 517940796,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1424,
+      "context_min": 364289,
+      "context_max": 364544,
+      "bound_bytes": 518108736,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1425,
+      "context_min": 364545,
+      "context_max": 364800,
+      "bound_bytes": 518276676,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1426,
+      "context_min": 364801,
+      "context_max": 365056,
+      "bound_bytes": 518444616,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1427,
+      "context_min": 365057,
+      "context_max": 365312,
+      "bound_bytes": 518612556,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1428,
+      "context_min": 365313,
+      "context_max": 365568,
+      "bound_bytes": 518780496,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1429,
+      "context_min": 365569,
+      "context_max": 365824,
+      "bound_bytes": 518948436,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1430,
+      "context_min": 365825,
+      "context_max": 366080,
+      "bound_bytes": 519116376,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1431,
+      "context_min": 366081,
+      "context_max": 366336,
+      "bound_bytes": 519284316,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1432,
+      "context_min": 366337,
+      "context_max": 366592,
+      "bound_bytes": 519452256,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1433,
+      "context_min": 366593,
+      "context_max": 366848,
+      "bound_bytes": 519620196,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1434,
+      "context_min": 366849,
+      "context_max": 367104,
+      "bound_bytes": 519788136,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1435,
+      "context_min": 367105,
+      "context_max": 367360,
+      "bound_bytes": 519956076,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1436,
+      "context_min": 367361,
+      "context_max": 367616,
+      "bound_bytes": 520124016,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1437,
+      "context_min": 367617,
+      "context_max": 367872,
+      "bound_bytes": 520291956,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1438,
+      "context_min": 367873,
+      "context_max": 368128,
+      "bound_bytes": 520459896,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1439,
+      "context_min": 368129,
+      "context_max": 368384,
+      "bound_bytes": 520627836,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1440,
+      "context_min": 368385,
+      "context_max": 368640,
+      "bound_bytes": 520795776,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1441,
+      "context_min": 368641,
+      "context_max": 368896,
+      "bound_bytes": 520963716,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1442,
+      "context_min": 368897,
+      "context_max": 369152,
+      "bound_bytes": 521131656,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1443,
+      "context_min": 369153,
+      "context_max": 369408,
+      "bound_bytes": 521299596,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1444,
+      "context_min": 369409,
+      "context_max": 369664,
+      "bound_bytes": 521467536,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1445,
+      "context_min": 369665,
+      "context_max": 369920,
+      "bound_bytes": 521635476,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1446,
+      "context_min": 369921,
+      "context_max": 370176,
+      "bound_bytes": 521803416,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1447,
+      "context_min": 370177,
+      "context_max": 370432,
+      "bound_bytes": 521971356,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1448,
+      "context_min": 370433,
+      "context_max": 370688,
+      "bound_bytes": 522139296,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1449,
+      "context_min": 370689,
+      "context_max": 370944,
+      "bound_bytes": 522307236,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1450,
+      "context_min": 370945,
+      "context_max": 371200,
+      "bound_bytes": 522475176,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1451,
+      "context_min": 371201,
+      "context_max": 371456,
+      "bound_bytes": 522643116,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1452,
+      "context_min": 371457,
+      "context_max": 371712,
+      "bound_bytes": 522811056,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1453,
+      "context_min": 371713,
+      "context_max": 371968,
+      "bound_bytes": 522978996,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1454,
+      "context_min": 371969,
+      "context_max": 372224,
+      "bound_bytes": 523146936,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1455,
+      "context_min": 372225,
+      "context_max": 372480,
+      "bound_bytes": 523314876,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1456,
+      "context_min": 372481,
+      "context_max": 372736,
+      "bound_bytes": 523482816,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1457,
+      "context_min": 372737,
+      "context_max": 372992,
+      "bound_bytes": 523650756,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1458,
+      "context_min": 372993,
+      "context_max": 373248,
+      "bound_bytes": 523818696,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1459,
+      "context_min": 373249,
+      "context_max": 373504,
+      "bound_bytes": 523986636,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1460,
+      "context_min": 373505,
+      "context_max": 373760,
+      "bound_bytes": 524154576,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1461,
+      "context_min": 373761,
+      "context_max": 374016,
+      "bound_bytes": 524322516,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1462,
+      "context_min": 374017,
+      "context_max": 374272,
+      "bound_bytes": 524490456,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1463,
+      "context_min": 374273,
+      "context_max": 374528,
+      "bound_bytes": 524658396,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1464,
+      "context_min": 374529,
+      "context_max": 374784,
+      "bound_bytes": 524826336,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1465,
+      "context_min": 374785,
+      "context_max": 375040,
+      "bound_bytes": 524994276,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1466,
+      "context_min": 375041,
+      "context_max": 375296,
+      "bound_bytes": 525162216,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1467,
+      "context_min": 375297,
+      "context_max": 375552,
+      "bound_bytes": 525330156,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1468,
+      "context_min": 375553,
+      "context_max": 375808,
+      "bound_bytes": 525498096,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1469,
+      "context_min": 375809,
+      "context_max": 376064,
+      "bound_bytes": 525666036,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1470,
+      "context_min": 376065,
+      "context_max": 376320,
+      "bound_bytes": 525833976,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1471,
+      "context_min": 376321,
+      "context_max": 376576,
+      "bound_bytes": 526001916,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1472,
+      "context_min": 376577,
+      "context_max": 376832,
+      "bound_bytes": 526169856,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1473,
+      "context_min": 376833,
+      "context_max": 377088,
+      "bound_bytes": 526337796,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1474,
+      "context_min": 377089,
+      "context_max": 377344,
+      "bound_bytes": 526505736,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1475,
+      "context_min": 377345,
+      "context_max": 377600,
+      "bound_bytes": 526673676,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1476,
+      "context_min": 377601,
+      "context_max": 377856,
+      "bound_bytes": 526841616,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1477,
+      "context_min": 377857,
+      "context_max": 378112,
+      "bound_bytes": 527009556,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1478,
+      "context_min": 378113,
+      "context_max": 378368,
+      "bound_bytes": 527177496,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1479,
+      "context_min": 378369,
+      "context_max": 378624,
+      "bound_bytes": 527345436,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1480,
+      "context_min": 378625,
+      "context_max": 378880,
+      "bound_bytes": 527513376,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1481,
+      "context_min": 378881,
+      "context_max": 379136,
+      "bound_bytes": 527681316,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1482,
+      "context_min": 379137,
+      "context_max": 379392,
+      "bound_bytes": 527849256,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1483,
+      "context_min": 379393,
+      "context_max": 379648,
+      "bound_bytes": 528017196,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1484,
+      "context_min": 379649,
+      "context_max": 379904,
+      "bound_bytes": 528185136,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1485,
+      "context_min": 379905,
+      "context_max": 380160,
+      "bound_bytes": 528353076,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1486,
+      "context_min": 380161,
+      "context_max": 380416,
+      "bound_bytes": 528521016,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1487,
+      "context_min": 380417,
+      "context_max": 380672,
+      "bound_bytes": 528688956,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1488,
+      "context_min": 380673,
+      "context_max": 380928,
+      "bound_bytes": 528856896,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1489,
+      "context_min": 380929,
+      "context_max": 381184,
+      "bound_bytes": 529024836,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1490,
+      "context_min": 381185,
+      "context_max": 381440,
+      "bound_bytes": 529192776,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1491,
+      "context_min": 381441,
+      "context_max": 381696,
+      "bound_bytes": 529360716,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1492,
+      "context_min": 381697,
+      "context_max": 381952,
+      "bound_bytes": 529528656,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1493,
+      "context_min": 381953,
+      "context_max": 382208,
+      "bound_bytes": 529696596,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1494,
+      "context_min": 382209,
+      "context_max": 382464,
+      "bound_bytes": 529864536,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1495,
+      "context_min": 382465,
+      "context_max": 382720,
+      "bound_bytes": 530032476,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1496,
+      "context_min": 382721,
+      "context_max": 382976,
+      "bound_bytes": 530200416,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1497,
+      "context_min": 382977,
+      "context_max": 383232,
+      "bound_bytes": 530368356,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1498,
+      "context_min": 383233,
+      "context_max": 383488,
+      "bound_bytes": 530536296,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1499,
+      "context_min": 383489,
+      "context_max": 383744,
+      "bound_bytes": 530704236,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1500,
+      "context_min": 383745,
+      "context_max": 384000,
+      "bound_bytes": 530872176,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1501,
+      "context_min": 384001,
+      "context_max": 384256,
+      "bound_bytes": 531040116,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1502,
+      "context_min": 384257,
+      "context_max": 384512,
+      "bound_bytes": 531208056,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1503,
+      "context_min": 384513,
+      "context_max": 384768,
+      "bound_bytes": 531375996,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1504,
+      "context_min": 384769,
+      "context_max": 385024,
+      "bound_bytes": 531543936,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1505,
+      "context_min": 385025,
+      "context_max": 385280,
+      "bound_bytes": 531711876,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1506,
+      "context_min": 385281,
+      "context_max": 385536,
+      "bound_bytes": 531879816,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1507,
+      "context_min": 385537,
+      "context_max": 385792,
+      "bound_bytes": 532047756,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1508,
+      "context_min": 385793,
+      "context_max": 386048,
+      "bound_bytes": 532215696,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1509,
+      "context_min": 386049,
+      "context_max": 386304,
+      "bound_bytes": 532383636,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1510,
+      "context_min": 386305,
+      "context_max": 386560,
+      "bound_bytes": 532551576,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1511,
+      "context_min": 386561,
+      "context_max": 386816,
+      "bound_bytes": 532719516,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1512,
+      "context_min": 386817,
+      "context_max": 387072,
+      "bound_bytes": 532887456,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1513,
+      "context_min": 387073,
+      "context_max": 387328,
+      "bound_bytes": 533055396,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1514,
+      "context_min": 387329,
+      "context_max": 387584,
+      "bound_bytes": 533223336,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1515,
+      "context_min": 387585,
+      "context_max": 387840,
+      "bound_bytes": 533391276,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1516,
+      "context_min": 387841,
+      "context_max": 388096,
+      "bound_bytes": 533559216,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1517,
+      "context_min": 388097,
+      "context_max": 388352,
+      "bound_bytes": 533727156,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1518,
+      "context_min": 388353,
+      "context_max": 388608,
+      "bound_bytes": 533895096,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1519,
+      "context_min": 388609,
+      "context_max": 388864,
+      "bound_bytes": 534063036,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1520,
+      "context_min": 388865,
+      "context_max": 389120,
+      "bound_bytes": 534230976,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1521,
+      "context_min": 389121,
+      "context_max": 389376,
+      "bound_bytes": 534398916,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1522,
+      "context_min": 389377,
+      "context_max": 389632,
+      "bound_bytes": 534566856,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1523,
+      "context_min": 389633,
+      "context_max": 389888,
+      "bound_bytes": 534734796,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1524,
+      "context_min": 389889,
+      "context_max": 390144,
+      "bound_bytes": 534902736,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1525,
+      "context_min": 390145,
+      "context_max": 390400,
+      "bound_bytes": 535070676,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1526,
+      "context_min": 390401,
+      "context_max": 390656,
+      "bound_bytes": 535238616,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1527,
+      "context_min": 390657,
+      "context_max": 390912,
+      "bound_bytes": 535406556,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1528,
+      "context_min": 390913,
+      "context_max": 391168,
+      "bound_bytes": 535574496,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1529,
+      "context_min": 391169,
+      "context_max": 391424,
+      "bound_bytes": 535742436,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1530,
+      "context_min": 391425,
+      "context_max": 391680,
+      "bound_bytes": 535910376,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1531,
+      "context_min": 391681,
+      "context_max": 391936,
+      "bound_bytes": 536078316,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1532,
+      "context_min": 391937,
+      "context_max": 392192,
+      "bound_bytes": 536246256,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1533,
+      "context_min": 392193,
+      "context_max": 392448,
+      "bound_bytes": 536414196,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1534,
+      "context_min": 392449,
+      "context_max": 392704,
+      "bound_bytes": 536582136,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1535,
+      "context_min": 392705,
+      "context_max": 392960,
+      "bound_bytes": 536750076,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1536,
+      "context_min": 392961,
+      "context_max": 393216,
+      "bound_bytes": 536918016,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1537,
+      "context_min": 393217,
+      "context_max": 393472,
+      "bound_bytes": 537085956,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1538,
+      "context_min": 393473,
+      "context_max": 393728,
+      "bound_bytes": 537253896,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1539,
+      "context_min": 393729,
+      "context_max": 393984,
+      "bound_bytes": 537421836,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1540,
+      "context_min": 393985,
+      "context_max": 394240,
+      "bound_bytes": 537589776,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1541,
+      "context_min": 394241,
+      "context_max": 394496,
+      "bound_bytes": 537757716,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1542,
+      "context_min": 394497,
+      "context_max": 394752,
+      "bound_bytes": 537925656,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1543,
+      "context_min": 394753,
+      "context_max": 395008,
+      "bound_bytes": 538093596,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1544,
+      "context_min": 395009,
+      "context_max": 395264,
+      "bound_bytes": 538261536,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1545,
+      "context_min": 395265,
+      "context_max": 395520,
+      "bound_bytes": 538429476,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1546,
+      "context_min": 395521,
+      "context_max": 395776,
+      "bound_bytes": 538597416,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1547,
+      "context_min": 395777,
+      "context_max": 396032,
+      "bound_bytes": 538765356,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1548,
+      "context_min": 396033,
+      "context_max": 396288,
+      "bound_bytes": 538933296,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1549,
+      "context_min": 396289,
+      "context_max": 396544,
+      "bound_bytes": 539101236,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1550,
+      "context_min": 396545,
+      "context_max": 396800,
+      "bound_bytes": 539269176,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1551,
+      "context_min": 396801,
+      "context_max": 397056,
+      "bound_bytes": 539437116,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1552,
+      "context_min": 397057,
+      "context_max": 397312,
+      "bound_bytes": 539605056,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1553,
+      "context_min": 397313,
+      "context_max": 397568,
+      "bound_bytes": 539772996,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1554,
+      "context_min": 397569,
+      "context_max": 397824,
+      "bound_bytes": 539940936,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1555,
+      "context_min": 397825,
+      "context_max": 398080,
+      "bound_bytes": 540108876,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1556,
+      "context_min": 398081,
+      "context_max": 398336,
+      "bound_bytes": 540276816,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1557,
+      "context_min": 398337,
+      "context_max": 398592,
+      "bound_bytes": 540444756,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1558,
+      "context_min": 398593,
+      "context_max": 398848,
+      "bound_bytes": 540612696,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1559,
+      "context_min": 398849,
+      "context_max": 399104,
+      "bound_bytes": 540780636,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1560,
+      "context_min": 399105,
+      "context_max": 399360,
+      "bound_bytes": 540948576,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1561,
+      "context_min": 399361,
+      "context_max": 399616,
+      "bound_bytes": 541116516,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1562,
+      "context_min": 399617,
+      "context_max": 399872,
+      "bound_bytes": 541284456,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1563,
+      "context_min": 399873,
+      "context_max": 400128,
+      "bound_bytes": 541452396,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1564,
+      "context_min": 400129,
+      "context_max": 400384,
+      "bound_bytes": 541620336,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1565,
+      "context_min": 400385,
+      "context_max": 400640,
+      "bound_bytes": 541788276,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1566,
+      "context_min": 400641,
+      "context_max": 400896,
+      "bound_bytes": 541956216,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1567,
+      "context_min": 400897,
+      "context_max": 401152,
+      "bound_bytes": 542124156,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1568,
+      "context_min": 401153,
+      "context_max": 401408,
+      "bound_bytes": 542292096,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1569,
+      "context_min": 401409,
+      "context_max": 401664,
+      "bound_bytes": 542460036,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1570,
+      "context_min": 401665,
+      "context_max": 401920,
+      "bound_bytes": 542627976,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1571,
+      "context_min": 401921,
+      "context_max": 402176,
+      "bound_bytes": 542795916,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1572,
+      "context_min": 402177,
+      "context_max": 402432,
+      "bound_bytes": 542963856,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1573,
+      "context_min": 402433,
+      "context_max": 402688,
+      "bound_bytes": 543131796,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1574,
+      "context_min": 402689,
+      "context_max": 402944,
+      "bound_bytes": 543299736,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1575,
+      "context_min": 402945,
+      "context_max": 403200,
+      "bound_bytes": 543467676,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1576,
+      "context_min": 403201,
+      "context_max": 403456,
+      "bound_bytes": 543635616,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1577,
+      "context_min": 403457,
+      "context_max": 403712,
+      "bound_bytes": 543803556,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1578,
+      "context_min": 403713,
+      "context_max": 403968,
+      "bound_bytes": 543971496,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1579,
+      "context_min": 403969,
+      "context_max": 404224,
+      "bound_bytes": 544139436,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1580,
+      "context_min": 404225,
+      "context_max": 404480,
+      "bound_bytes": 544307376,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1581,
+      "context_min": 404481,
+      "context_max": 404736,
+      "bound_bytes": 544475316,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1582,
+      "context_min": 404737,
+      "context_max": 404992,
+      "bound_bytes": 544643256,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1583,
+      "context_min": 404993,
+      "context_max": 405248,
+      "bound_bytes": 544811196,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1584,
+      "context_min": 405249,
+      "context_max": 405504,
+      "bound_bytes": 544979136,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1585,
+      "context_min": 405505,
+      "context_max": 405760,
+      "bound_bytes": 545147076,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1586,
+      "context_min": 405761,
+      "context_max": 406016,
+      "bound_bytes": 545315016,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1587,
+      "context_min": 406017,
+      "context_max": 406272,
+      "bound_bytes": 545482956,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1588,
+      "context_min": 406273,
+      "context_max": 406528,
+      "bound_bytes": 545650896,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1589,
+      "context_min": 406529,
+      "context_max": 406784,
+      "bound_bytes": 545818836,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1590,
+      "context_min": 406785,
+      "context_max": 407040,
+      "bound_bytes": 545986776,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1591,
+      "context_min": 407041,
+      "context_max": 407296,
+      "bound_bytes": 546154716,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1592,
+      "context_min": 407297,
+      "context_max": 407552,
+      "bound_bytes": 546322656,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1593,
+      "context_min": 407553,
+      "context_max": 407808,
+      "bound_bytes": 546490596,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1594,
+      "context_min": 407809,
+      "context_max": 408064,
+      "bound_bytes": 546658536,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1595,
+      "context_min": 408065,
+      "context_max": 408320,
+      "bound_bytes": 546826476,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1596,
+      "context_min": 408321,
+      "context_max": 408576,
+      "bound_bytes": 546994416,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1597,
+      "context_min": 408577,
+      "context_max": 408832,
+      "bound_bytes": 547162356,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1598,
+      "context_min": 408833,
+      "context_max": 409088,
+      "bound_bytes": 547330296,
+      "limiting_phase": "attention_peer1"
+    },
+    {
+      "blocks": 1599,
+      "context_min": 409089,
+      "context_max": 409344,
+      "bound_bytes": 480389372,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1600,
+      "context_min": 409345,
+      "context_max": 409600,
+      "bound_bytes": 480557312,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1601,
+      "context_min": 409601,
+      "context_max": 409856,
+      "bound_bytes": 480725252,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1602,
+      "context_min": 409857,
+      "context_max": 410112,
+      "bound_bytes": 480893192,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1603,
+      "context_min": 410113,
+      "context_max": 410368,
+      "bound_bytes": 481061132,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1604,
+      "context_min": 410369,
+      "context_max": 410624,
+      "bound_bytes": 481229072,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1605,
+      "context_min": 410625,
+      "context_max": 410880,
+      "bound_bytes": 481397012,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1606,
+      "context_min": 410881,
+      "context_max": 411136,
+      "bound_bytes": 481564952,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1607,
+      "context_min": 411137,
+      "context_max": 411392,
+      "bound_bytes": 481732892,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1608,
+      "context_min": 411393,
+      "context_max": 411648,
+      "bound_bytes": 481900832,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1609,
+      "context_min": 411649,
+      "context_max": 411904,
+      "bound_bytes": 482068772,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1610,
+      "context_min": 411905,
+      "context_max": 412160,
+      "bound_bytes": 482236712,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1611,
+      "context_min": 412161,
+      "context_max": 412416,
+      "bound_bytes": 482404652,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1612,
+      "context_min": 412417,
+      "context_max": 412672,
+      "bound_bytes": 482572592,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1613,
+      "context_min": 412673,
+      "context_max": 412928,
+      "bound_bytes": 482740532,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1614,
+      "context_min": 412929,
+      "context_max": 413184,
+      "bound_bytes": 482908472,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1615,
+      "context_min": 413185,
+      "context_max": 413440,
+      "bound_bytes": 483076412,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1616,
+      "context_min": 413441,
+      "context_max": 413696,
+      "bound_bytes": 483244352,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1617,
+      "context_min": 413697,
+      "context_max": 413952,
+      "bound_bytes": 483412292,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1618,
+      "context_min": 413953,
+      "context_max": 414208,
+      "bound_bytes": 483580232,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1619,
+      "context_min": 414209,
+      "context_max": 414464,
+      "bound_bytes": 483748172,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1620,
+      "context_min": 414465,
+      "context_max": 414720,
+      "bound_bytes": 483916112,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1621,
+      "context_min": 414721,
+      "context_max": 414976,
+      "bound_bytes": 484084052,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1622,
+      "context_min": 414977,
+      "context_max": 415232,
+      "bound_bytes": 484251992,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1623,
+      "context_min": 415233,
+      "context_max": 415488,
+      "bound_bytes": 484419932,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1624,
+      "context_min": 415489,
+      "context_max": 415744,
+      "bound_bytes": 484587872,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1625,
+      "context_min": 415745,
+      "context_max": 416000,
+      "bound_bytes": 484755812,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1626,
+      "context_min": 416001,
+      "context_max": 416256,
+      "bound_bytes": 484923752,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1627,
+      "context_min": 416257,
+      "context_max": 416512,
+      "bound_bytes": 485091692,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1628,
+      "context_min": 416513,
+      "context_max": 416768,
+      "bound_bytes": 485259632,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1629,
+      "context_min": 416769,
+      "context_max": 417024,
+      "bound_bytes": 485427572,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1630,
+      "context_min": 417025,
+      "context_max": 417280,
+      "bound_bytes": 485595512,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1631,
+      "context_min": 417281,
+      "context_max": 417536,
+      "bound_bytes": 485763452,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1632,
+      "context_min": 417537,
+      "context_max": 417792,
+      "bound_bytes": 485931392,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1633,
+      "context_min": 417793,
+      "context_max": 418048,
+      "bound_bytes": 486099332,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1634,
+      "context_min": 418049,
+      "context_max": 418304,
+      "bound_bytes": 486267272,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1635,
+      "context_min": 418305,
+      "context_max": 418560,
+      "bound_bytes": 486435212,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1636,
+      "context_min": 418561,
+      "context_max": 418816,
+      "bound_bytes": 486603152,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1637,
+      "context_min": 418817,
+      "context_max": 419072,
+      "bound_bytes": 486771092,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1638,
+      "context_min": 419073,
+      "context_max": 419328,
+      "bound_bytes": 486939032,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1639,
+      "context_min": 419329,
+      "context_max": 419584,
+      "bound_bytes": 487106972,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1640,
+      "context_min": 419585,
+      "context_max": 419840,
+      "bound_bytes": 487274912,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1641,
+      "context_min": 419841,
+      "context_max": 420096,
+      "bound_bytes": 487442852,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1642,
+      "context_min": 420097,
+      "context_max": 420352,
+      "bound_bytes": 487610792,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1643,
+      "context_min": 420353,
+      "context_max": 420608,
+      "bound_bytes": 487778732,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1644,
+      "context_min": 420609,
+      "context_max": 420864,
+      "bound_bytes": 487946672,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1645,
+      "context_min": 420865,
+      "context_max": 421120,
+      "bound_bytes": 488114612,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1646,
+      "context_min": 421121,
+      "context_max": 421376,
+      "bound_bytes": 488282552,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1647,
+      "context_min": 421377,
+      "context_max": 421632,
+      "bound_bytes": 488450492,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1648,
+      "context_min": 421633,
+      "context_max": 421888,
+      "bound_bytes": 488618432,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1649,
+      "context_min": 421889,
+      "context_max": 422144,
+      "bound_bytes": 488786372,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1650,
+      "context_min": 422145,
+      "context_max": 422400,
+      "bound_bytes": 488954312,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1651,
+      "context_min": 422401,
+      "context_max": 422656,
+      "bound_bytes": 489122252,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1652,
+      "context_min": 422657,
+      "context_max": 422912,
+      "bound_bytes": 489290192,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1653,
+      "context_min": 422913,
+      "context_max": 423168,
+      "bound_bytes": 489458132,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1654,
+      "context_min": 423169,
+      "context_max": 423424,
+      "bound_bytes": 489626072,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1655,
+      "context_min": 423425,
+      "context_max": 423680,
+      "bound_bytes": 489794012,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1656,
+      "context_min": 423681,
+      "context_max": 423936,
+      "bound_bytes": 489961952,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1657,
+      "context_min": 423937,
+      "context_max": 424192,
+      "bound_bytes": 490129892,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1658,
+      "context_min": 424193,
+      "context_max": 424448,
+      "bound_bytes": 490297832,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1659,
+      "context_min": 424449,
+      "context_max": 424704,
+      "bound_bytes": 490465772,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1660,
+      "context_min": 424705,
+      "context_max": 424960,
+      "bound_bytes": 490633712,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1661,
+      "context_min": 424961,
+      "context_max": 425216,
+      "bound_bytes": 490801652,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1662,
+      "context_min": 425217,
+      "context_max": 425472,
+      "bound_bytes": 490969592,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1663,
+      "context_min": 425473,
+      "context_max": 425728,
+      "bound_bytes": 491137532,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1664,
+      "context_min": 425729,
+      "context_max": 425984,
+      "bound_bytes": 491305472,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1665,
+      "context_min": 425985,
+      "context_max": 426240,
+      "bound_bytes": 491473412,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1666,
+      "context_min": 426241,
+      "context_max": 426496,
+      "bound_bytes": 491641352,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1667,
+      "context_min": 426497,
+      "context_max": 426752,
+      "bound_bytes": 491809292,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1668,
+      "context_min": 426753,
+      "context_max": 427008,
+      "bound_bytes": 491977232,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1669,
+      "context_min": 427009,
+      "context_max": 427264,
+      "bound_bytes": 492145172,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1670,
+      "context_min": 427265,
+      "context_max": 427520,
+      "bound_bytes": 492313112,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1671,
+      "context_min": 427521,
+      "context_max": 427776,
+      "bound_bytes": 492481052,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1672,
+      "context_min": 427777,
+      "context_max": 428032,
+      "bound_bytes": 492648992,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1673,
+      "context_min": 428033,
+      "context_max": 428288,
+      "bound_bytes": 492816932,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1674,
+      "context_min": 428289,
+      "context_max": 428544,
+      "bound_bytes": 492984872,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1675,
+      "context_min": 428545,
+      "context_max": 428800,
+      "bound_bytes": 493152812,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1676,
+      "context_min": 428801,
+      "context_max": 429056,
+      "bound_bytes": 493320752,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1677,
+      "context_min": 429057,
+      "context_max": 429312,
+      "bound_bytes": 493488692,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1678,
+      "context_min": 429313,
+      "context_max": 429568,
+      "bound_bytes": 493656632,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1679,
+      "context_min": 429569,
+      "context_max": 429824,
+      "bound_bytes": 493824572,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1680,
+      "context_min": 429825,
+      "context_max": 430080,
+      "bound_bytes": 493992512,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1681,
+      "context_min": 430081,
+      "context_max": 430336,
+      "bound_bytes": 494160452,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1682,
+      "context_min": 430337,
+      "context_max": 430592,
+      "bound_bytes": 494328392,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1683,
+      "context_min": 430593,
+      "context_max": 430848,
+      "bound_bytes": 494496332,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1684,
+      "context_min": 430849,
+      "context_max": 431104,
+      "bound_bytes": 494664272,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1685,
+      "context_min": 431105,
+      "context_max": 431360,
+      "bound_bytes": 494832212,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1686,
+      "context_min": 431361,
+      "context_max": 431616,
+      "bound_bytes": 495000152,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1687,
+      "context_min": 431617,
+      "context_max": 431872,
+      "bound_bytes": 495168092,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1688,
+      "context_min": 431873,
+      "context_max": 432128,
+      "bound_bytes": 495336032,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1689,
+      "context_min": 432129,
+      "context_max": 432384,
+      "bound_bytes": 495503972,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1690,
+      "context_min": 432385,
+      "context_max": 432640,
+      "bound_bytes": 495671912,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1691,
+      "context_min": 432641,
+      "context_max": 432896,
+      "bound_bytes": 495839852,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1692,
+      "context_min": 432897,
+      "context_max": 433152,
+      "bound_bytes": 496007792,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1693,
+      "context_min": 433153,
+      "context_max": 433408,
+      "bound_bytes": 496175732,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1694,
+      "context_min": 433409,
+      "context_max": 433664,
+      "bound_bytes": 496343672,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1695,
+      "context_min": 433665,
+      "context_max": 433920,
+      "bound_bytes": 496511612,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1696,
+      "context_min": 433921,
+      "context_max": 434176,
+      "bound_bytes": 496679552,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1697,
+      "context_min": 434177,
+      "context_max": 434432,
+      "bound_bytes": 496847492,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1698,
+      "context_min": 434433,
+      "context_max": 434688,
+      "bound_bytes": 497015432,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1699,
+      "context_min": 434689,
+      "context_max": 434944,
+      "bound_bytes": 497183372,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1700,
+      "context_min": 434945,
+      "context_max": 435200,
+      "bound_bytes": 497351312,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1701,
+      "context_min": 435201,
+      "context_max": 435456,
+      "bound_bytes": 497519252,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1702,
+      "context_min": 435457,
+      "context_max": 435712,
+      "bound_bytes": 497687192,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1703,
+      "context_min": 435713,
+      "context_max": 435968,
+      "bound_bytes": 497855132,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1704,
+      "context_min": 435969,
+      "context_max": 436224,
+      "bound_bytes": 498023072,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1705,
+      "context_min": 436225,
+      "context_max": 436480,
+      "bound_bytes": 498191012,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1706,
+      "context_min": 436481,
+      "context_max": 436736,
+      "bound_bytes": 498358952,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1707,
+      "context_min": 436737,
+      "context_max": 436992,
+      "bound_bytes": 498526892,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1708,
+      "context_min": 436993,
+      "context_max": 437248,
+      "bound_bytes": 498694832,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1709,
+      "context_min": 437249,
+      "context_max": 437504,
+      "bound_bytes": 498862772,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1710,
+      "context_min": 437505,
+      "context_max": 437760,
+      "bound_bytes": 499030712,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1711,
+      "context_min": 437761,
+      "context_max": 438016,
+      "bound_bytes": 499198652,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1712,
+      "context_min": 438017,
+      "context_max": 438272,
+      "bound_bytes": 499366592,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1713,
+      "context_min": 438273,
+      "context_max": 438528,
+      "bound_bytes": 499534532,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1714,
+      "context_min": 438529,
+      "context_max": 438784,
+      "bound_bytes": 499702472,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1715,
+      "context_min": 438785,
+      "context_max": 439040,
+      "bound_bytes": 499870412,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1716,
+      "context_min": 439041,
+      "context_max": 439296,
+      "bound_bytes": 500038352,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1717,
+      "context_min": 439297,
+      "context_max": 439552,
+      "bound_bytes": 500206292,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1718,
+      "context_min": 439553,
+      "context_max": 439808,
+      "bound_bytes": 500374232,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1719,
+      "context_min": 439809,
+      "context_max": 440064,
+      "bound_bytes": 500542172,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1720,
+      "context_min": 440065,
+      "context_max": 440320,
+      "bound_bytes": 500710112,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1721,
+      "context_min": 440321,
+      "context_max": 440576,
+      "bound_bytes": 500878052,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1722,
+      "context_min": 440577,
+      "context_max": 440832,
+      "bound_bytes": 501045992,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1723,
+      "context_min": 440833,
+      "context_max": 441088,
+      "bound_bytes": 501213932,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1724,
+      "context_min": 441089,
+      "context_max": 441344,
+      "bound_bytes": 501381872,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1725,
+      "context_min": 441345,
+      "context_max": 441600,
+      "bound_bytes": 501549812,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1726,
+      "context_min": 441601,
+      "context_max": 441856,
+      "bound_bytes": 501717752,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1727,
+      "context_min": 441857,
+      "context_max": 442112,
+      "bound_bytes": 501885692,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1728,
+      "context_min": 442113,
+      "context_max": 442368,
+      "bound_bytes": 502053632,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1729,
+      "context_min": 442369,
+      "context_max": 442624,
+      "bound_bytes": 502221572,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1730,
+      "context_min": 442625,
+      "context_max": 442880,
+      "bound_bytes": 502389512,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1731,
+      "context_min": 442881,
+      "context_max": 443136,
+      "bound_bytes": 502557452,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1732,
+      "context_min": 443137,
+      "context_max": 443392,
+      "bound_bytes": 502725392,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1733,
+      "context_min": 443393,
+      "context_max": 443648,
+      "bound_bytes": 502893332,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1734,
+      "context_min": 443649,
+      "context_max": 443904,
+      "bound_bytes": 503061272,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1735,
+      "context_min": 443905,
+      "context_max": 444160,
+      "bound_bytes": 503229212,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1736,
+      "context_min": 444161,
+      "context_max": 444416,
+      "bound_bytes": 503397152,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1737,
+      "context_min": 444417,
+      "context_max": 444672,
+      "bound_bytes": 503565092,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1738,
+      "context_min": 444673,
+      "context_max": 444928,
+      "bound_bytes": 503733032,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1739,
+      "context_min": 444929,
+      "context_max": 445184,
+      "bound_bytes": 503900972,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1740,
+      "context_min": 445185,
+      "context_max": 445440,
+      "bound_bytes": 504068912,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1741,
+      "context_min": 445441,
+      "context_max": 445696,
+      "bound_bytes": 504236852,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1742,
+      "context_min": 445697,
+      "context_max": 445952,
+      "bound_bytes": 504404792,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1743,
+      "context_min": 445953,
+      "context_max": 446208,
+      "bound_bytes": 504572732,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1744,
+      "context_min": 446209,
+      "context_max": 446464,
+      "bound_bytes": 504740672,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1745,
+      "context_min": 446465,
+      "context_max": 446720,
+      "bound_bytes": 504908612,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1746,
+      "context_min": 446721,
+      "context_max": 446976,
+      "bound_bytes": 505076552,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1747,
+      "context_min": 446977,
+      "context_max": 447232,
+      "bound_bytes": 505244492,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1748,
+      "context_min": 447233,
+      "context_max": 447488,
+      "bound_bytes": 505412432,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1749,
+      "context_min": 447489,
+      "context_max": 447744,
+      "bound_bytes": 505580372,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1750,
+      "context_min": 447745,
+      "context_max": 448000,
+      "bound_bytes": 505748312,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1751,
+      "context_min": 448001,
+      "context_max": 448256,
+      "bound_bytes": 505916252,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1752,
+      "context_min": 448257,
+      "context_max": 448512,
+      "bound_bytes": 506084192,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1753,
+      "context_min": 448513,
+      "context_max": 448768,
+      "bound_bytes": 506252132,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1754,
+      "context_min": 448769,
+      "context_max": 449024,
+      "bound_bytes": 506420072,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1755,
+      "context_min": 449025,
+      "context_max": 449280,
+      "bound_bytes": 506588012,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1756,
+      "context_min": 449281,
+      "context_max": 449536,
+      "bound_bytes": 506755952,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1757,
+      "context_min": 449537,
+      "context_max": 449792,
+      "bound_bytes": 506923892,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1758,
+      "context_min": 449793,
+      "context_max": 450048,
+      "bound_bytes": 507091832,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1759,
+      "context_min": 450049,
+      "context_max": 450304,
+      "bound_bytes": 507259772,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1760,
+      "context_min": 450305,
+      "context_max": 450560,
+      "bound_bytes": 507427712,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1761,
+      "context_min": 450561,
+      "context_max": 450816,
+      "bound_bytes": 507595652,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1762,
+      "context_min": 450817,
+      "context_max": 451072,
+      "bound_bytes": 507763592,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1763,
+      "context_min": 451073,
+      "context_max": 451328,
+      "bound_bytes": 507931532,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1764,
+      "context_min": 451329,
+      "context_max": 451584,
+      "bound_bytes": 508099472,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1765,
+      "context_min": 451585,
+      "context_max": 451840,
+      "bound_bytes": 508267412,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1766,
+      "context_min": 451841,
+      "context_max": 452096,
+      "bound_bytes": 508435352,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1767,
+      "context_min": 452097,
+      "context_max": 452352,
+      "bound_bytes": 508603292,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1768,
+      "context_min": 452353,
+      "context_max": 452608,
+      "bound_bytes": 508771232,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1769,
+      "context_min": 452609,
+      "context_max": 452864,
+      "bound_bytes": 508939172,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1770,
+      "context_min": 452865,
+      "context_max": 453120,
+      "bound_bytes": 509107112,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1771,
+      "context_min": 453121,
+      "context_max": 453376,
+      "bound_bytes": 509275052,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1772,
+      "context_min": 453377,
+      "context_max": 453632,
+      "bound_bytes": 509442992,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1773,
+      "context_min": 453633,
+      "context_max": 453888,
+      "bound_bytes": 509610932,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1774,
+      "context_min": 453889,
+      "context_max": 454144,
+      "bound_bytes": 509778872,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1775,
+      "context_min": 454145,
+      "context_max": 454400,
+      "bound_bytes": 509946812,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1776,
+      "context_min": 454401,
+      "context_max": 454656,
+      "bound_bytes": 510114752,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1777,
+      "context_min": 454657,
+      "context_max": 454912,
+      "bound_bytes": 510282692,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1778,
+      "context_min": 454913,
+      "context_max": 455168,
+      "bound_bytes": 510450632,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1779,
+      "context_min": 455169,
+      "context_max": 455424,
+      "bound_bytes": 510618572,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1780,
+      "context_min": 455425,
+      "context_max": 455680,
+      "bound_bytes": 510786512,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1781,
+      "context_min": 455681,
+      "context_max": 455936,
+      "bound_bytes": 510954452,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1782,
+      "context_min": 455937,
+      "context_max": 456192,
+      "bound_bytes": 511122392,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1783,
+      "context_min": 456193,
+      "context_max": 456448,
+      "bound_bytes": 511290332,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1784,
+      "context_min": 456449,
+      "context_max": 456704,
+      "bound_bytes": 511458272,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1785,
+      "context_min": 456705,
+      "context_max": 456960,
+      "bound_bytes": 511626212,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1786,
+      "context_min": 456961,
+      "context_max": 457216,
+      "bound_bytes": 511794152,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1787,
+      "context_min": 457217,
+      "context_max": 457472,
+      "bound_bytes": 511962092,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1788,
+      "context_min": 457473,
+      "context_max": 457728,
+      "bound_bytes": 512130032,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1789,
+      "context_min": 457729,
+      "context_max": 457984,
+      "bound_bytes": 512297972,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1790,
+      "context_min": 457985,
+      "context_max": 458240,
+      "bound_bytes": 512465912,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1791,
+      "context_min": 458241,
+      "context_max": 458496,
+      "bound_bytes": 512633852,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1792,
+      "context_min": 458497,
+      "context_max": 458752,
+      "bound_bytes": 512801792,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1793,
+      "context_min": 458753,
+      "context_max": 459008,
+      "bound_bytes": 512969732,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1794,
+      "context_min": 459009,
+      "context_max": 459264,
+      "bound_bytes": 513137672,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1795,
+      "context_min": 459265,
+      "context_max": 459520,
+      "bound_bytes": 513305612,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1796,
+      "context_min": 459521,
+      "context_max": 459776,
+      "bound_bytes": 513473552,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1797,
+      "context_min": 459777,
+      "context_max": 460032,
+      "bound_bytes": 513641492,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1798,
+      "context_min": 460033,
+      "context_max": 460288,
+      "bound_bytes": 513809432,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1799,
+      "context_min": 460289,
+      "context_max": 460544,
+      "bound_bytes": 513977372,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1800,
+      "context_min": 460545,
+      "context_max": 460800,
+      "bound_bytes": 514145312,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1801,
+      "context_min": 460801,
+      "context_max": 461056,
+      "bound_bytes": 514313252,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1802,
+      "context_min": 461057,
+      "context_max": 461312,
+      "bound_bytes": 514481192,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1803,
+      "context_min": 461313,
+      "context_max": 461568,
+      "bound_bytes": 514649132,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1804,
+      "context_min": 461569,
+      "context_max": 461824,
+      "bound_bytes": 514817072,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1805,
+      "context_min": 461825,
+      "context_max": 462080,
+      "bound_bytes": 514985012,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1806,
+      "context_min": 462081,
+      "context_max": 462336,
+      "bound_bytes": 515152952,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1807,
+      "context_min": 462337,
+      "context_max": 462592,
+      "bound_bytes": 515320892,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1808,
+      "context_min": 462593,
+      "context_max": 462848,
+      "bound_bytes": 515488832,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1809,
+      "context_min": 462849,
+      "context_max": 463104,
+      "bound_bytes": 515656772,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1810,
+      "context_min": 463105,
+      "context_max": 463360,
+      "bound_bytes": 515824712,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1811,
+      "context_min": 463361,
+      "context_max": 463616,
+      "bound_bytes": 515992652,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1812,
+      "context_min": 463617,
+      "context_max": 463872,
+      "bound_bytes": 516160592,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1813,
+      "context_min": 463873,
+      "context_max": 464128,
+      "bound_bytes": 516328532,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1814,
+      "context_min": 464129,
+      "context_max": 464384,
+      "bound_bytes": 516496472,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1815,
+      "context_min": 464385,
+      "context_max": 464640,
+      "bound_bytes": 516664412,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1816,
+      "context_min": 464641,
+      "context_max": 464896,
+      "bound_bytes": 516832352,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1817,
+      "context_min": 464897,
+      "context_max": 465152,
+      "bound_bytes": 517000292,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1818,
+      "context_min": 465153,
+      "context_max": 465408,
+      "bound_bytes": 517168232,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1819,
+      "context_min": 465409,
+      "context_max": 465664,
+      "bound_bytes": 517336172,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1820,
+      "context_min": 465665,
+      "context_max": 465920,
+      "bound_bytes": 517504112,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1821,
+      "context_min": 465921,
+      "context_max": 466176,
+      "bound_bytes": 517672052,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1822,
+      "context_min": 466177,
+      "context_max": 466432,
+      "bound_bytes": 517839992,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1823,
+      "context_min": 466433,
+      "context_max": 466688,
+      "bound_bytes": 518007932,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1824,
+      "context_min": 466689,
+      "context_max": 466944,
+      "bound_bytes": 518175872,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1825,
+      "context_min": 466945,
+      "context_max": 467200,
+      "bound_bytes": 518343812,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1826,
+      "context_min": 467201,
+      "context_max": 467456,
+      "bound_bytes": 518511752,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1827,
+      "context_min": 467457,
+      "context_max": 467712,
+      "bound_bytes": 518679692,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1828,
+      "context_min": 467713,
+      "context_max": 467968,
+      "bound_bytes": 518847632,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1829,
+      "context_min": 467969,
+      "context_max": 468224,
+      "bound_bytes": 519015572,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1830,
+      "context_min": 468225,
+      "context_max": 468480,
+      "bound_bytes": 519183512,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1831,
+      "context_min": 468481,
+      "context_max": 468736,
+      "bound_bytes": 519351452,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1832,
+      "context_min": 468737,
+      "context_max": 468992,
+      "bound_bytes": 519519392,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1833,
+      "context_min": 468993,
+      "context_max": 469248,
+      "bound_bytes": 519687332,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1834,
+      "context_min": 469249,
+      "context_max": 469504,
+      "bound_bytes": 519855272,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1835,
+      "context_min": 469505,
+      "context_max": 469760,
+      "bound_bytes": 520023212,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1836,
+      "context_min": 469761,
+      "context_max": 470016,
+      "bound_bytes": 520191152,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1837,
+      "context_min": 470017,
+      "context_max": 470272,
+      "bound_bytes": 520359092,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1838,
+      "context_min": 470273,
+      "context_max": 470528,
+      "bound_bytes": 520527032,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1839,
+      "context_min": 470529,
+      "context_max": 470784,
+      "bound_bytes": 520694972,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1840,
+      "context_min": 470785,
+      "context_max": 471040,
+      "bound_bytes": 520862912,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1841,
+      "context_min": 471041,
+      "context_max": 471296,
+      "bound_bytes": 521030852,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1842,
+      "context_min": 471297,
+      "context_max": 471552,
+      "bound_bytes": 521198792,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1843,
+      "context_min": 471553,
+      "context_max": 471808,
+      "bound_bytes": 521366732,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1844,
+      "context_min": 471809,
+      "context_max": 472064,
+      "bound_bytes": 521534672,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1845,
+      "context_min": 472065,
+      "context_max": 472320,
+      "bound_bytes": 521702612,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1846,
+      "context_min": 472321,
+      "context_max": 472576,
+      "bound_bytes": 521870552,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1847,
+      "context_min": 472577,
+      "context_max": 472832,
+      "bound_bytes": 522038492,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1848,
+      "context_min": 472833,
+      "context_max": 473088,
+      "bound_bytes": 522206432,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1849,
+      "context_min": 473089,
+      "context_max": 473344,
+      "bound_bytes": 522374372,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1850,
+      "context_min": 473345,
+      "context_max": 473600,
+      "bound_bytes": 522542312,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1851,
+      "context_min": 473601,
+      "context_max": 473856,
+      "bound_bytes": 522710252,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1852,
+      "context_min": 473857,
+      "context_max": 474112,
+      "bound_bytes": 522878192,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1853,
+      "context_min": 474113,
+      "context_max": 474368,
+      "bound_bytes": 523046132,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1854,
+      "context_min": 474369,
+      "context_max": 474624,
+      "bound_bytes": 523214072,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1855,
+      "context_min": 474625,
+      "context_max": 474880,
+      "bound_bytes": 523382012,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1856,
+      "context_min": 474881,
+      "context_max": 475136,
+      "bound_bytes": 523549952,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1857,
+      "context_min": 475137,
+      "context_max": 475392,
+      "bound_bytes": 523717892,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1858,
+      "context_min": 475393,
+      "context_max": 475648,
+      "bound_bytes": 523885832,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1859,
+      "context_min": 475649,
+      "context_max": 475904,
+      "bound_bytes": 524053772,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1860,
+      "context_min": 475905,
+      "context_max": 476160,
+      "bound_bytes": 524221712,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1861,
+      "context_min": 476161,
+      "context_max": 476416,
+      "bound_bytes": 524389652,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1862,
+      "context_min": 476417,
+      "context_max": 476672,
+      "bound_bytes": 524557592,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1863,
+      "context_min": 476673,
+      "context_max": 476928,
+      "bound_bytes": 524725532,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1864,
+      "context_min": 476929,
+      "context_max": 477184,
+      "bound_bytes": 524893472,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1865,
+      "context_min": 477185,
+      "context_max": 477440,
+      "bound_bytes": 525061412,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1866,
+      "context_min": 477441,
+      "context_max": 477696,
+      "bound_bytes": 525229352,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1867,
+      "context_min": 477697,
+      "context_max": 477952,
+      "bound_bytes": 525397292,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1868,
+      "context_min": 477953,
+      "context_max": 478208,
+      "bound_bytes": 525565232,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1869,
+      "context_min": 478209,
+      "context_max": 478464,
+      "bound_bytes": 525733172,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1870,
+      "context_min": 478465,
+      "context_max": 478720,
+      "bound_bytes": 525901112,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1871,
+      "context_min": 478721,
+      "context_max": 478976,
+      "bound_bytes": 526069052,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1872,
+      "context_min": 478977,
+      "context_max": 479232,
+      "bound_bytes": 526236992,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1873,
+      "context_min": 479233,
+      "context_max": 479488,
+      "bound_bytes": 526404932,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1874,
+      "context_min": 479489,
+      "context_max": 479744,
+      "bound_bytes": 526572872,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1875,
+      "context_min": 479745,
+      "context_max": 480000,
+      "bound_bytes": 526740812,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1876,
+      "context_min": 480001,
+      "context_max": 480256,
+      "bound_bytes": 526908752,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1877,
+      "context_min": 480257,
+      "context_max": 480512,
+      "bound_bytes": 527076692,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1878,
+      "context_min": 480513,
+      "context_max": 480768,
+      "bound_bytes": 527244632,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1879,
+      "context_min": 480769,
+      "context_max": 481024,
+      "bound_bytes": 527412572,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1880,
+      "context_min": 481025,
+      "context_max": 481280,
+      "bound_bytes": 527580512,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1881,
+      "context_min": 481281,
+      "context_max": 481536,
+      "bound_bytes": 527748452,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1882,
+      "context_min": 481537,
+      "context_max": 481792,
+      "bound_bytes": 527916392,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1883,
+      "context_min": 481793,
+      "context_max": 482048,
+      "bound_bytes": 528084332,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1884,
+      "context_min": 482049,
+      "context_max": 482304,
+      "bound_bytes": 528252272,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1885,
+      "context_min": 482305,
+      "context_max": 482560,
+      "bound_bytes": 528420212,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1886,
+      "context_min": 482561,
+      "context_max": 482816,
+      "bound_bytes": 528588152,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1887,
+      "context_min": 482817,
+      "context_max": 483072,
+      "bound_bytes": 528756092,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1888,
+      "context_min": 483073,
+      "context_max": 483328,
+      "bound_bytes": 528924032,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1889,
+      "context_min": 483329,
+      "context_max": 483584,
+      "bound_bytes": 529091972,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1890,
+      "context_min": 483585,
+      "context_max": 483840,
+      "bound_bytes": 529259912,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1891,
+      "context_min": 483841,
+      "context_max": 484096,
+      "bound_bytes": 529427852,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1892,
+      "context_min": 484097,
+      "context_max": 484352,
+      "bound_bytes": 529595792,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1893,
+      "context_min": 484353,
+      "context_max": 484608,
+      "bound_bytes": 529763732,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1894,
+      "context_min": 484609,
+      "context_max": 484864,
+      "bound_bytes": 529931672,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1895,
+      "context_min": 484865,
+      "context_max": 485120,
+      "bound_bytes": 530099612,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1896,
+      "context_min": 485121,
+      "context_max": 485376,
+      "bound_bytes": 530267552,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1897,
+      "context_min": 485377,
+      "context_max": 485632,
+      "bound_bytes": 530435492,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1898,
+      "context_min": 485633,
+      "context_max": 485888,
+      "bound_bytes": 530603432,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1899,
+      "context_min": 485889,
+      "context_max": 486144,
+      "bound_bytes": 530771372,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1900,
+      "context_min": 486145,
+      "context_max": 486400,
+      "bound_bytes": 530939312,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1901,
+      "context_min": 486401,
+      "context_max": 486656,
+      "bound_bytes": 531107252,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1902,
+      "context_min": 486657,
+      "context_max": 486912,
+      "bound_bytes": 531275192,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1903,
+      "context_min": 486913,
+      "context_max": 487168,
+      "bound_bytes": 531443132,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1904,
+      "context_min": 487169,
+      "context_max": 487424,
+      "bound_bytes": 531611072,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1905,
+      "context_min": 487425,
+      "context_max": 487680,
+      "bound_bytes": 531779012,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1906,
+      "context_min": 487681,
+      "context_max": 487936,
+      "bound_bytes": 531946952,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1907,
+      "context_min": 487937,
+      "context_max": 488192,
+      "bound_bytes": 532114892,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1908,
+      "context_min": 488193,
+      "context_max": 488448,
+      "bound_bytes": 532282832,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1909,
+      "context_min": 488449,
+      "context_max": 488704,
+      "bound_bytes": 532450772,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1910,
+      "context_min": 488705,
+      "context_max": 488960,
+      "bound_bytes": 532618712,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1911,
+      "context_min": 488961,
+      "context_max": 489216,
+      "bound_bytes": 532786652,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1912,
+      "context_min": 489217,
+      "context_max": 489472,
+      "bound_bytes": 532954592,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1913,
+      "context_min": 489473,
+      "context_max": 489728,
+      "bound_bytes": 533122532,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1914,
+      "context_min": 489729,
+      "context_max": 489984,
+      "bound_bytes": 533290472,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1915,
+      "context_min": 489985,
+      "context_max": 490240,
+      "bound_bytes": 533458412,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1916,
+      "context_min": 490241,
+      "context_max": 490496,
+      "bound_bytes": 533626352,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1917,
+      "context_min": 490497,
+      "context_max": 490752,
+      "bound_bytes": 533794292,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1918,
+      "context_min": 490753,
+      "context_max": 491008,
+      "bound_bytes": 533962232,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1919,
+      "context_min": 491009,
+      "context_max": 491264,
+      "bound_bytes": 534130172,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1920,
+      "context_min": 491265,
+      "context_max": 491520,
+      "bound_bytes": 534298112,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1921,
+      "context_min": 491521,
+      "context_max": 491776,
+      "bound_bytes": 534466052,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1922,
+      "context_min": 491777,
+      "context_max": 492032,
+      "bound_bytes": 534633992,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1923,
+      "context_min": 492033,
+      "context_max": 492288,
+      "bound_bytes": 534801932,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1924,
+      "context_min": 492289,
+      "context_max": 492544,
+      "bound_bytes": 534969872,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1925,
+      "context_min": 492545,
+      "context_max": 492800,
+      "bound_bytes": 535137812,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1926,
+      "context_min": 492801,
+      "context_max": 493056,
+      "bound_bytes": 535305752,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1927,
+      "context_min": 493057,
+      "context_max": 493312,
+      "bound_bytes": 535473692,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1928,
+      "context_min": 493313,
+      "context_max": 493568,
+      "bound_bytes": 535641632,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1929,
+      "context_min": 493569,
+      "context_max": 493824,
+      "bound_bytes": 535809572,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1930,
+      "context_min": 493825,
+      "context_max": 494080,
+      "bound_bytes": 535977512,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1931,
+      "context_min": 494081,
+      "context_max": 494336,
+      "bound_bytes": 536145452,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1932,
+      "context_min": 494337,
+      "context_max": 494592,
+      "bound_bytes": 536313392,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1933,
+      "context_min": 494593,
+      "context_max": 494848,
+      "bound_bytes": 536481332,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1934,
+      "context_min": 494849,
+      "context_max": 495104,
+      "bound_bytes": 536649272,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1935,
+      "context_min": 495105,
+      "context_max": 495360,
+      "bound_bytes": 536817212,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1936,
+      "context_min": 495361,
+      "context_max": 495616,
+      "bound_bytes": 536985152,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1937,
+      "context_min": 495617,
+      "context_max": 495872,
+      "bound_bytes": 537153092,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1938,
+      "context_min": 495873,
+      "context_max": 496128,
+      "bound_bytes": 537321032,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1939,
+      "context_min": 496129,
+      "context_max": 496384,
+      "bound_bytes": 537488972,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1940,
+      "context_min": 496385,
+      "context_max": 496640,
+      "bound_bytes": 537656912,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1941,
+      "context_min": 496641,
+      "context_max": 496896,
+      "bound_bytes": 537824852,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1942,
+      "context_min": 496897,
+      "context_max": 497152,
+      "bound_bytes": 537992792,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1943,
+      "context_min": 497153,
+      "context_max": 497408,
+      "bound_bytes": 538160732,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1944,
+      "context_min": 497409,
+      "context_max": 497664,
+      "bound_bytes": 538328672,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1945,
+      "context_min": 497665,
+      "context_max": 497920,
+      "bound_bytes": 538496612,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1946,
+      "context_min": 497921,
+      "context_max": 498176,
+      "bound_bytes": 538664552,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1947,
+      "context_min": 498177,
+      "context_max": 498432,
+      "bound_bytes": 538832492,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1948,
+      "context_min": 498433,
+      "context_max": 498688,
+      "bound_bytes": 539000432,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1949,
+      "context_min": 498689,
+      "context_max": 498944,
+      "bound_bytes": 539168372,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1950,
+      "context_min": 498945,
+      "context_max": 499200,
+      "bound_bytes": 539336312,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1951,
+      "context_min": 499201,
+      "context_max": 499456,
+      "bound_bytes": 539504252,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1952,
+      "context_min": 499457,
+      "context_max": 499712,
+      "bound_bytes": 539672192,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1953,
+      "context_min": 499713,
+      "context_max": 499968,
+      "bound_bytes": 539840132,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1954,
+      "context_min": 499969,
+      "context_max": 500224,
+      "bound_bytes": 540008072,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1955,
+      "context_min": 500225,
+      "context_max": 500480,
+      "bound_bytes": 540176012,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1956,
+      "context_min": 500481,
+      "context_max": 500736,
+      "bound_bytes": 540343952,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1957,
+      "context_min": 500737,
+      "context_max": 500992,
+      "bound_bytes": 540511892,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1958,
+      "context_min": 500993,
+      "context_max": 501248,
+      "bound_bytes": 540679832,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1959,
+      "context_min": 501249,
+      "context_max": 501504,
+      "bound_bytes": 540847772,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1960,
+      "context_min": 501505,
+      "context_max": 501760,
+      "bound_bytes": 541015712,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1961,
+      "context_min": 501761,
+      "context_max": 502016,
+      "bound_bytes": 541183652,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1962,
+      "context_min": 502017,
+      "context_max": 502272,
+      "bound_bytes": 541351592,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1963,
+      "context_min": 502273,
+      "context_max": 502528,
+      "bound_bytes": 541519532,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1964,
+      "context_min": 502529,
+      "context_max": 502784,
+      "bound_bytes": 541687472,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1965,
+      "context_min": 502785,
+      "context_max": 503040,
+      "bound_bytes": 541855412,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1966,
+      "context_min": 503041,
+      "context_max": 503296,
+      "bound_bytes": 542023352,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1967,
+      "context_min": 503297,
+      "context_max": 503552,
+      "bound_bytes": 542191292,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1968,
+      "context_min": 503553,
+      "context_max": 503808,
+      "bound_bytes": 542359232,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1969,
+      "context_min": 503809,
+      "context_max": 504064,
+      "bound_bytes": 542527172,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1970,
+      "context_min": 504065,
+      "context_max": 504320,
+      "bound_bytes": 542695112,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1971,
+      "context_min": 504321,
+      "context_max": 504576,
+      "bound_bytes": 542863052,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1972,
+      "context_min": 504577,
+      "context_max": 504832,
+      "bound_bytes": 543030992,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1973,
+      "context_min": 504833,
+      "context_max": 505088,
+      "bound_bytes": 543198932,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1974,
+      "context_min": 505089,
+      "context_max": 505344,
+      "bound_bytes": 543366872,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1975,
+      "context_min": 505345,
+      "context_max": 505600,
+      "bound_bytes": 543534812,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1976,
+      "context_min": 505601,
+      "context_max": 505856,
+      "bound_bytes": 543702752,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1977,
+      "context_min": 505857,
+      "context_max": 506112,
+      "bound_bytes": 543870692,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1978,
+      "context_min": 506113,
+      "context_max": 506368,
+      "bound_bytes": 544038632,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1979,
+      "context_min": 506369,
+      "context_max": 506624,
+      "bound_bytes": 544206572,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1980,
+      "context_min": 506625,
+      "context_max": 506880,
+      "bound_bytes": 544374512,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1981,
+      "context_min": 506881,
+      "context_max": 507136,
+      "bound_bytes": 544542452,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1982,
+      "context_min": 507137,
+      "context_max": 507392,
+      "bound_bytes": 544710392,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1983,
+      "context_min": 507393,
+      "context_max": 507648,
+      "bound_bytes": 544878332,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1984,
+      "context_min": 507649,
+      "context_max": 507904,
+      "bound_bytes": 545046272,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1985,
+      "context_min": 507905,
+      "context_max": 508160,
+      "bound_bytes": 545214212,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1986,
+      "context_min": 508161,
+      "context_max": 508416,
+      "bound_bytes": 545382152,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1987,
+      "context_min": 508417,
+      "context_max": 508672,
+      "bound_bytes": 545550092,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1988,
+      "context_min": 508673,
+      "context_max": 508928,
+      "bound_bytes": 545718032,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1989,
+      "context_min": 508929,
+      "context_max": 509184,
+      "bound_bytes": 545885972,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1990,
+      "context_min": 509185,
+      "context_max": 509440,
+      "bound_bytes": 546053912,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1991,
+      "context_min": 509441,
+      "context_max": 509696,
+      "bound_bytes": 546221852,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1992,
+      "context_min": 509697,
+      "context_max": 509952,
+      "bound_bytes": 546389792,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1993,
+      "context_min": 509953,
+      "context_max": 510208,
+      "bound_bytes": 546557732,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1994,
+      "context_min": 510209,
+      "context_max": 510464,
+      "bound_bytes": 546725672,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1995,
+      "context_min": 510465,
+      "context_max": 510720,
+      "bound_bytes": 546893612,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1996,
+      "context_min": 510721,
+      "context_max": 510976,
+      "bound_bytes": 547061552,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1997,
+      "context_min": 510977,
+      "context_max": 511232,
+      "bound_bytes": 547229492,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1998,
+      "context_min": 511233,
+      "context_max": 511488,
+      "bound_bytes": 547397432,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 1999,
+      "context_min": 511489,
+      "context_max": 511744,
+      "bound_bytes": 547565372,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2000,
+      "context_min": 511745,
+      "context_max": 512000,
+      "bound_bytes": 547733312,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2001,
+      "context_min": 512001,
+      "context_max": 512256,
+      "bound_bytes": 547901252,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2002,
+      "context_min": 512257,
+      "context_max": 512512,
+      "bound_bytes": 548069192,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2003,
+      "context_min": 512513,
+      "context_max": 512768,
+      "bound_bytes": 548237132,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2004,
+      "context_min": 512769,
+      "context_max": 513024,
+      "bound_bytes": 548405072,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2005,
+      "context_min": 513025,
+      "context_max": 513280,
+      "bound_bytes": 548573012,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2006,
+      "context_min": 513281,
+      "context_max": 513536,
+      "bound_bytes": 548740952,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2007,
+      "context_min": 513537,
+      "context_max": 513792,
+      "bound_bytes": 548908892,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2008,
+      "context_min": 513793,
+      "context_max": 514048,
+      "bound_bytes": 549076832,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2009,
+      "context_min": 514049,
+      "context_max": 514304,
+      "bound_bytes": 549244772,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2010,
+      "context_min": 514305,
+      "context_max": 514560,
+      "bound_bytes": 549412712,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2011,
+      "context_min": 514561,
+      "context_max": 514816,
+      "bound_bytes": 549580652,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2012,
+      "context_min": 514817,
+      "context_max": 515072,
+      "bound_bytes": 549748592,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2013,
+      "context_min": 515073,
+      "context_max": 515328,
+      "bound_bytes": 549916532,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2014,
+      "context_min": 515329,
+      "context_max": 515584,
+      "bound_bytes": 550084472,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2015,
+      "context_min": 515585,
+      "context_max": 515840,
+      "bound_bytes": 550252412,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2016,
+      "context_min": 515841,
+      "context_max": 516096,
+      "bound_bytes": 550420352,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2017,
+      "context_min": 516097,
+      "context_max": 516352,
+      "bound_bytes": 550588292,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2018,
+      "context_min": 516353,
+      "context_max": 516608,
+      "bound_bytes": 550756232,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2019,
+      "context_min": 516609,
+      "context_max": 516864,
+      "bound_bytes": 550924172,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2020,
+      "context_min": 516865,
+      "context_max": 517120,
+      "bound_bytes": 551092112,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2021,
+      "context_min": 517121,
+      "context_max": 517376,
+      "bound_bytes": 551260052,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2022,
+      "context_min": 517377,
+      "context_max": 517632,
+      "bound_bytes": 551427992,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2023,
+      "context_min": 517633,
+      "context_max": 517888,
+      "bound_bytes": 551595932,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2024,
+      "context_min": 517889,
+      "context_max": 518144,
+      "bound_bytes": 551763872,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2025,
+      "context_min": 518145,
+      "context_max": 518400,
+      "bound_bytes": 551931812,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2026,
+      "context_min": 518401,
+      "context_max": 518656,
+      "bound_bytes": 552099752,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2027,
+      "context_min": 518657,
+      "context_max": 518912,
+      "bound_bytes": 552267692,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2028,
+      "context_min": 518913,
+      "context_max": 519168,
+      "bound_bytes": 552435632,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2029,
+      "context_min": 519169,
+      "context_max": 519424,
+      "bound_bytes": 552603572,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2030,
+      "context_min": 519425,
+      "context_max": 519680,
+      "bound_bytes": 552771512,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2031,
+      "context_min": 519681,
+      "context_max": 519936,
+      "bound_bytes": 552939452,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2032,
+      "context_min": 519937,
+      "context_max": 520192,
+      "bound_bytes": 553107392,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2033,
+      "context_min": 520193,
+      "context_max": 520448,
+      "bound_bytes": 553275332,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2034,
+      "context_min": 520449,
+      "context_max": 520704,
+      "bound_bytes": 553443272,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2035,
+      "context_min": 520705,
+      "context_max": 520960,
+      "bound_bytes": 553611212,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2036,
+      "context_min": 520961,
+      "context_max": 521216,
+      "bound_bytes": 553779152,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2037,
+      "context_min": 521217,
+      "context_max": 521472,
+      "bound_bytes": 553947092,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2038,
+      "context_min": 521473,
+      "context_max": 521728,
+      "bound_bytes": 554115032,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2039,
+      "context_min": 521729,
+      "context_max": 521984,
+      "bound_bytes": 554282972,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2040,
+      "context_min": 521985,
+      "context_max": 522240,
+      "bound_bytes": 554450912,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2041,
+      "context_min": 522241,
+      "context_max": 522496,
+      "bound_bytes": 554618852,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2042,
+      "context_min": 522497,
+      "context_max": 522752,
+      "bound_bytes": 554786792,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2043,
+      "context_min": 522753,
+      "context_max": 523008,
+      "bound_bytes": 554954732,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2044,
+      "context_min": 523009,
+      "context_max": 523264,
+      "bound_bytes": 555122672,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2045,
+      "context_min": 523265,
+      "context_max": 523520,
+      "bound_bytes": 555290612,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2046,
+      "context_min": 523521,
+      "context_max": 523776,
+      "bound_bytes": 555458552,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2047,
+      "context_min": 523777,
+      "context_max": 524032,
+      "bound_bytes": 555626492,
+      "limiting_phase": "attention_peer0"
+    },
+    {
+      "blocks": 2048,
+      "context_min": 524033,
+      "context_max": 524288,
+      "bound_bytes": 555794432,
+      "limiting_phase": "attention_peer0"
+    }
+  ]
+}

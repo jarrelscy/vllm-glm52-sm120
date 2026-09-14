@@ -1,0 +1,162 @@
+{
+  "scope": "synthetic complete stage, no full-model speed claim",
+  "baseline": "current Q-before-absorption four-BMM weightAG plus staged correction/BF16 RS; candidate original local absorption plus rawKVAG and fused exact tree",
+  "results": [
+    {
+      "context": 131072,
+      "tokens": 4096,
+      "all_ranks_all_intermediates_final_bitwise": true,
+      "local_intermediate_checks": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "local_final_bitwise": true,
+      "maxrank_ms": {
+        "baseline": [
+          12.724384307861328,
+          12.76358413696289,
+          12.669376373291016,
+          12.80128002166748,
+          12.550047874450684,
+          12.826592445373535
+        ],
+        "candidate": [
+          6.770688056945801,
+          6.781087875366211,
+          6.780384063720703,
+          6.804800033569336,
+          6.788576126098633,
+          6.792640209197998
+        ],
+        "reused": [
+          6.875679969787598,
+          6.876992225646973,
+          6.890399932861328,
+          6.884160041809082,
+          6.884096145629883,
+          6.885791778564453
+        ]
+      },
+      "incremental_torch_peak": {
+        "baseline": 635191296,
+        "candidate": 464535552,
+        "reused": 464535552
+      }
+    },
+    {
+      "context": 262144,
+      "tokens": 4096,
+      "all_ranks_all_intermediates_final_bitwise": true,
+      "local_intermediate_checks": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "local_final_bitwise": true,
+      "maxrank_ms": {
+        "baseline": [
+          12.477375984191895,
+          12.876128196716309,
+          12.588576316833496,
+          12.67024040222168,
+          12.84540843963623,
+          12.591296195983887
+        ],
+        "candidate": [
+          8.52627182006836,
+          8.547264099121094,
+          8.497599601745605,
+          8.544416427612305,
+          8.469152450561523,
+          8.563455581665039
+        ],
+        "reused": [
+          8.663392066955566,
+          8.68505573272705,
+          8.659008026123047,
+          8.702336311340332,
+          8.68012809753418,
+          8.691424369812012
+        ]
+      },
+      "incremental_torch_peak": {
+        "baseline": 635191296,
+        "candidate": 550518784,
+        "reused": 483409920
+      }
+    },
+    {
+      "context": 524288,
+      "tokens": 4096,
+      "all_ranks_all_intermediates_final_bitwise": true,
+      "local_intermediate_checks": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "local_final_bitwise": true,
+      "maxrank_ms": {
+        "baseline": [
+          12.851712226867676,
+          12.9136962890625,
+          12.825183868408203,
+          12.577312469482422,
+          12.844096183776855,
+          12.574943542480469
+        ],
+        "candidate": [
+          11.842559814453125,
+          11.840288162231445,
+          11.838815689086914,
+          11.866687774658203,
+          11.90931224822998,
+          11.925567626953125
+        ],
+        "reused": [
+          12.074336051940918,
+          12.03270435333252,
+          12.064672470092773,
+          11.99846363067627,
+          12.052255630493164,
+          12.125984191894531
+        ]
+      },
+      "incremental_torch_peak": {
+        "baseline": 635191296,
+        "candidate": 722485248,
+        "reused": 521158656
+      }
+    }
+  ]
+}

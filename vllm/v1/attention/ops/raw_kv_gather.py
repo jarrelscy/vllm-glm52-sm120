@@ -17,6 +17,7 @@ from vllm.v1.attention.ops.common import _dcp_rs_copyfree_supported
 from vllm.v1.attention.ops.dcp_comm_overlap import consume_pending_dcp_merge
 from vllm.v1.attention.ops.raw_kv_collective_guard import TREES, qualify
 from vllm.v1.attention.ops.raw_kv_merge import merge
+from vllm.v1.attention.ops.raw_kv_reuse import stash_consumed
 
 logger = init_logger(__name__)
 
@@ -55,7 +56,7 @@ def _eligible(layer, query, cache, meta, fp8_attention, group):
         and not torch.cuda.is_current_stream_capturing()
         and meta.num_reqs == 1
         and meta.num_actual_tokens == 4096
-        and 4096 <= meta.max_seq_len <= 131072
+        and 4096 <= meta.max_seq_len <= 524288
         and meta.topk_tokens == 2048
         and meta.block_size == 64
         and meta.cp_kv_cache_interleave_size == 1
@@ -128,6 +129,7 @@ def try_raw_kv_gather(layer, query, cache, meta, fp8_attention):
     topk = impl.topk_indices_buffer[:4096]
     parts = []
     lses = []
+    stashed = 0
     # Use backend calls to preserve actual scale, workspace and empty-row policy.
     # Temporarily changing impl.dcp_rank is unnecessary: provide explicit mapping.
     for peer in range(4):
@@ -152,10 +154,14 @@ def try_raw_kv_gather(layer, query, cache, meta, fp8_attention):
         )
         parts.append(output)
         lses.append(lse)
+        if length > 262144:
+            del output
+            stashed = stash_consumed(allkv, parts, peer + 1, stashed)
     del allkv
     result = merge(parts, torch.stack(lses), TREES[rank])
     logger.info_once(
-        "Raw-KV gather eligible: C1 T4096 context<=128K, "
+        "Raw-KV gather eligible: C1 T4096 context<=512K "
+        "(scratch reuse above 256K), "
         "actual-pynccl tree probe passed."
     )
     return result

@@ -1,0 +1,10 @@
+{
+  "peer_loop_ast_equal": true,
+  "stash_ast_equal_excluding_asserts": true,
+  "files": {
+    "/home/jarrelscy/glm52/vllm-arvq-serving/vllm/v1/attention/ops/raw_kv_gather.py": "83dab217b29eab388c79f29adbd571c87135131c4813165da985e582f76fbef8",
+    "/home/jarrelscy/homeassistant/cold-format-lab/kv_scratch_reuse_experiment/serving_overlay/kv_gather_experiment.py": "c804d38a4c457f97df2213e6c51b2c061ba9bdd77c8a95504af12f54bcc88d22",
+    "/home/jarrelscy/glm52/vllm-arvq-serving/vllm/v1/attention/ops/raw_kv_reuse.py": "b8c4a12ac8c097b17720db7af3613866006d778c791e031bb061e8df0a84029f",
+    "/home/jarrelscy/homeassistant/cold-format-lab/kv_scratch_reuse_experiment/serving_overlay/kv_gather_reuse.py": "55d5e6cebffcc11dd5f2353a7950f67e15521fd2a351f3ceab8afa56f63d8b53"
+  }
+}

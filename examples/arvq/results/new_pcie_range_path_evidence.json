@@ -1,0 +1,6917 @@
+{
+  "traces": [
+    {
+      "trace": "/data/profiles/glm5.3-arvq/dp0_pp0_tp0_dcp0_ep0_rank0.1789368075034579871.pt.trace.json.gz",
+      "events": {
+        "ncclDevKernel_AllGather_RING_LL(ncclDevKernelArgsStorage<4096ul>)": {
+          "count": 6392,
+          "sum_us": 712509.7380000012,
+          "example_args": {
+            "External id": 396,
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1187,
+            "registers per thread": 96,
+            "shared memory": 83328,
+            "blocks per SM": 0.021277,
+            "warps per SM": 0.361702,
+            "grid": [
+              4,
+              1,
+              1
+            ],
+            "block": [
+              544,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0,
+            "Collective name": "_allgather_base",
+            "In msg nelems": 557056,
+            "Out msg nelems": 2228224,
+            "Group size": 4,
+            "dtype": "Float",
+            "In split size": "[]",
+            "Out split size": "[]",
+            "Process Group Name": "5",
+            "Process Group Description": "undefined",
+            "Process Group Ranks": "[0, 1, 2, 3]"
+          }
+        },
+        "ncclDevKernel_ReduceScatter_Sum_bf16_RING_LL(ncclDevKernelArgsStorage<4096ul>)": {
+          "count": 2754,
+          "sum_us": 470630.2520000004,
+          "example_args": {
+            "External id": 405,
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1515,
+            "registers per thread": 96,
+            "shared memory": 83328,
+            "blocks per SM": 0.021277,
+            "warps per SM": 0.361702,
+            "grid": [
+              4,
+              1,
+              1
+            ],
+            "block": [
+              544,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "Memcpy PtoP (Device -> Device)": {
+          "count": 1920,
+          "sum_us": 222346.87599999993,
+          "example_args": {
+            "External id": 48221,
+            "fromDevice": 0,
+            "inDevice": 0,
+            "toDevice": 1,
+            "fromContext": 1,
+            "inContext": 1,
+            "toContext": 1,
+            "stream": 19,
+            "correlation": 161605,
+            "bytes": 6291456,
+            "memory bandwidth (GB/s)": 52.72317103829716
+          }
+        },
+        "kernel_cutlass_kernel_b12xcommpcie_dma_kernels_FlagLaunch_object_at__tensorptri32gmemo10_tensorptri32gmemo10_0": {
+          "count": 4160,
+          "sum_us": 188000.38400000014,
+          "example_args": {
+            "External id": 48221,
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 161605,
+            "registers per thread": 16,
+            "shared memory": 0,
+            "blocks per SM": 0.005319,
+            "warps per SM": 0.000166,
+            "grid": [
+              1,
+              1,
+              1
+            ],
+            "block": [
+              1,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "ncclDevKernel_AllReduce_Sum_bf16_RING_LL(ncclDevKernelArgsStorage<4096ul>)": {
+          "count": 5259,
+          "sum_us": 81955.13400000053,
+          "example_args": {
+            "External id": 335,
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 910,
+            "registers per thread": 96,
+            "shared memory": 83328,
+            "blocks per SM": 0.021277,
+            "warps per SM": 0.361702,
+            "grid": [
+              4,
+              1,
+              1
+            ],
+            "block": [
+              544,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_red_fused_fused_add_rms_norm_moe_forward_shared_0": {
+          "count": 2508,
+          "sum_us": 20548.254000000303,
+          "example_args": {
+            "External id": 988,
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 3570,
+            "registers per thread": 40,
+            "shared memory": 64,
+            "blocks per SM": 0.723404,
+            "warps per SM": 11.574468,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "triton_red_fused_fused_add_rms_norm_2": {
+          "count": 2574,
+          "sum_us": 18891.602000000094,
+          "example_args": {
+            "External id": 520,
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1668,
+            "registers per thread": 47,
+            "shared memory": 64,
+            "blocks per SM": 0.723404,
+            "warps per SM": 11.574468,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "void vllm::moe::grouped_topk_fused_small_expert_count_kernel<float, float, int, (vllm::moe::ScoringFunc)1, 384, false, 8>(float*, float*, int*, float const*, long, long, long, long, long, long, bool, double)": {
+          "count": 2652,
+          "sum_us": 15950.630999999992,
+          "example_args": {
+            "External id": 1023,
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 3640,
+            "registers per thread": 40,
+            "shared memory": 3296,
+            "blocks per SM": 0.723404,
+            "warps per SM": 8.680851,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              384,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 18
+          }
+        },
+        "kernel_cutlass_kernel_b12xcommpcie_dma_kernels_AddLaunch_object_at__tensorptrbf16gmemalign16o10_tensorptrbf16gmemalign16o10_tensorptrbf16gmemalign16o10__0": {
+          "count": 960,
+          "sum_us": 14895.685999999982,
+          "example_args": {
+            "External id": 48221,
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 153,
+            "correlation": 161605,
+            "registers per thread": 27,
+            "shared memory": 0,
+            "blocks per SM": 0.340426,
+            "warps per SM": 2.723404,
+            "grid": [
+              64,
+              1,
+              1
+            ],
+            "block": [
+              256,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 6
+          }
+        },
+        "_ZN7cutlass13device_kernelINS_4gemm6kernel13GemmUniversalINS1_17GroupProblemShapeIN4cute5tupleIJlllEEEEENS1_10collective13CollectiveMmaINS1_47MainloopSm120ArrayTmaWarpSpecializedBlockScaledILi2ELi3ENS6_IJNS5_1CILi1EEESD_SD_EEENS1_59KernelPtrArrayTmaWarpSpecializedCooperativeBlockScaledSm120ILi3EEEEENS6_IJNSC_ILi128EEESI_NSC_ILi256EEEEEENS6_IJNS_12float_e2m1_tENS_13float_ue4m3_tEEEENS6_IJPNS6_IJlSD_NSC_ILi0EEEEEEPNS5_6LayoutINS6_IJNS6_IJNS6_IJNSC_ILi32EEENSC_ILi4EEEEEEiEEENS6_IJNS6_IJNSC_ILi16EEEST_EEEiEEENS6_IJSD_iEEEEEENS6_IJSY_NS6_IJNS6_IJSO_SD_EEENSC_ILi512EEEEEENS6_IJSO_iEEEEEEEEEEESN_S18_NS5_8TiledMMAINS5_8MMA_AtomIJNS5_5SM12011BLOCKSCALED19SM120_16x8x64_TN_VSISL_SL_fSM_Li16EEEEEENSR_INS6_IJST_NSC_ILi2EEESD_EEENS6_IJSD_ST_SO_EEEEENS6_IJSI_NSR_INS6_IJNSC_ILi8EEES1G_S1G_EEENS6_IJSD_SW_S1K_EEEEENSC_ILi64EEEEEEEENS6_IJNS5_13SM90_TMA_LOADES1R_EEENS6_IJNS5_14ComposedLayoutINS5_7SwizzleILi3ELi4ELi3EEENS5_18smem_ptr_flag_bitsILi4EEENSR_INS6_IJS1K_SJ_EEENS6_IJSJ_SD_EEEEEEENSR_INS6_IJNS6_IJSU_SD_EEENS6_IJSX_SD_ST_EEEEEENS6_IJNS6_IJSX_S12_EEENS6_IJS11_ST_S12_EEEEEEEEEEENS6_IJNS5_9Copy_AtomIJNS5_17SM75_U32x4_LDSM_NENS_15integer_subbyteILi4ELb0EEEEEENS2A_IJNS5_13UniversalCopyISM_SM_EESM_EEEEEENS5_8identityES1S_S29_S2I_S2J_EENS_8epilogue10collective18CollectiveEpilogueINS2L_30Sm90PtrArrayTmaWarpSpecializedILi3ELi2ELi4ELb1ELb0ELi2EEEJSK_NS6_IJS1O_SS_EEENS_10bfloat16_tESQ_S2R_SQ_NS2L_6fusion15FusionCallbacksINS2L_31Sm120PtrArrayTmaWarpSpecializedILi3ELi2ELi4ELb1ELb0ELi2EEENS2S_17LinearCombinationIS2R_fS2R_fLNS_15FloatRoundStyleE2EEESK_S2Q_JEEES1R_NS1T_INS1U_ILi2ELi4ELi3EEENS1W_ILi16EEENSR_INS6_IJS1K_SS_EEENS6_IJSS_SD_EEEEEEENS5_17SM75_U32x2_LDSM_NENS5_14SM90_TMA_STOREES35_NS5_17SM90_U32x2_STSM_NENS2A_IJS38_NS_6half_tEEEEvEEEvvEEEEvNT_6ParamsE": {
+          "count": 204,
+          "sum_us": 11686.612999999994,
+          "example_args": {
+            "External id": 26289,
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 102668,
+            "registers per thread": 168,
+            "shared memory": 89088,
+            "blocks per SM": 1.0,
+            "warps per SM": 12.0,
+            "grid": [
+              1,
+              188,
+              1
+            ],
+            "block": [
+              384,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "Memcpy DtoD (Device -> Device)": {
+          "count": 601,
+          "sum_us": 10042.28699999996,
+          "example_args": {
+            "External id": 340,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 918,
+            "bytes": 1671168,
+            "memory bandwidth (GB/s)": 1374.3157894736842
+          }
+        },
+        "triton_poi_fused_add_copy_index_select_mul_slice_split_stack_sub_unsqueeze_view_5": {
+          "count": 2541,
+          "sum_us": 9741.919000000049,
+          "example_args": {
+            "External id": 528,
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1812,
+            "registers per thread": 92,
+            "shared memory": 0,
+            "blocks per SM": 2.893617,
+            "warps per SM": 11.574468,
+            "grid": [
+              544,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "kernel_cutlass_kernel_b12xcommpcie_oneshot_cute_FusedOneshotLaunch_object_at__ptri64gmem_ptri64gmem_ptri32gmemalign16_ptri32gmemalign16_ptri32gmemalign16_ptri32gmemalign16_ptri32gmemalign_0": {
+          "count": 225,
+          "sum_us": 7705.960999999996,
+          "example_args": {
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 4045,
+            "correlation": 103285,
+            "registers per thread": 45,
+            "shared memory": 132,
+            "blocks per SM": 0.005319,
+            "warps per SM": 0.085106,
+            "grid": [
+              1,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_poi_fused_add_mul_1": {
+          "count": 2652,
+          "sum_us": 7613.675999999745,
+          "example_args": {
+            "External id": 1188,
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 4196,
+            "registers per thread": 23,
+            "shared memory": 0,
+            "blocks per SM": 4.340425,
+            "warps per SM": 17.361702,
+            "grid": [
+              816,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 36
+          }
+        },
+        "triton_red_fused_mm_t_4": {
+          "count": 69,
+          "sum_us": 6424.619000000001,
+          "example_args": {
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 103285,
+            "registers per thread": 64,
+            "shared memory": 32,
+            "blocks per SM": 32.680851,
+            "warps per SM": 261.446808,
+            "grid": [
+              6144,
+              1,
+              1
+            ],
+            "block": [
+              256,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 67
+          }
+        },
+        "triton_poi_fused_mul_silu_slice_0": {
+          "count": 2652,
+          "sum_us": 5294.766000000075,
+          "example_args": {
+            "External id": 1181,
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 55,
+            "correlation": 4141,
+            "registers per thread": 26,
+            "shared memory": 0,
+            "blocks per SM": 0.723404,
+            "warps per SM": 5.787234,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              256,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 12
+          }
+        },
+        "triton_red_fused_4": {
+          "count": 1988,
+          "sum_us": 4915.283999999988,
+          "example_args": {
+            "External id": 871,
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 3164,
+            "registers per thread": 28,
+            "shared memory": 8192,
+            "blocks per SM": 0.723404,
+            "warps per SM": 11.574468,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "triton_red_fused_mm_t_0": {
+          "count": 147,
+          "sum_us": 4748.264999999999,
+          "example_args": {
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 4045,
+            "correlation": 103285,
+            "registers per thread": 21,
+            "shared memory": 64,
+            "blocks per SM": 32.680851,
+            "warps per SM": 522.893616,
+            "grid": [
+              6144,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "_fused_indexer_q_rope_quant_kernel": {
+          "count": 816,
+          "sum_us": 3286.7160000000117,
+          "example_args": {
+            "External id": 351,
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1036,
+            "registers per thread": 19,
+            "shared memory": 0,
+            "blocks per SM": 23.148935,
+            "warps per SM": 23.148935,
+            "grid": [
+              136,
+              32,
+              1
+            ],
+            "block": [
+              32,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 48
+          }
+        },
+        "triton_poi_fused_3": {
+          "count": 1955,
+          "sum_us": 2370.959999999948,
+          "example_args": {
+            "External id": 870,
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 3157,
+            "registers per thread": 32,
+            "shared memory": 0,
+            "blocks per SM": 0.090426,
+            "warps per SM": 0.723404,
+            "grid": [
+              17,
+              1,
+              1
+            ],
+            "block": [
+              256,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 2
+          }
+        },
+        "triton_red_fused_6": {
+          "count": 87,
+          "sum_us": 1986.4450000000006,
+          "example_args": {
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 103285,
+            "registers per thread": 27,
+            "shared memory": 64,
+            "blocks per SM": 14.808511,
+            "warps per SM": 236.936172,
+            "grid": [
+              2784,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "triton_red_fused_3": {
+          "count": 663,
+          "sum_us": 1783.584,
+          "example_args": {
+            "External id": 523,
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1733,
+            "registers per thread": 28,
+            "shared memory": 8192,
+            "blocks per SM": 1.085106,
+            "warps per SM": 17.361702,
+            "grid": [
+              204,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 36
+          }
+        },
+        "triton_red_fused_10": {
+          "count": 69,
+          "sum_us": 1543.7770000000005,
+          "example_args": {
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 103285,
+            "registers per thread": 23,
+            "shared memory": 64,
+            "blocks per SM": 21.787233,
+            "warps per SM": 348.595734,
+            "grid": [
+              4096,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "triton_red_fused_mm_t_2": {
+          "count": 56,
+          "sum_us": 1198.0120000000006,
+          "example_args": {
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 131207,
+            "registers per thread": 24,
+            "shared memory": 64,
+            "blocks per SM": 13.957447,
+            "warps per SM": 223.319153,
+            "grid": [
+              2624,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "triton_poi_fused_4": {
+          "count": 664,
+          "sum_us": 1034.6119999999978,
+          "example_args": {
+            "External id": 526,
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1784,
+            "registers per thread": 37,
+            "shared memory": 0,
+            "blocks per SM": 0.180851,
+            "warps per SM": 1.446808,
+            "grid": [
+              34,
+              1,
+              1
+            ],
+            "block": [
+              256,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 3
+          }
+        },
+        "triton_red_fused_mm_rms_norm_split_with_sizes_t_5": {
+          "count": 56,
+          "sum_us": 678.3149999999999,
+          "example_args": {
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 131207,
+            "registers per thread": 30,
+            "shared memory": 8192,
+            "blocks per SM": 10.893617,
+            "warps per SM": 174.297867,
+            "grid": [
+              2048,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "triton_red_fused_fused_add_rms_norm_0": {
+          "count": 99,
+          "sum_us": 442.9859999999998,
+          "example_args": {
+            "External id": 513,
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1588,
+            "registers per thread": 39,
+            "shared memory": 64,
+            "blocks per SM": 0.723404,
+            "warps per SM": 11.574468,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "void tensorrt_llm::kernels::cutlass_kernels::fusedBuildExpertMapsSortFirstTokenKernel<32, 8, 9>(int const*, int*, int*, long*, long, int, int, int, int)": {
+          "count": 99,
+          "sum_us": 438.824,
+          "example_args": {
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 4045,
+            "correlation": 103285,
+            "registers per thread": 255,
+            "shared memory": 32928,
+            "blocks per SM": 0.005319,
+            "warps per SM": 0.005319,
+            "grid": [
+              1,
+              1,
+              1
+            ],
+            "block": [
+              32,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_red_fused_2": {
+          "count": 18,
+          "sum_us": 409.44599999999997,
+          "example_args": {
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 131885,
+            "registers per thread": 27,
+            "shared memory": 64,
+            "blocks per SM": 14.808511,
+            "warps per SM": 236.936172,
+            "grid": [
+              2784,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "triton_red_fused_1": {
+          "count": 136,
+          "sum_us": 327.43100000000015,
+          "example_args": {
+            "External id": 349,
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1002,
+            "registers per thread": 28,
+            "shared memory": 8192,
+            "blocks per SM": 1.085106,
+            "warps per SM": 17.361702,
+            "grid": [
+              204,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 36
+          }
+        },
+        "triton_red_fused_eq_rms_norm_scalar_tensor_unsqueeze_where_2": {
+          "count": 102,
+          "sum_us": 216.8369999999999,
+          "example_args": {
+            "External id": 26119,
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 101716,
+            "registers per thread": 24,
+            "shared memory": 64,
+            "blocks per SM": 0.723404,
+            "warps per SM": 11.574468,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "triton_red_fused_add_fused_add_rms_norm_rms_norm_2": {
+          "count": 33,
+          "sum_us": 202.30700000000002,
+          "example_args": {
+            "External id": 26389,
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 102838,
+            "registers per thread": 40,
+            "shared memory": 64,
+            "blocks per SM": 0.723404,
+            "warps per SM": 11.574468,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "triton_poi_fused_0": {
+          "count": 102,
+          "sum_us": 162.533,
+          "example_args": {
+            "External id": 26114,
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 101679,
+            "registers per thread": 17,
+            "shared memory": 0,
+            "blocks per SM": 4.340425,
+            "warps per SM": 17.361702,
+            "grid": [
+              816,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 36
+          }
+        },
+        "triton_red_fused_mm_t_1": {
+          "count": 3,
+          "sum_us": 144.964,
+          "example_args": {
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129900,
+            "registers per thread": 30,
+            "shared memory": 64,
+            "blocks per SM": 32.680851,
+            "warps per SM": 522.893616,
+            "grid": [
+              6144,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "triton_poi_fused_mul_silu_slice_1": {
+          "count": 99,
+          "sum_us": 142.36900000000003,
+          "example_args": {
+            "External id": 515,
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1614,
+            "registers per thread": 38,
+            "shared memory": 0,
+            "blocks per SM": 2.170213,
+            "warps per SM": 8.680851,
+            "grid": [
+              408,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 18
+          }
+        },
+        "Memcpy HtoD (Pinned -> Device)": {
+          "count": 280,
+          "sum_us": 138.08499999999987,
+          "example_args": {
+            "External id": 23,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 60,
+            "bytes": 4,
+            "memory bandwidth (GB/s)": 0.0125
+          }
+        },
+        "triton_red_fused_add_rms_norm_2": {
+          "count": 69,
+          "sum_us": 131.87500000000006,
+          "example_args": {
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 4043,
+            "correlation": 103285,
+            "registers per thread": 37,
+            "shared memory": 64,
+            "blocks per SM": 0.005319,
+            "warps per SM": 0.085106,
+            "grid": [
+              1,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_poi_fused_add_copy_index_select_mul_slice_split_stack_sub_unsqueeze_view_6": {
+          "count": 33,
+          "sum_us": 125.79599999999999,
+          "example_args": {
+            "External id": 26129,
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 101916,
+            "registers per thread": 92,
+            "shared memory": 0,
+            "blocks per SM": 2.893617,
+            "warps per SM": 11.574468,
+            "grid": [
+              544,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "triton_poi_fused_add_copy_index_select_mul_slice_split_stack_sub_unsqueeze_view_3": {
+          "count": 33,
+          "sum_us": 119.48999999999997,
+          "example_args": {
+            "External id": 354,
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1081,
+            "registers per thread": 92,
+            "shared memory": 0,
+            "blocks per SM": 2.893617,
+            "warps per SM": 11.574468,
+            "grid": [
+              544,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "triton_red_fused_rms_norm_5": {
+          "count": 69,
+          "sum_us": 119.4559999999999,
+          "example_args": {
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 103285,
+            "registers per thread": 40,
+            "shared memory": 32,
+            "blocks per SM": 0.005319,
+            "warps per SM": 0.042553,
+            "grid": [
+              1,
+              1,
+              1
+            ],
+            "block": [
+              256,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_red_fused_rms_norm_3": {
+          "count": 33,
+          "sum_us": 94.59400000000004,
+          "example_args": {
+            "External id": 26121,
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 101748,
+            "registers per thread": 37,
+            "shared memory": 64,
+            "blocks per SM": 0.723404,
+            "warps per SM": 11.574468,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "triton_red_fused_rms_norm_0": {
+          "count": 34,
+          "sum_us": 92.385,
+          "example_args": {
+            "External id": 346,
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 937,
+            "registers per thread": 37,
+            "shared memory": 64,
+            "blocks per SM": 0.723404,
+            "warps per SM": 11.574468,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "triton_red_fused_8": {
+          "count": 69,
+          "sum_us": 90.33699999999999,
+          "example_args": {
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 103285,
+            "registers per thread": 21,
+            "shared memory": 64,
+            "blocks per SM": 0.015957,
+            "warps per SM": 0.255319,
+            "grid": [
+              3,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 1
+          }
+        },
+        "triton_poi_fused_7": {
+          "count": 69,
+          "sum_us": 87.04099999999994,
+          "example_args": {
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 103285,
+            "registers per thread": 26,
+            "shared memory": 0,
+            "blocks per SM": 0.021277,
+            "warps per SM": 0.021277,
+            "grid": [
+              4,
+              1,
+              1
+            ],
+            "block": [
+              32,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_poi_fused_add_index_select_mm_mul_slice_split_stack_sub_unsqueeze_view_11": {
+          "count": 69,
+          "sum_us": 75.64999999999996,
+          "example_args": {
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 103285,
+            "registers per thread": 26,
+            "shared memory": 512,
+            "blocks per SM": 0.010638,
+            "warps per SM": 0.042553,
+            "grid": [
+              2,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_red_fused_mm_mul_silu_slice_t_2": {
+          "count": 3,
+          "sum_us": 75.49,
+          "example_args": {
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129900,
+            "registers per thread": 78,
+            "shared memory": 2048,
+            "blocks per SM": 4.085106,
+            "warps per SM": 16.340425,
+            "grid": [
+              768,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 34
+          }
+        },
+        "triton_poi_fused_9": {
+          "count": 69,
+          "sum_us": 75.45699999999994,
+          "example_args": {
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 103285,
+            "registers per thread": 34,
+            "shared memory": 0,
+            "blocks per SM": 0.010638,
+            "warps per SM": 0.010638,
+            "grid": [
+              2,
+              1,
+              1
+            ],
+            "block": [
+              32,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_poi_fused_cat_eq_rms_norm_scalar_tensor_unsqueeze_where_3": {
+          "count": 69,
+          "sum_us": 72.86499999999998,
+          "example_args": {
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 103285,
+            "registers per thread": 36,
+            "shared memory": 0,
+            "blocks per SM": 0.06383,
+            "warps per SM": 0.255319,
+            "grid": [
+              12,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 1
+          }
+        },
+        "triton_poi_fused_5": {
+          "count": 51,
+          "sum_us": 72.45,
+          "example_args": {
+            "External id": 26127,
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 101884,
+            "registers per thread": 85,
+            "shared memory": 0,
+            "blocks per SM": 0.095745,
+            "warps per SM": 0.382979,
+            "grid": [
+              18,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 1
+          }
+        },
+        "triton_poi_fused_add_index_select_mm_mul_slice_split_stack_sub_unsqueeze_view_6": {
+          "count": 57,
+          "sum_us": 60.352999999999966,
+          "example_args": {
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129416,
+            "registers per thread": 26,
+            "shared memory": 512,
+            "blocks per SM": 0.010638,
+            "warps per SM": 0.042553,
+            "grid": [
+              2,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_poi_fused_copy_mm_slice_view_12": {
+          "count": 69,
+          "sum_us": 58.975999999999985,
+          "example_args": {
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 103285,
+            "registers per thread": 16,
+            "shared memory": 0,
+            "blocks per SM": 0.085106,
+            "warps per SM": 0.340426,
+            "grid": [
+              16,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 1
+          }
+        },
+        "triton_poi_fused_copy_mm_slice_view_7": {
+          "count": 57,
+          "sum_us": 57.88800000000002,
+          "example_args": {
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129416,
+            "registers per thread": 16,
+            "shared memory": 0,
+            "blocks per SM": 0.085106,
+            "warps per SM": 0.680851,
+            "grid": [
+              16,
+              1,
+              1
+            ],
+            "block": [
+              256,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 1
+          }
+        },
+        "triton_poi_fused_2": {
+          "count": 34,
+          "sum_us": 54.657000000000004,
+          "example_args": {
+            "External id": 352,
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1053,
+            "registers per thread": 85,
+            "shared memory": 0,
+            "blocks per SM": 0.095745,
+            "warps per SM": 0.382979,
+            "grid": [
+              18,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 1
+          }
+        },
+        "triton_red_fused_7": {
+          "count": 2,
+          "sum_us": 45.825,
+          "example_args": {
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129900,
+            "registers per thread": 23,
+            "shared memory": 64,
+            "blocks per SM": 21.787233,
+            "warps per SM": 348.595734,
+            "grid": [
+              4096,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "triton_poi_fused_add_bitwise_and_bitwise_not_bitwise_or_ge_lt_mul_sub_0": {
+          "count": 33,
+          "sum_us": 40.896,
+          "example_args": {
+            "External id": 318,
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 858,
+            "registers per thread": 16,
+            "shared memory": 0,
+            "blocks per SM": 0.026596,
+            "warps per SM": 0.026596,
+            "grid": [
+              5,
+              1,
+              1
+            ],
+            "block": [
+              32,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "Memcpy DtoH (Device -> Pinned)": {
+          "count": 74,
+          "sum_us": 40.032000000000004,
+          "example_args": {
+            "External id": 249,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 700,
+            "bytes": 4,
+            "memory bandwidth (GB/s)": 0.010416666666666666
+          }
+        },
+        "triton_red_fused_5": {
+          "count": 4,
+          "sum_us": 27.136000000000003,
+          "example_args": {
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129416,
+            "registers per thread": 28,
+            "shared memory": 64,
+            "blocks per SM": 21.787233,
+            "warps per SM": 348.595734,
+            "grid": [
+              4096,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "triton_red_fused_mm_t_3": {
+          "count": 1,
+          "sum_us": 21.505,
+          "example_args": {
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 130868,
+            "registers per thread": 32,
+            "shared memory": 64,
+            "blocks per SM": 13.957447,
+            "warps per SM": 223.319153,
+            "grid": [
+              2624,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "triton_poi_fused_copy_mm_slice_view_8": {
+          "count": 19,
+          "sum_us": 20.19300000000001,
+          "example_args": {
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 130868,
+            "registers per thread": 16,
+            "shared memory": 0,
+            "blocks per SM": 0.085106,
+            "warps per SM": 0.340426,
+            "grid": [
+              16,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 1
+          }
+        },
+        "triton_poi_fused_add_index_select_mm_mul_slice_split_stack_sub_unsqueeze_view_7": {
+          "count": 19,
+          "sum_us": 19.873000000000008,
+          "example_args": {
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 130868,
+            "registers per thread": 26,
+            "shared memory": 512,
+            "blocks per SM": 0.010638,
+            "warps per SM": 0.042553,
+            "grid": [
+              2,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_red_fused_mm_rms_norm_split_with_sizes_t_6": {
+          "count": 1,
+          "sum_us": 12.16,
+          "example_args": {
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 130868,
+            "registers per thread": 19,
+            "shared memory": 64,
+            "blocks per SM": 21.787233,
+            "warps per SM": 348.595734,
+            "grid": [
+              4096,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "triton_poi_fused_6": {
+          "count": 2,
+          "sum_us": 2.144,
+          "example_args": {
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129900,
+            "registers per thread": 34,
+            "shared memory": 0,
+            "blocks per SM": 0.010638,
+            "warps per SM": 0.010638,
+            "grid": [
+              2,
+              1,
+              1
+            ],
+            "block": [
+              32,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_poi_fused_add_index_select_mm_mul_slice_split_stack_sub_unsqueeze_view_8": {
+          "count": 2,
+          "sum_us": 2.112,
+          "example_args": {
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129900,
+            "registers per thread": 24,
+            "shared memory": 0,
+            "blocks per SM": 0.021277,
+            "warps per SM": 0.085106,
+            "grid": [
+              4,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_poi_fused_copy_mm_slice_view_9": {
+          "count": 2,
+          "sum_us": 2.08,
+          "example_args": {
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129900,
+            "registers per thread": 16,
+            "shared memory": 0,
+            "blocks per SM": 0.085106,
+            "warps per SM": 0.340426,
+            "grid": [
+              16,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 1
+          }
+        },
+        "triton_poi_fused_add_bitwise_and_bitwise_or_ge_lt_mul_sub_0": {
+          "count": 1,
+          "sum_us": 1.248,
+          "example_args": {
+            "External id": 37276,
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129338,
+            "registers per thread": 18,
+            "shared memory": 0,
+            "blocks per SM": 0.005319,
+            "warps per SM": 0.005319,
+            "grid": [
+              1,
+              1,
+              1
+            ],
+            "block": [
+              32,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_poi_fused_bitwise_and_bitwise_not_bitwise_or_ge_lt_1": {
+          "count": 1,
+          "sum_us": 0.96,
+          "example_args": {
+            "External id": 37277,
+            "queued": 0,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129346,
+            "registers per thread": 16,
+            "shared memory": 0,
+            "blocks per SM": 0.005319,
+            "warps per SM": 0.005319,
+            "grid": [
+              1,
+              1,
+              1
+            ],
+            "block": [
+              32,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "Memcpy HtoD (Pageable -> Device)": {
+          "count": 1,
+          "sum_us": 0.32,
+          "example_args": {
+            "External id": 36317,
+            "device": 0,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129021,
+            "bytes": 4,
+            "memory bandwidth (GB/s)": 0.0125
+          }
+        }
+      }
+    },
+    {
+      "trace": "/data/profiles/glm5.3-arvq/dp0_pp0_tp1_dcp1_ep1_rank1.1789368075030798546.pt.trace.json.gz",
+      "events": {
+        "kernel_cutlass_kernel_b12xcommpcie_dma_kernels_FlagLaunch_object_at__tensorptri32gmemo10_tensorptri32gmemo10_0": {
+          "count": 4160,
+          "sum_us": 930336.4690000005,
+          "example_args": {
+            "External id": 48221,
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 161271,
+            "registers per thread": 16,
+            "shared memory": 0,
+            "blocks per SM": 0.005319,
+            "warps per SM": 0.000166,
+            "grid": [
+              1,
+              1,
+              1
+            ],
+            "block": [
+              1,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "ncclDevKernel_AllGather_RING_LL(ncclDevKernelArgsStorage<4096ul>)": {
+          "count": 6392,
+          "sum_us": 745598.0490000036,
+          "example_args": {
+            "External id": 396,
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1187,
+            "registers per thread": 96,
+            "shared memory": 83328,
+            "blocks per SM": 0.021277,
+            "warps per SM": 0.361702,
+            "grid": [
+              4,
+              1,
+              1
+            ],
+            "block": [
+              544,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0,
+            "Collective name": "_allgather_base",
+            "In msg nelems": 557056,
+            "Out msg nelems": 2228224,
+            "Group size": 4,
+            "dtype": "Float",
+            "In split size": "[]",
+            "Out split size": "[]",
+            "Process Group Name": "5",
+            "Process Group Description": "undefined",
+            "Process Group Ranks": "[0, 1, 2, 3]"
+          }
+        },
+        "ncclDevKernel_ReduceScatter_Sum_bf16_RING_LL(ncclDevKernelArgsStorage<4096ul>)": {
+          "count": 2754,
+          "sum_us": 471363.2749999998,
+          "example_args": {
+            "External id": 405,
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1515,
+            "registers per thread": 96,
+            "shared memory": 83328,
+            "blocks per SM": 0.021277,
+            "warps per SM": 0.361702,
+            "grid": [
+              4,
+              1,
+              1
+            ],
+            "block": [
+              544,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "Memcpy PtoP (Device -> Device)": {
+          "count": 1920,
+          "sum_us": 222534.11500000037,
+          "example_args": {
+            "External id": 48221,
+            "fromDevice": 1,
+            "inDevice": 1,
+            "toDevice": 2,
+            "fromContext": 1,
+            "inContext": 1,
+            "toContext": 1,
+            "stream": 19,
+            "correlation": 161271,
+            "bytes": 6291456,
+            "memory bandwidth (GB/s)": 53.439701010787395
+          }
+        },
+        "ncclDevKernel_AllReduce_Sum_bf16_RING_LL(ncclDevKernelArgsStorage<4096ul>)": {
+          "count": 5259,
+          "sum_us": 99514.17699999987,
+          "example_args": {
+            "External id": 335,
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 910,
+            "registers per thread": 96,
+            "shared memory": 83328,
+            "blocks per SM": 0.021277,
+            "warps per SM": 0.361702,
+            "grid": [
+              4,
+              1,
+              1
+            ],
+            "block": [
+              544,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_red_fused_fused_add_rms_norm_moe_forward_shared_0": {
+          "count": 2508,
+          "sum_us": 20492.968000000357,
+          "example_args": {
+            "External id": 988,
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 3570,
+            "registers per thread": 40,
+            "shared memory": 64,
+            "blocks per SM": 0.723404,
+            "warps per SM": 11.574468,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "triton_red_fused_fused_add_rms_norm_2": {
+          "count": 2574,
+          "sum_us": 19131.55899999983,
+          "example_args": {
+            "External id": 520,
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1668,
+            "registers per thread": 47,
+            "shared memory": 64,
+            "blocks per SM": 0.723404,
+            "warps per SM": 11.574468,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "void vllm::moe::grouped_topk_fused_small_expert_count_kernel<float, float, int, (vllm::moe::ScoringFunc)1, 384, false, 8>(float*, float*, int*, float const*, long, long, long, long, long, long, bool, double)": {
+          "count": 2652,
+          "sum_us": 15853.517000000014,
+          "example_args": {
+            "External id": 1023,
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 3640,
+            "registers per thread": 40,
+            "shared memory": 3296,
+            "blocks per SM": 0.723404,
+            "warps per SM": 8.680851,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              384,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 18
+          }
+        },
+        "_ZN7cutlass13device_kernelINS_4gemm6kernel13GemmUniversalINS1_17GroupProblemShapeIN4cute5tupleIJlllEEEEENS1_10collective13CollectiveMmaINS1_47MainloopSm120ArrayTmaWarpSpecializedBlockScaledILi2ELi3ENS6_IJNS5_1CILi1EEESD_SD_EEENS1_59KernelPtrArrayTmaWarpSpecializedCooperativeBlockScaledSm120ILi3EEEEENS6_IJNSC_ILi128EEESI_NSC_ILi256EEEEEENS6_IJNS_12float_e2m1_tENS_13float_ue4m3_tEEEENS6_IJPNS6_IJlSD_NSC_ILi0EEEEEEPNS5_6LayoutINS6_IJNS6_IJNS6_IJNSC_ILi32EEENSC_ILi4EEEEEEiEEENS6_IJNS6_IJNSC_ILi16EEEST_EEEiEEENS6_IJSD_iEEEEEENS6_IJSY_NS6_IJNS6_IJSO_SD_EEENSC_ILi512EEEEEENS6_IJSO_iEEEEEEEEEEESN_S18_NS5_8TiledMMAINS5_8MMA_AtomIJNS5_5SM12011BLOCKSCALED19SM120_16x8x64_TN_VSISL_SL_fSM_Li16EEEEEENSR_INS6_IJST_NSC_ILi2EEESD_EEENS6_IJSD_ST_SO_EEEEENS6_IJSI_NSR_INS6_IJNSC_ILi8EEES1G_S1G_EEENS6_IJSD_SW_S1K_EEEEENSC_ILi64EEEEEEEENS6_IJNS5_13SM90_TMA_LOADES1R_EEENS6_IJNS5_14ComposedLayoutINS5_7SwizzleILi3ELi4ELi3EEENS5_18smem_ptr_flag_bitsILi4EEENSR_INS6_IJS1K_SJ_EEENS6_IJSJ_SD_EEEEEEENSR_INS6_IJNS6_IJSU_SD_EEENS6_IJSX_SD_ST_EEEEEENS6_IJNS6_IJSX_S12_EEENS6_IJS11_ST_S12_EEEEEEEEEEENS6_IJNS5_9Copy_AtomIJNS5_17SM75_U32x4_LDSM_NENS_15integer_subbyteILi4ELb0EEEEEENS2A_IJNS5_13UniversalCopyISM_SM_EESM_EEEEEENS5_8identityES1S_S29_S2I_S2J_EENS_8epilogue10collective18CollectiveEpilogueINS2L_30Sm90PtrArrayTmaWarpSpecializedILi3ELi2ELi4ELb1ELb0ELi2EEEJSK_NS6_IJS1O_SS_EEENS_10bfloat16_tESQ_S2R_SQ_NS2L_6fusion15FusionCallbacksINS2L_31Sm120PtrArrayTmaWarpSpecializedILi3ELi2ELi4ELb1ELb0ELi2EEENS2S_17LinearCombinationIS2R_fS2R_fLNS_15FloatRoundStyleE2EEESK_S2Q_JEEES1R_NS1T_INS1U_ILi2ELi4ELi3EEENS1W_ILi16EEENSR_INS6_IJS1K_SS_EEENS6_IJSS_SD_EEEEEEENS5_17SM75_U32x2_LDSM_NENS5_14SM90_TMA_STOREES35_NS5_17SM90_U32x2_STSM_NENS2A_IJS38_NS_6half_tEEEEvEEEvvEEEEvNT_6ParamsE": {
+          "count": 204,
+          "sum_us": 11321.770999999997,
+          "example_args": {
+            "External id": 26289,
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 102484,
+            "registers per thread": 168,
+            "shared memory": 89088,
+            "blocks per SM": 1.0,
+            "warps per SM": 12.0,
+            "grid": [
+              1,
+              188,
+              1
+            ],
+            "block": [
+              384,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "Memcpy DtoD (Device -> Device)": {
+          "count": 601,
+          "sum_us": 10182.742999999957,
+          "example_args": {
+            "External id": 340,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 918,
+            "bytes": 1671168,
+            "memory bandwidth (GB/s)": 1374.3157894736842
+          }
+        },
+        "kernel_cutlass_kernel_b12xcommpcie_dma_kernels_AddLaunch_object_at__tensorptrbf16gmemalign16o10_tensorptrbf16gmemalign16o10_tensorptrbf16gmemalign16o10__0": {
+          "count": 960,
+          "sum_us": 9435.982000000004,
+          "example_args": {
+            "External id": 48221,
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 153,
+            "correlation": 161271,
+            "registers per thread": 27,
+            "shared memory": 0,
+            "blocks per SM": 0.340426,
+            "warps per SM": 2.723404,
+            "grid": [
+              64,
+              1,
+              1
+            ],
+            "block": [
+              256,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 6
+          }
+        },
+        "triton_poi_fused_add_copy_index_select_mul_slice_split_stack_sub_unsqueeze_view_5": {
+          "count": 2541,
+          "sum_us": 9158.14800000002,
+          "example_args": {
+            "External id": 528,
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1812,
+            "registers per thread": 92,
+            "shared memory": 0,
+            "blocks per SM": 2.893617,
+            "warps per SM": 11.574468,
+            "grid": [
+              544,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "kernel_cutlass_kernel_b12xcommpcie_oneshot_cute_FusedOneshotLaunch_object_at__ptri64gmem_ptri64gmem_ptri32gmemalign16_ptri32gmemalign16_ptri32gmemalign16_ptri32gmemalign16_ptri32gmemalign_0": {
+          "count": 225,
+          "sum_us": 8464.504,
+          "example_args": {
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 4045,
+            "correlation": 103101,
+            "registers per thread": 45,
+            "shared memory": 132,
+            "blocks per SM": 0.005319,
+            "warps per SM": 0.085106,
+            "grid": [
+              1,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_poi_fused_mul_silu_slice_0": {
+          "count": 2652,
+          "sum_us": 7583.0630000000565,
+          "example_args": {
+            "External id": 1181,
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 55,
+            "correlation": 4141,
+            "registers per thread": 64,
+            "shared memory": 0,
+            "blocks per SM": 0.361702,
+            "warps per SM": 1.446808,
+            "grid": [
+              68,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 3
+          }
+        },
+        "triton_poi_fused_add_mul_1": {
+          "count": 2652,
+          "sum_us": 7563.616999999894,
+          "example_args": {
+            "External id": 1188,
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 4196,
+            "registers per thread": 23,
+            "shared memory": 0,
+            "blocks per SM": 4.340425,
+            "warps per SM": 17.361702,
+            "grid": [
+              816,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 36
+          }
+        },
+        "triton_red_fused_mm_t_4": {
+          "count": 69,
+          "sum_us": 6425.321,
+          "example_args": {
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 103101,
+            "registers per thread": 64,
+            "shared memory": 32,
+            "blocks per SM": 32.680851,
+            "warps per SM": 261.446808,
+            "grid": [
+              6144,
+              1,
+              1
+            ],
+            "block": [
+              256,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 67
+          }
+        },
+        "triton_red_fused_4": {
+          "count": 1988,
+          "sum_us": 4872.55099999993,
+          "example_args": {
+            "External id": 871,
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 3164,
+            "registers per thread": 28,
+            "shared memory": 8192,
+            "blocks per SM": 0.723404,
+            "warps per SM": 11.574468,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "triton_red_fused_mm_t_0": {
+          "count": 147,
+          "sum_us": 4731.553000000002,
+          "example_args": {
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 4045,
+            "correlation": 103101,
+            "registers per thread": 40,
+            "shared memory": 64,
+            "blocks per SM": 16.340425,
+            "warps per SM": 130.723404,
+            "grid": [
+              3072,
+              1,
+              1
+            ],
+            "block": [
+              256,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "_fused_indexer_q_rope_quant_kernel": {
+          "count": 816,
+          "sum_us": 3129.3110000000347,
+          "example_args": {
+            "External id": 351,
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1036,
+            "registers per thread": 19,
+            "shared memory": 0,
+            "blocks per SM": 23.148935,
+            "warps per SM": 23.148935,
+            "grid": [
+              136,
+              32,
+              1
+            ],
+            "block": [
+              32,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 48
+          }
+        },
+        "triton_poi_fused_3": {
+          "count": 1955,
+          "sum_us": 2648.440000000018,
+          "example_args": {
+            "External id": 870,
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 3157,
+            "registers per thread": 77,
+            "shared memory": 0,
+            "blocks per SM": 0.047872,
+            "warps per SM": 0.191489,
+            "grid": [
+              9,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_red_fused_6": {
+          "count": 87,
+          "sum_us": 1987.8210000000001,
+          "example_args": {
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 103101,
+            "registers per thread": 27,
+            "shared memory": 64,
+            "blocks per SM": 14.808511,
+            "warps per SM": 236.936172,
+            "grid": [
+              2784,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "triton_red_fused_3": {
+          "count": 663,
+          "sum_us": 1741.6450000000018,
+          "example_args": {
+            "External id": 523,
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1733,
+            "registers per thread": 28,
+            "shared memory": 8192,
+            "blocks per SM": 1.085106,
+            "warps per SM": 17.361702,
+            "grid": [
+              204,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 36
+          }
+        },
+        "triton_red_fused_10": {
+          "count": 69,
+          "sum_us": 1541.8200000000002,
+          "example_args": {
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 103101,
+            "registers per thread": 23,
+            "shared memory": 64,
+            "blocks per SM": 21.787233,
+            "warps per SM": 348.595734,
+            "grid": [
+              4096,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "triton_red_fused_mm_t_2": {
+          "count": 56,
+          "sum_us": 1216.8919999999996,
+          "example_args": {
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 130908,
+            "registers per thread": 30,
+            "shared memory": 64,
+            "blocks per SM": 13.957447,
+            "warps per SM": 223.319153,
+            "grid": [
+              2624,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "triton_poi_fused_4": {
+          "count": 664,
+          "sum_us": 1035.0929999999978,
+          "example_args": {
+            "External id": 526,
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1784,
+            "registers per thread": 85,
+            "shared memory": 0,
+            "blocks per SM": 0.095745,
+            "warps per SM": 0.382979,
+            "grid": [
+              18,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 1
+          }
+        },
+        "triton_red_fused_mm_rms_norm_split_with_sizes_t_5": {
+          "count": 56,
+          "sum_us": 670.3139999999999,
+          "example_args": {
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 130908,
+            "registers per thread": 19,
+            "shared memory": 64,
+            "blocks per SM": 21.787233,
+            "warps per SM": 348.595734,
+            "grid": [
+              4096,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "triton_red_fused_fused_add_rms_norm_0": {
+          "count": 99,
+          "sum_us": 464.8409999999995,
+          "example_args": {
+            "External id": 513,
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1588,
+            "registers per thread": 39,
+            "shared memory": 64,
+            "blocks per SM": 0.723404,
+            "warps per SM": 11.574468,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "void tensorrt_llm::kernels::cutlass_kernels::fusedBuildExpertMapsSortFirstTokenKernel<32, 8, 9>(int const*, int*, int*, long*, long, int, int, int, int)": {
+          "count": 99,
+          "sum_us": 417.353,
+          "example_args": {
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 4045,
+            "correlation": 103101,
+            "registers per thread": 255,
+            "shared memory": 32928,
+            "blocks per SM": 0.005319,
+            "warps per SM": 0.005319,
+            "grid": [
+              1,
+              1,
+              1
+            ],
+            "block": [
+              32,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_red_fused_2": {
+          "count": 18,
+          "sum_us": 408.9039999999999,
+          "example_args": {
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 131586,
+            "registers per thread": 25,
+            "shared memory": 64,
+            "blocks per SM": 14.808511,
+            "warps per SM": 236.936172,
+            "grid": [
+              2784,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "triton_red_fused_1": {
+          "count": 136,
+          "sum_us": 332.39600000000036,
+          "example_args": {
+            "External id": 349,
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1002,
+            "registers per thread": 28,
+            "shared memory": 8192,
+            "blocks per SM": 1.085106,
+            "warps per SM": 17.361702,
+            "grid": [
+              204,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 36
+          }
+        },
+        "triton_red_fused_add_fused_add_rms_norm_rms_norm_2": {
+          "count": 33,
+          "sum_us": 220.64600000000002,
+          "example_args": {
+            "External id": 26389,
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 102654,
+            "registers per thread": 40,
+            "shared memory": 64,
+            "blocks per SM": 0.723404,
+            "warps per SM": 11.574468,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "triton_red_fused_eq_rms_norm_scalar_tensor_unsqueeze_where_2": {
+          "count": 102,
+          "sum_us": 202.43700000000004,
+          "example_args": {
+            "External id": 26119,
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 101532,
+            "registers per thread": 24,
+            "shared memory": 64,
+            "blocks per SM": 0.723404,
+            "warps per SM": 11.574468,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "triton_poi_fused_0": {
+          "count": 102,
+          "sum_us": 153.73199999999989,
+          "example_args": {
+            "External id": 26114,
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 101495,
+            "registers per thread": 24,
+            "shared memory": 0,
+            "blocks per SM": 4.340425,
+            "warps per SM": 17.361702,
+            "grid": [
+              816,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 36
+          }
+        },
+        "triton_poi_fused_mul_silu_slice_1": {
+          "count": 99,
+          "sum_us": 144.86800000000005,
+          "example_args": {
+            "External id": 515,
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1614,
+            "registers per thread": 38,
+            "shared memory": 0,
+            "blocks per SM": 2.170213,
+            "warps per SM": 8.680851,
+            "grid": [
+              408,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 18
+          }
+        },
+        "triton_red_fused_mm_t_1": {
+          "count": 3,
+          "sum_us": 143.075,
+          "example_args": {
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129601,
+            "registers per thread": 30,
+            "shared memory": 64,
+            "blocks per SM": 32.680851,
+            "warps per SM": 522.893616,
+            "grid": [
+              6144,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "Memcpy HtoD (Pinned -> Device)": {
+          "count": 280,
+          "sum_us": 139.17199999999988,
+          "example_args": {
+            "External id": 23,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 60,
+            "bytes": 4,
+            "memory bandwidth (GB/s)": 0.0125
+          }
+        },
+        "triton_red_fused_add_rms_norm_2": {
+          "count": 69,
+          "sum_us": 129.539,
+          "example_args": {
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 4043,
+            "correlation": 103101,
+            "registers per thread": 37,
+            "shared memory": 64,
+            "blocks per SM": 0.005319,
+            "warps per SM": 0.085106,
+            "grid": [
+              1,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_red_fused_rms_norm_5": {
+          "count": 69,
+          "sum_us": 119.2349999999999,
+          "example_args": {
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 103101,
+            "registers per thread": 38,
+            "shared memory": 64,
+            "blocks per SM": 0.005319,
+            "warps per SM": 0.085106,
+            "grid": [
+              1,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_poi_fused_add_copy_index_select_mul_slice_split_stack_sub_unsqueeze_view_6": {
+          "count": 33,
+          "sum_us": 116.93100000000001,
+          "example_args": {
+            "External id": 26129,
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 101732,
+            "registers per thread": 92,
+            "shared memory": 0,
+            "blocks per SM": 2.893617,
+            "warps per SM": 11.574468,
+            "grid": [
+              544,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "triton_poi_fused_add_copy_index_select_mul_slice_split_stack_sub_unsqueeze_view_3": {
+          "count": 33,
+          "sum_us": 116.73899999999998,
+          "example_args": {
+            "External id": 354,
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1081,
+            "registers per thread": 92,
+            "shared memory": 0,
+            "blocks per SM": 2.893617,
+            "warps per SM": 11.574468,
+            "grid": [
+              544,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "triton_red_fused_rms_norm_0": {
+          "count": 34,
+          "sum_us": 94.68800000000002,
+          "example_args": {
+            "External id": 346,
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 937,
+            "registers per thread": 37,
+            "shared memory": 64,
+            "blocks per SM": 0.723404,
+            "warps per SM": 11.574468,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "triton_red_fused_rms_norm_3": {
+          "count": 33,
+          "sum_us": 91.55400000000002,
+          "example_args": {
+            "External id": 26121,
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 101564,
+            "registers per thread": 37,
+            "shared memory": 64,
+            "blocks per SM": 0.723404,
+            "warps per SM": 11.574468,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "triton_poi_fused_7": {
+          "count": 69,
+          "sum_us": 89.283,
+          "example_args": {
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 103101,
+            "registers per thread": 26,
+            "shared memory": 0,
+            "blocks per SM": 0.021277,
+            "warps per SM": 0.021277,
+            "grid": [
+              4,
+              1,
+              1
+            ],
+            "block": [
+              32,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_red_fused_8": {
+          "count": 69,
+          "sum_us": 83.55299999999998,
+          "example_args": {
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 103101,
+            "registers per thread": 26,
+            "shared memory": 16,
+            "blocks per SM": 0.015957,
+            "warps per SM": 0.06383,
+            "grid": [
+              3,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_red_fused_mm_mul_silu_slice_t_2": {
+          "count": 3,
+          "sum_us": 75.074,
+          "example_args": {
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129601,
+            "registers per thread": 78,
+            "shared memory": 2048,
+            "blocks per SM": 4.085106,
+            "warps per SM": 16.340425,
+            "grid": [
+              768,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 34
+          }
+        },
+        "triton_poi_fused_9": {
+          "count": 69,
+          "sum_us": 74.55999999999995,
+          "example_args": {
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 103101,
+            "registers per thread": 34,
+            "shared memory": 0,
+            "blocks per SM": 0.010638,
+            "warps per SM": 0.010638,
+            "grid": [
+              2,
+              1,
+              1
+            ],
+            "block": [
+              32,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_poi_fused_cat_eq_rms_norm_scalar_tensor_unsqueeze_where_3": {
+          "count": 69,
+          "sum_us": 73.728,
+          "example_args": {
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 103101,
+            "registers per thread": 21,
+            "shared memory": 0,
+            "blocks per SM": 0.255319,
+            "warps per SM": 1.021277,
+            "grid": [
+              48,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 2
+          }
+        },
+        "triton_poi_fused_copy_mm_slice_view_12": {
+          "count": 69,
+          "sum_us": 73.66499999999999,
+          "example_args": {
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 103101,
+            "registers per thread": 58,
+            "shared memory": 0,
+            "blocks per SM": 0.021277,
+            "warps per SM": 0.021277,
+            "grid": [
+              4,
+              1,
+              1
+            ],
+            "block": [
+              32,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_poi_fused_add_index_select_mm_mul_slice_split_stack_sub_unsqueeze_view_11": {
+          "count": 69,
+          "sum_us": 72.99399999999996,
+          "example_args": {
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 103101,
+            "registers per thread": 26,
+            "shared memory": 512,
+            "blocks per SM": 0.010638,
+            "warps per SM": 0.042553,
+            "grid": [
+              2,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_poi_fused_5": {
+          "count": 51,
+          "sum_us": 71.20000000000002,
+          "example_args": {
+            "External id": 26127,
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 101700,
+            "registers per thread": 85,
+            "shared memory": 0,
+            "blocks per SM": 0.095745,
+            "warps per SM": 0.382979,
+            "grid": [
+              18,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 1
+          }
+        },
+        "triton_poi_fused_add_index_select_mm_mul_slice_split_stack_sub_unsqueeze_view_6": {
+          "count": 57,
+          "sum_us": 59.074999999999996,
+          "example_args": {
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129117,
+            "registers per thread": 26,
+            "shared memory": 512,
+            "blocks per SM": 0.010638,
+            "warps per SM": 0.042553,
+            "grid": [
+              2,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_poi_fused_copy_mm_slice_view_7": {
+          "count": 57,
+          "sum_us": 57.122999999999976,
+          "example_args": {
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129117,
+            "registers per thread": 16,
+            "shared memory": 0,
+            "blocks per SM": 0.170213,
+            "warps per SM": 0.680851,
+            "grid": [
+              32,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 1
+          }
+        },
+        "triton_poi_fused_2": {
+          "count": 34,
+          "sum_us": 54.52800000000001,
+          "example_args": {
+            "External id": 352,
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1053,
+            "registers per thread": 85,
+            "shared memory": 0,
+            "blocks per SM": 0.095745,
+            "warps per SM": 0.382979,
+            "grid": [
+              18,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 1
+          }
+        },
+        "triton_red_fused_7": {
+          "count": 2,
+          "sum_us": 45.025,
+          "example_args": {
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129601,
+            "registers per thread": 23,
+            "shared memory": 64,
+            "blocks per SM": 21.787233,
+            "warps per SM": 348.595734,
+            "grid": [
+              4096,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "triton_poi_fused_add_bitwise_and_bitwise_not_bitwise_or_ge_lt_mul_sub_0": {
+          "count": 33,
+          "sum_us": 40.833000000000006,
+          "example_args": {
+            "External id": 318,
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 858,
+            "registers per thread": 16,
+            "shared memory": 0,
+            "blocks per SM": 0.026596,
+            "warps per SM": 0.026596,
+            "grid": [
+              5,
+              1,
+              1
+            ],
+            "block": [
+              32,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "Memcpy DtoH (Device -> Pinned)": {
+          "count": 74,
+          "sum_us": 38.820000000000014,
+          "example_args": {
+            "External id": 249,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 700,
+            "bytes": 4,
+            "memory bandwidth (GB/s)": 0.010416666666666666
+          }
+        },
+        "triton_red_fused_5": {
+          "count": 4,
+          "sum_us": 26.176000000000002,
+          "example_args": {
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129117,
+            "registers per thread": 80,
+            "shared memory": 1024,
+            "blocks per SM": 1.361702,
+            "warps per SM": 10.893617,
+            "grid": [
+              256,
+              1,
+              1
+            ],
+            "block": [
+              256,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 23
+          }
+        },
+        "triton_poi_fused_add_index_select_mm_mul_slice_split_stack_sub_unsqueeze_view_7": {
+          "count": 19,
+          "sum_us": 22.080000000000002,
+          "example_args": {
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 130569,
+            "registers per thread": 26,
+            "shared memory": 512,
+            "blocks per SM": 0.010638,
+            "warps per SM": 0.042553,
+            "grid": [
+              2,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_red_fused_mm_t_3": {
+          "count": 1,
+          "sum_us": 22.048,
+          "example_args": {
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 130569,
+            "registers per thread": 30,
+            "shared memory": 64,
+            "blocks per SM": 13.957447,
+            "warps per SM": 223.319153,
+            "grid": [
+              2624,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "triton_poi_fused_copy_mm_slice_view_8": {
+          "count": 19,
+          "sum_us": 19.489000000000008,
+          "example_args": {
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 130569,
+            "registers per thread": 16,
+            "shared memory": 0,
+            "blocks per SM": 0.085106,
+            "warps per SM": 0.340426,
+            "grid": [
+              16,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 1
+          }
+        },
+        "triton_red_fused_mm_rms_norm_split_with_sizes_t_6": {
+          "count": 1,
+          "sum_us": 12.705,
+          "example_args": {
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 130569,
+            "registers per thread": 19,
+            "shared memory": 64,
+            "blocks per SM": 21.787233,
+            "warps per SM": 348.595734,
+            "grid": [
+              4096,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "triton_poi_fused_6": {
+          "count": 2,
+          "sum_us": 2.144,
+          "example_args": {
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129601,
+            "registers per thread": 28,
+            "shared memory": 0,
+            "blocks per SM": 0.021277,
+            "warps per SM": 0.042553,
+            "grid": [
+              4,
+              1,
+              1
+            ],
+            "block": [
+              64,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_poi_fused_add_index_select_mm_mul_slice_split_stack_sub_unsqueeze_view_8": {
+          "count": 2,
+          "sum_us": 2.144,
+          "example_args": {
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129601,
+            "registers per thread": 26,
+            "shared memory": 512,
+            "blocks per SM": 0.010638,
+            "warps per SM": 0.042553,
+            "grid": [
+              2,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_poi_fused_copy_mm_slice_view_9": {
+          "count": 2,
+          "sum_us": 2.048,
+          "example_args": {
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129601,
+            "registers per thread": 16,
+            "shared memory": 0,
+            "blocks per SM": 0.085106,
+            "warps per SM": 0.340426,
+            "grid": [
+              16,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 1
+          }
+        },
+        "triton_poi_fused_add_bitwise_and_bitwise_or_ge_lt_mul_sub_0": {
+          "count": 1,
+          "sum_us": 1.248,
+          "example_args": {
+            "External id": 37276,
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129039,
+            "registers per thread": 18,
+            "shared memory": 0,
+            "blocks per SM": 0.005319,
+            "warps per SM": 0.005319,
+            "grid": [
+              1,
+              1,
+              1
+            ],
+            "block": [
+              32,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_poi_fused_bitwise_and_bitwise_not_bitwise_or_ge_lt_1": {
+          "count": 1,
+          "sum_us": 1.024,
+          "example_args": {
+            "External id": 37277,
+            "queued": 0,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129047,
+            "registers per thread": 16,
+            "shared memory": 0,
+            "blocks per SM": 0.005319,
+            "warps per SM": 0.005319,
+            "grid": [
+              1,
+              1,
+              1
+            ],
+            "block": [
+              32,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "Memcpy HtoD (Pageable -> Device)": {
+          "count": 1,
+          "sum_us": 0.32,
+          "example_args": {
+            "External id": 36317,
+            "device": 1,
+            "context": 1,
+            "stream": 19,
+            "correlation": 128728,
+            "bytes": 4,
+            "memory bandwidth (GB/s)": 0.0125
+          }
+        }
+      }
+    },
+    {
+      "trace": "/data/profiles/glm5.3-arvq/dp0_pp0_tp2_dcp2_ep2_rank2.1789368075037813152.pt.trace.json.gz",
+      "events": {
+        "ncclDevKernel_AllGather_RING_LL(ncclDevKernelArgsStorage<4096ul>)": {
+          "count": 6392,
+          "sum_us": 725007.729999998,
+          "example_args": {
+            "External id": 396,
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1187,
+            "registers per thread": 96,
+            "shared memory": 83328,
+            "blocks per SM": 0.021277,
+            "warps per SM": 0.361702,
+            "grid": [
+              4,
+              1,
+              1
+            ],
+            "block": [
+              544,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0,
+            "Collective name": "_allgather_base",
+            "In msg nelems": 557056,
+            "Out msg nelems": 2228224,
+            "Group size": 4,
+            "dtype": "Float",
+            "In split size": "[]",
+            "Out split size": "[]",
+            "Process Group Name": "5",
+            "Process Group Description": "undefined",
+            "Process Group Ranks": "[0, 1, 2, 3]"
+          }
+        },
+        "kernel_cutlass_kernel_b12xcommpcie_dma_kernels_FlagLaunch_object_at__tensorptri32gmemo10_tensorptri32gmemo10_0": {
+          "count": 4160,
+          "sum_us": 671461.0289999999,
+          "example_args": {
+            "External id": 48221,
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 161145,
+            "registers per thread": 16,
+            "shared memory": 0,
+            "blocks per SM": 0.005319,
+            "warps per SM": 0.000166,
+            "grid": [
+              1,
+              1,
+              1
+            ],
+            "block": [
+              1,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "ncclDevKernel_ReduceScatter_Sum_bf16_RING_LL(ncclDevKernelArgsStorage<4096ul>)": {
+          "count": 2754,
+          "sum_us": 465112.4850000001,
+          "example_args": {
+            "External id": 405,
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1515,
+            "registers per thread": 96,
+            "shared memory": 83328,
+            "blocks per SM": 0.021277,
+            "warps per SM": 0.361702,
+            "grid": [
+              4,
+              1,
+              1
+            ],
+            "block": [
+              544,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "Memcpy PtoP (Device -> Device)": {
+          "count": 1920,
+          "sum_us": 222526.281,
+          "example_args": {
+            "External id": 48221,
+            "fromDevice": 2,
+            "inDevice": 2,
+            "toDevice": 3,
+            "fromContext": 1,
+            "inContext": 1,
+            "toContext": 1,
+            "stream": 19,
+            "correlation": 161145,
+            "bytes": 6291456,
+            "memory bandwidth (GB/s)": 52.26069476517203
+          }
+        },
+        "ncclDevKernel_AllReduce_Sum_bf16_RING_LL(ncclDevKernelArgsStorage<4096ul>)": {
+          "count": 5259,
+          "sum_us": 93162.95400000022,
+          "example_args": {
+            "External id": 335,
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 910,
+            "registers per thread": 96,
+            "shared memory": 83328,
+            "blocks per SM": 0.021277,
+            "warps per SM": 0.361702,
+            "grid": [
+              4,
+              1,
+              1
+            ],
+            "block": [
+              544,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_red_fused_fused_add_rms_norm_moe_forward_shared_0": {
+          "count": 2508,
+          "sum_us": 20543.8829999999,
+          "example_args": {
+            "External id": 988,
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 3570,
+            "registers per thread": 38,
+            "shared memory": 64,
+            "blocks per SM": 0.723404,
+            "warps per SM": 11.574468,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "triton_red_fused_fused_add_rms_norm_2": {
+          "count": 2574,
+          "sum_us": 18804.008999999984,
+          "example_args": {
+            "External id": 520,
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1668,
+            "registers per thread": 47,
+            "shared memory": 64,
+            "blocks per SM": 0.723404,
+            "warps per SM": 11.574468,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "void vllm::moe::grouped_topk_fused_small_expert_count_kernel<float, float, int, (vllm::moe::ScoringFunc)1, 384, false, 8>(float*, float*, int*, float const*, long, long, long, long, long, long, bool, double)": {
+          "count": 2652,
+          "sum_us": 16118.123999999956,
+          "example_args": {
+            "External id": 1023,
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 3640,
+            "registers per thread": 40,
+            "shared memory": 3296,
+            "blocks per SM": 0.723404,
+            "warps per SM": 8.680851,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              384,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 18
+          }
+        },
+        "kernel_cutlass_kernel_b12xcommpcie_dma_kernels_AddLaunch_object_at__tensorptrbf16gmemalign16o10_tensorptrbf16gmemalign16o10_tensorptrbf16gmemalign16o10__0": {
+          "count": 960,
+          "sum_us": 12069.501,
+          "example_args": {
+            "External id": 48221,
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 153,
+            "correlation": 161145,
+            "registers per thread": 27,
+            "shared memory": 0,
+            "blocks per SM": 0.340426,
+            "warps per SM": 2.723404,
+            "grid": [
+              64,
+              1,
+              1
+            ],
+            "block": [
+              256,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 6
+          }
+        },
+        "_ZN7cutlass13device_kernelINS_4gemm6kernel13GemmUniversalINS1_17GroupProblemShapeIN4cute5tupleIJlllEEEEENS1_10collective13CollectiveMmaINS1_47MainloopSm120ArrayTmaWarpSpecializedBlockScaledILi2ELi3ENS6_IJNS5_1CILi1EEESD_SD_EEENS1_59KernelPtrArrayTmaWarpSpecializedCooperativeBlockScaledSm120ILi3EEEEENS6_IJNSC_ILi128EEESI_NSC_ILi256EEEEEENS6_IJNS_12float_e2m1_tENS_13float_ue4m3_tEEEENS6_IJPNS6_IJlSD_NSC_ILi0EEEEEEPNS5_6LayoutINS6_IJNS6_IJNS6_IJNSC_ILi32EEENSC_ILi4EEEEEEiEEENS6_IJNS6_IJNSC_ILi16EEEST_EEEiEEENS6_IJSD_iEEEEEENS6_IJSY_NS6_IJNS6_IJSO_SD_EEENSC_ILi512EEEEEENS6_IJSO_iEEEEEEEEEEESN_S18_NS5_8TiledMMAINS5_8MMA_AtomIJNS5_5SM12011BLOCKSCALED19SM120_16x8x64_TN_VSISL_SL_fSM_Li16EEEEEENSR_INS6_IJST_NSC_ILi2EEESD_EEENS6_IJSD_ST_SO_EEEEENS6_IJSI_NSR_INS6_IJNSC_ILi8EEES1G_S1G_EEENS6_IJSD_SW_S1K_EEEEENSC_ILi64EEEEEEEENS6_IJNS5_13SM90_TMA_LOADES1R_EEENS6_IJNS5_14ComposedLayoutINS5_7SwizzleILi3ELi4ELi3EEENS5_18smem_ptr_flag_bitsILi4EEENSR_INS6_IJS1K_SJ_EEENS6_IJSJ_SD_EEEEEEENSR_INS6_IJNS6_IJSU_SD_EEENS6_IJSX_SD_ST_EEEEEENS6_IJNS6_IJSX_S12_EEENS6_IJS11_ST_S12_EEEEEEEEEEENS6_IJNS5_9Copy_AtomIJNS5_17SM75_U32x4_LDSM_NENS_15integer_subbyteILi4ELb0EEEEEENS2A_IJNS5_13UniversalCopyISM_SM_EESM_EEEEEENS5_8identityES1S_S29_S2I_S2J_EENS_8epilogue10collective18CollectiveEpilogueINS2L_30Sm90PtrArrayTmaWarpSpecializedILi3ELi2ELi4ELb1ELb0ELi2EEEJSK_NS6_IJS1O_SS_EEENS_10bfloat16_tESQ_S2R_SQ_NS2L_6fusion15FusionCallbacksINS2L_31Sm120PtrArrayTmaWarpSpecializedILi3ELi2ELi4ELb1ELb0ELi2EEENS2S_17LinearCombinationIS2R_fS2R_fLNS_15FloatRoundStyleE2EEESK_S2Q_JEEES1R_NS1T_INS1U_ILi2ELi4ELi3EEENS1W_ILi16EEENSR_INS6_IJS1K_SS_EEENS6_IJSS_SD_EEEEEEENS5_17SM75_U32x2_LDSM_NENS5_14SM90_TMA_STOREES35_NS5_17SM90_U32x2_STSM_NENS2A_IJS38_NS_6half_tEEEEvEEEvvEEEEvNT_6ParamsE": {
+          "count": 204,
+          "sum_us": 11405.759,
+          "example_args": {
+            "External id": 26289,
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 102362,
+            "registers per thread": 168,
+            "shared memory": 89088,
+            "blocks per SM": 1.0,
+            "warps per SM": 12.0,
+            "grid": [
+              1,
+              188,
+              1
+            ],
+            "block": [
+              384,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "Memcpy DtoD (Device -> Device)": {
+          "count": 601,
+          "sum_us": 10464.460999999963,
+          "example_args": {
+            "External id": 340,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 918,
+            "bytes": 1671168,
+            "memory bandwidth (GB/s)": 1374.3157894736842
+          }
+        },
+        "triton_poi_fused_add_copy_index_select_mul_slice_split_stack_sub_unsqueeze_view_5": {
+          "count": 2541,
+          "sum_us": 9438.545999999982,
+          "example_args": {
+            "External id": 528,
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1812,
+            "registers per thread": 92,
+            "shared memory": 0,
+            "blocks per SM": 2.893617,
+            "warps per SM": 11.574468,
+            "grid": [
+              544,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "triton_poi_fused_add_mul_1": {
+          "count": 2652,
+          "sum_us": 7514.593999999805,
+          "example_args": {
+            "External id": 1188,
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 4196,
+            "registers per thread": 23,
+            "shared memory": 0,
+            "blocks per SM": 4.340425,
+            "warps per SM": 17.361702,
+            "grid": [
+              816,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 36
+          }
+        },
+        "triton_red_fused_mm_t_4": {
+          "count": 69,
+          "sum_us": 6424.057000000001,
+          "example_args": {
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 102979,
+            "registers per thread": 40,
+            "shared memory": 64,
+            "blocks per SM": 32.680851,
+            "warps per SM": 522.893616,
+            "grid": [
+              6144,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "triton_poi_fused_mul_silu_slice_0": {
+          "count": 2652,
+          "sum_us": 5291.676000000085,
+          "example_args": {
+            "External id": 1181,
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 55,
+            "correlation": 4141,
+            "registers per thread": 26,
+            "shared memory": 0,
+            "blocks per SM": 0.723404,
+            "warps per SM": 5.787234,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              256,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 12
+          }
+        },
+        "triton_red_fused_4": {
+          "count": 1988,
+          "sum_us": 4802.7119999999995,
+          "example_args": {
+            "External id": 871,
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 3164,
+            "registers per thread": 28,
+            "shared memory": 8192,
+            "blocks per SM": 0.723404,
+            "warps per SM": 11.574468,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "triton_red_fused_mm_t_0": {
+          "count": 147,
+          "sum_us": 4741.270000000001,
+          "example_args": {
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 4045,
+            "correlation": 102979,
+            "registers per thread": 23,
+            "shared memory": 64,
+            "blocks per SM": 32.680851,
+            "warps per SM": 522.893616,
+            "grid": [
+              6144,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "kernel_cutlass_kernel_b12xcommpcie_oneshot_cute_FusedOneshotLaunch_object_at__ptri64gmem_ptri64gmem_ptri32gmemalign16_ptri32gmemalign16_ptri32gmemalign16_ptri32gmemalign16_ptri32gmemalign_0": {
+          "count": 225,
+          "sum_us": 3247.8450000000003,
+          "example_args": {
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 4045,
+            "correlation": 102979,
+            "registers per thread": 44,
+            "shared memory": 132,
+            "blocks per SM": 0.005319,
+            "warps per SM": 0.085106,
+            "grid": [
+              1,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "_fused_indexer_q_rope_quant_kernel": {
+          "count": 816,
+          "sum_us": 3178.752000000003,
+          "example_args": {
+            "External id": 351,
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1036,
+            "registers per thread": 19,
+            "shared memory": 0,
+            "blocks per SM": 23.148935,
+            "warps per SM": 23.148935,
+            "grid": [
+              136,
+              32,
+              1
+            ],
+            "block": [
+              32,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 48
+          }
+        },
+        "triton_poi_fused_3": {
+          "count": 1955,
+          "sum_us": 2612.633000000042,
+          "example_args": {
+            "External id": 870,
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 3157,
+            "registers per thread": 77,
+            "shared memory": 0,
+            "blocks per SM": 0.047872,
+            "warps per SM": 0.191489,
+            "grid": [
+              9,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_red_fused_6": {
+          "count": 87,
+          "sum_us": 1996.1379999999997,
+          "example_args": {
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 102979,
+            "registers per thread": 27,
+            "shared memory": 64,
+            "blocks per SM": 14.808511,
+            "warps per SM": 236.936172,
+            "grid": [
+              2784,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "triton_red_fused_3": {
+          "count": 663,
+          "sum_us": 1751.4899999999986,
+          "example_args": {
+            "External id": 523,
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1733,
+            "registers per thread": 28,
+            "shared memory": 8192,
+            "blocks per SM": 1.085106,
+            "warps per SM": 17.361702,
+            "grid": [
+              204,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 36
+          }
+        },
+        "triton_red_fused_10": {
+          "count": 69,
+          "sum_us": 1547.2259999999999,
+          "example_args": {
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 102979,
+            "registers per thread": 23,
+            "shared memory": 64,
+            "blocks per SM": 21.787233,
+            "warps per SM": 348.595734,
+            "grid": [
+              4096,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "triton_red_fused_mm_t_2": {
+          "count": 56,
+          "sum_us": 1191.2549999999999,
+          "example_args": {
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 130784,
+            "registers per thread": 24,
+            "shared memory": 64,
+            "blocks per SM": 13.957447,
+            "warps per SM": 223.319153,
+            "grid": [
+              2624,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "triton_poi_fused_4": {
+          "count": 664,
+          "sum_us": 1044.3059999999969,
+          "example_args": {
+            "External id": 526,
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1784,
+            "registers per thread": 85,
+            "shared memory": 0,
+            "blocks per SM": 0.095745,
+            "warps per SM": 0.382979,
+            "grid": [
+              18,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 1
+          }
+        },
+        "triton_red_fused_mm_rms_norm_split_with_sizes_t_5": {
+          "count": 56,
+          "sum_us": 669.7400000000001,
+          "example_args": {
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 130784,
+            "registers per thread": 19,
+            "shared memory": 64,
+            "blocks per SM": 21.787233,
+            "warps per SM": 348.595734,
+            "grid": [
+              4096,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "triton_red_fused_fused_add_rms_norm_0": {
+          "count": 99,
+          "sum_us": 449.38599999999974,
+          "example_args": {
+            "External id": 513,
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1588,
+            "registers per thread": 39,
+            "shared memory": 64,
+            "blocks per SM": 0.723404,
+            "warps per SM": 11.574468,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "void tensorrt_llm::kernels::cutlass_kernels::fusedBuildExpertMapsSortFirstTokenKernel<32, 8, 9>(int const*, int*, int*, long*, long, int, int, int, int)": {
+          "count": 99,
+          "sum_us": 419.2740000000001,
+          "example_args": {
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 4045,
+            "correlation": 102979,
+            "registers per thread": 255,
+            "shared memory": 32928,
+            "blocks per SM": 0.005319,
+            "warps per SM": 0.005319,
+            "grid": [
+              1,
+              1,
+              1
+            ],
+            "block": [
+              32,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_red_fused_2": {
+          "count": 18,
+          "sum_us": 403.78499999999997,
+          "example_args": {
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 131462,
+            "registers per thread": 27,
+            "shared memory": 64,
+            "blocks per SM": 14.808511,
+            "warps per SM": 236.936172,
+            "grid": [
+              2784,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "triton_red_fused_1": {
+          "count": 136,
+          "sum_us": 329.7319999999999,
+          "example_args": {
+            "External id": 349,
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1002,
+            "registers per thread": 28,
+            "shared memory": 8192,
+            "blocks per SM": 1.085106,
+            "warps per SM": 17.361702,
+            "grid": [
+              204,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 36
+          }
+        },
+        "triton_red_fused_add_fused_add_rms_norm_rms_norm_2": {
+          "count": 33,
+          "sum_us": 202.72500000000002,
+          "example_args": {
+            "External id": 26389,
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 102532,
+            "registers per thread": 40,
+            "shared memory": 64,
+            "blocks per SM": 0.723404,
+            "warps per SM": 11.574468,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "triton_red_fused_eq_rms_norm_scalar_tensor_unsqueeze_where_2": {
+          "count": 102,
+          "sum_us": 200.96300000000002,
+          "example_args": {
+            "External id": 26119,
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 101410,
+            "registers per thread": 24,
+            "shared memory": 64,
+            "blocks per SM": 0.723404,
+            "warps per SM": 11.574468,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "triton_poi_fused_0": {
+          "count": 102,
+          "sum_us": 153.76399999999998,
+          "example_args": {
+            "External id": 26114,
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 101373,
+            "registers per thread": 24,
+            "shared memory": 0,
+            "blocks per SM": 4.340425,
+            "warps per SM": 17.361702,
+            "grid": [
+              816,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 36
+          }
+        },
+        "triton_poi_fused_mul_silu_slice_1": {
+          "count": 99,
+          "sum_us": 147.33100000000002,
+          "example_args": {
+            "External id": 515,
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1614,
+            "registers per thread": 16,
+            "shared memory": 0,
+            "blocks per SM": 4.340425,
+            "warps per SM": 34.723404,
+            "grid": [
+              816,
+              1,
+              1
+            ],
+            "block": [
+              256,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 72
+          }
+        },
+        "triton_red_fused_mm_t_1": {
+          "count": 3,
+          "sum_us": 145.379,
+          "example_args": {
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129477,
+            "registers per thread": 48,
+            "shared memory": 1024,
+            "blocks per SM": 4.085106,
+            "warps per SM": 32.680851,
+            "grid": [
+              768,
+              1,
+              1
+            ],
+            "block": [
+              256,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 68
+          }
+        },
+        "Memcpy HtoD (Pinned -> Device)": {
+          "count": 280,
+          "sum_us": 135.33099999999985,
+          "example_args": {
+            "External id": 23,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 60,
+            "bytes": 4,
+            "memory bandwidth (GB/s)": 0.013888888888888888
+          }
+        },
+        "triton_red_fused_add_rms_norm_2": {
+          "count": 69,
+          "sum_us": 129.89000000000001,
+          "example_args": {
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 4043,
+            "correlation": 102979,
+            "registers per thread": 37,
+            "shared memory": 64,
+            "blocks per SM": 0.005319,
+            "warps per SM": 0.085106,
+            "grid": [
+              1,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_poi_fused_add_copy_index_select_mul_slice_split_stack_sub_unsqueeze_view_6": {
+          "count": 33,
+          "sum_us": 122.62699999999995,
+          "example_args": {
+            "External id": 26129,
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 101610,
+            "registers per thread": 92,
+            "shared memory": 0,
+            "blocks per SM": 2.893617,
+            "warps per SM": 11.574468,
+            "grid": [
+              544,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "triton_red_fused_rms_norm_5": {
+          "count": 69,
+          "sum_us": 120.70799999999997,
+          "example_args": {
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 102979,
+            "registers per thread": 38,
+            "shared memory": 64,
+            "blocks per SM": 0.005319,
+            "warps per SM": 0.085106,
+            "grid": [
+              1,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_poi_fused_add_copy_index_select_mul_slice_split_stack_sub_unsqueeze_view_3": {
+          "count": 33,
+          "sum_us": 118.11299999999997,
+          "example_args": {
+            "External id": 354,
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1081,
+            "registers per thread": 92,
+            "shared memory": 0,
+            "blocks per SM": 2.893617,
+            "warps per SM": 11.574468,
+            "grid": [
+              544,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "triton_red_fused_rms_norm_0": {
+          "count": 34,
+          "sum_us": 93.88900000000001,
+          "example_args": {
+            "External id": 346,
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 937,
+            "registers per thread": 37,
+            "shared memory": 64,
+            "blocks per SM": 0.723404,
+            "warps per SM": 11.574468,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "triton_red_fused_rms_norm_3": {
+          "count": 33,
+          "sum_us": 93.37800000000003,
+          "example_args": {
+            "External id": 26121,
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 101442,
+            "registers per thread": 37,
+            "shared memory": 64,
+            "blocks per SM": 0.723404,
+            "warps per SM": 11.574468,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "triton_red_fused_8": {
+          "count": 69,
+          "sum_us": 90.88199999999998,
+          "example_args": {
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 102979,
+            "registers per thread": 21,
+            "shared memory": 64,
+            "blocks per SM": 0.015957,
+            "warps per SM": 0.255319,
+            "grid": [
+              3,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 1
+          }
+        },
+        "triton_poi_fused_7": {
+          "count": 69,
+          "sum_us": 83.68200000000002,
+          "example_args": {
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 102979,
+            "registers per thread": 24,
+            "shared memory": 0,
+            "blocks per SM": 0.010638,
+            "warps per SM": 0.010638,
+            "grid": [
+              2,
+              1,
+              1
+            ],
+            "block": [
+              32,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_poi_fused_9": {
+          "count": 69,
+          "sum_us": 76.67300000000002,
+          "example_args": {
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 102979,
+            "registers per thread": 27,
+            "shared memory": 0,
+            "blocks per SM": 0.021277,
+            "warps per SM": 0.021277,
+            "grid": [
+              4,
+              1,
+              1
+            ],
+            "block": [
+              32,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_red_fused_mm_mul_silu_slice_t_2": {
+          "count": 3,
+          "sum_us": 75.68,
+          "example_args": {
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129477,
+            "registers per thread": 78,
+            "shared memory": 2048,
+            "blocks per SM": 4.085106,
+            "warps per SM": 16.340425,
+            "grid": [
+              768,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 34
+          }
+        },
+        "triton_poi_fused_add_index_select_mm_mul_slice_split_stack_sub_unsqueeze_view_11": {
+          "count": 69,
+          "sum_us": 74.52999999999996,
+          "example_args": {
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 102979,
+            "registers per thread": 24,
+            "shared memory": 0,
+            "blocks per SM": 0.021277,
+            "warps per SM": 0.085106,
+            "grid": [
+              4,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_poi_fused_cat_eq_rms_norm_scalar_tensor_unsqueeze_where_3": {
+          "count": 69,
+          "sum_us": 73.63200000000002,
+          "example_args": {
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 102979,
+            "registers per thread": 24,
+            "shared memory": 0,
+            "blocks per SM": 0.510638,
+            "warps per SM": 2.042553,
+            "grid": [
+              96,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 4
+          }
+        },
+        "triton_poi_fused_5": {
+          "count": 51,
+          "sum_us": 71.90500000000002,
+          "example_args": {
+            "External id": 26127,
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 101578,
+            "registers per thread": 85,
+            "shared memory": 0,
+            "blocks per SM": 0.095745,
+            "warps per SM": 0.382979,
+            "grid": [
+              18,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 1
+          }
+        },
+        "triton_poi_fused_copy_mm_slice_view_12": {
+          "count": 69,
+          "sum_us": 59.77799999999999,
+          "example_args": {
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 102979,
+            "registers per thread": 16,
+            "shared memory": 0,
+            "blocks per SM": 0.170213,
+            "warps per SM": 0.340426,
+            "grid": [
+              32,
+              1,
+              1
+            ],
+            "block": [
+              64,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 1
+          }
+        },
+        "triton_poi_fused_add_index_select_mm_mul_slice_split_stack_sub_unsqueeze_view_6": {
+          "count": 57,
+          "sum_us": 59.64799999999998,
+          "example_args": {
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 128993,
+            "registers per thread": 26,
+            "shared memory": 512,
+            "blocks per SM": 0.010638,
+            "warps per SM": 0.042553,
+            "grid": [
+              2,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_poi_fused_copy_mm_slice_view_7": {
+          "count": 57,
+          "sum_us": 57.183999999999976,
+          "example_args": {
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 128993,
+            "registers per thread": 16,
+            "shared memory": 0,
+            "blocks per SM": 0.085106,
+            "warps per SM": 0.680851,
+            "grid": [
+              16,
+              1,
+              1
+            ],
+            "block": [
+              256,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 1
+          }
+        },
+        "triton_poi_fused_2": {
+          "count": 34,
+          "sum_us": 55.071999999999996,
+          "example_args": {
+            "External id": 352,
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1053,
+            "registers per thread": 85,
+            "shared memory": 0,
+            "blocks per SM": 0.095745,
+            "warps per SM": 0.382979,
+            "grid": [
+              18,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 1
+          }
+        },
+        "triton_red_fused_7": {
+          "count": 2,
+          "sum_us": 45.504,
+          "example_args": {
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129477,
+            "registers per thread": 168,
+            "shared memory": 2048,
+            "blocks per SM": 2.723404,
+            "warps per SM": 10.893617,
+            "grid": [
+              512,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 23
+          }
+        },
+        "triton_poi_fused_add_bitwise_and_bitwise_not_bitwise_or_ge_lt_mul_sub_0": {
+          "count": 33,
+          "sum_us": 40.736,
+          "example_args": {
+            "External id": 318,
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 858,
+            "registers per thread": 16,
+            "shared memory": 0,
+            "blocks per SM": 0.026596,
+            "warps per SM": 0.026596,
+            "grid": [
+              5,
+              1,
+              1
+            ],
+            "block": [
+              32,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "Memcpy DtoH (Device -> Pinned)": {
+          "count": 74,
+          "sum_us": 39.77600000000001,
+          "example_args": {
+            "External id": 249,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 700,
+            "bytes": 4,
+            "memory bandwidth (GB/s)": 0.010416666666666666
+          }
+        },
+        "triton_red_fused_5": {
+          "count": 4,
+          "sum_us": 26.848000000000003,
+          "example_args": {
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 128993,
+            "registers per thread": 23,
+            "shared memory": 64,
+            "blocks per SM": 21.787233,
+            "warps per SM": 348.595734,
+            "grid": [
+              4096,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "triton_red_fused_mm_t_3": {
+          "count": 1,
+          "sum_us": 21.793,
+          "example_args": {
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 130445,
+            "registers per thread": 30,
+            "shared memory": 64,
+            "blocks per SM": 13.957447,
+            "warps per SM": 223.319153,
+            "grid": [
+              2624,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "triton_poi_fused_add_index_select_mm_mul_slice_split_stack_sub_unsqueeze_view_7": {
+          "count": 19,
+          "sum_us": 20.32000000000001,
+          "example_args": {
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 130445,
+            "registers per thread": 24,
+            "shared memory": 0,
+            "blocks per SM": 0.021277,
+            "warps per SM": 0.085106,
+            "grid": [
+              4,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_poi_fused_copy_mm_slice_view_8": {
+          "count": 19,
+          "sum_us": 19.61600000000001,
+          "example_args": {
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 130445,
+            "registers per thread": 16,
+            "shared memory": 0,
+            "blocks per SM": 0.170213,
+            "warps per SM": 0.680851,
+            "grid": [
+              32,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 1
+          }
+        },
+        "triton_red_fused_mm_rms_norm_split_with_sizes_t_6": {
+          "count": 1,
+          "sum_us": 11.904,
+          "example_args": {
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 130445,
+            "registers per thread": 135,
+            "shared memory": 512,
+            "blocks per SM": 2.723404,
+            "warps per SM": 10.893617,
+            "grid": [
+              512,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 23
+          }
+        },
+        "triton_poi_fused_6": {
+          "count": 2,
+          "sum_us": 2.176,
+          "example_args": {
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129477,
+            "registers per thread": 34,
+            "shared memory": 0,
+            "blocks per SM": 0.010638,
+            "warps per SM": 0.010638,
+            "grid": [
+              2,
+              1,
+              1
+            ],
+            "block": [
+              32,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_poi_fused_add_index_select_mm_mul_slice_split_stack_sub_unsqueeze_view_8": {
+          "count": 2,
+          "sum_us": 2.112,
+          "example_args": {
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129477,
+            "registers per thread": 24,
+            "shared memory": 0,
+            "blocks per SM": 0.021277,
+            "warps per SM": 0.085106,
+            "grid": [
+              4,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_poi_fused_copy_mm_slice_view_9": {
+          "count": 2,
+          "sum_us": 2.08,
+          "example_args": {
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129477,
+            "registers per thread": 18,
+            "shared memory": 0,
+            "blocks per SM": 0.021277,
+            "warps per SM": 0.170213,
+            "grid": [
+              4,
+              1,
+              1
+            ],
+            "block": [
+              256,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_poi_fused_add_bitwise_and_bitwise_or_ge_lt_mul_sub_0": {
+          "count": 1,
+          "sum_us": 1.216,
+          "example_args": {
+            "External id": 37276,
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 128915,
+            "registers per thread": 18,
+            "shared memory": 0,
+            "blocks per SM": 0.005319,
+            "warps per SM": 0.005319,
+            "grid": [
+              1,
+              1,
+              1
+            ],
+            "block": [
+              32,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_poi_fused_bitwise_and_bitwise_not_bitwise_or_ge_lt_1": {
+          "count": 1,
+          "sum_us": 0.992,
+          "example_args": {
+            "External id": 37277,
+            "queued": 0,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 128923,
+            "registers per thread": 16,
+            "shared memory": 0,
+            "blocks per SM": 0.005319,
+            "warps per SM": 0.005319,
+            "grid": [
+              1,
+              1,
+              1
+            ],
+            "block": [
+              32,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "Memcpy HtoD (Pageable -> Device)": {
+          "count": 1,
+          "sum_us": 0.32,
+          "example_args": {
+            "External id": 36317,
+            "device": 2,
+            "context": 1,
+            "stream": 19,
+            "correlation": 128604,
+            "bytes": 4,
+            "memory bandwidth (GB/s)": 0.0125
+          }
+        }
+      }
+    },
+    {
+      "trace": "/data/profiles/glm5.3-arvq/dp0_pp0_tp3_dcp3_ep3_rank3.1789368075030929537.pt.trace.json.gz",
+      "events": {
+        "ncclDevKernel_AllGather_RING_LL(ncclDevKernelArgsStorage<4096ul>)": {
+          "count": 6392,
+          "sum_us": 727111.7690000006,
+          "example_args": {
+            "External id": 396,
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1187,
+            "registers per thread": 96,
+            "shared memory": 83328,
+            "blocks per SM": 0.021277,
+            "warps per SM": 0.361702,
+            "grid": [
+              4,
+              1,
+              1
+            ],
+            "block": [
+              544,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0,
+            "Collective name": "_allgather_base",
+            "In msg nelems": 557056,
+            "Out msg nelems": 2228224,
+            "Group size": 4,
+            "dtype": "Float",
+            "In split size": "[]",
+            "Out split size": "[]",
+            "Process Group Name": "5",
+            "Process Group Description": "undefined",
+            "Process Group Ranks": "[0, 1, 2, 3]"
+          }
+        },
+        "kernel_cutlass_kernel_b12xcommpcie_dma_kernels_FlagLaunch_object_at__tensorptri32gmemo10_tensorptri32gmemo10_0": {
+          "count": 4160,
+          "sum_us": 625409.6790000026,
+          "example_args": {
+            "External id": 48221,
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 161272,
+            "registers per thread": 16,
+            "shared memory": 0,
+            "blocks per SM": 0.005319,
+            "warps per SM": 0.000166,
+            "grid": [
+              1,
+              1,
+              1
+            ],
+            "block": [
+              1,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "ncclDevKernel_ReduceScatter_Sum_bf16_RING_LL(ncclDevKernelArgsStorage<4096ul>)": {
+          "count": 2754,
+          "sum_us": 470385.4759999989,
+          "example_args": {
+            "External id": 405,
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1515,
+            "registers per thread": 96,
+            "shared memory": 83328,
+            "blocks per SM": 0.021277,
+            "warps per SM": 0.361702,
+            "grid": [
+              4,
+              1,
+              1
+            ],
+            "block": [
+              544,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "Memcpy PtoP (Device -> Device)": {
+          "count": 1920,
+          "sum_us": 221529.65599999967,
+          "example_args": {
+            "External id": 48221,
+            "fromDevice": 3,
+            "inDevice": 3,
+            "toDevice": 0,
+            "fromContext": 1,
+            "inContext": 1,
+            "toContext": 1,
+            "stream": 19,
+            "correlation": 161272,
+            "bytes": 6291456,
+            "memory bandwidth (GB/s)": 52.595791638452084
+          }
+        },
+        "ncclDevKernel_AllReduce_Sum_bf16_RING_LL(ncclDevKernelArgsStorage<4096ul>)": {
+          "count": 5259,
+          "sum_us": 91558.79599999983,
+          "example_args": {
+            "External id": 335,
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 910,
+            "registers per thread": 96,
+            "shared memory": 83328,
+            "blocks per SM": 0.021277,
+            "warps per SM": 0.361702,
+            "grid": [
+              4,
+              1,
+              1
+            ],
+            "block": [
+              544,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_red_fused_fused_add_rms_norm_moe_forward_shared_0": {
+          "count": 2508,
+          "sum_us": 20466.429000000295,
+          "example_args": {
+            "External id": 988,
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 3570,
+            "registers per thread": 40,
+            "shared memory": 64,
+            "blocks per SM": 0.723404,
+            "warps per SM": 11.574468,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "triton_red_fused_fused_add_rms_norm_2": {
+          "count": 2574,
+          "sum_us": 18657.006999999925,
+          "example_args": {
+            "External id": 520,
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1668,
+            "registers per thread": 47,
+            "shared memory": 64,
+            "blocks per SM": 0.723404,
+            "warps per SM": 11.574468,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "void vllm::moe::grouped_topk_fused_small_expert_count_kernel<float, float, int, (vllm::moe::ScoringFunc)1, 384, false, 8>(float*, float*, int*, float const*, long, long, long, long, long, long, bool, double)": {
+          "count": 2652,
+          "sum_us": 15496.418999999914,
+          "example_args": {
+            "External id": 1023,
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 3640,
+            "registers per thread": 40,
+            "shared memory": 3296,
+            "blocks per SM": 0.723404,
+            "warps per SM": 8.680851,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              384,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 18
+          }
+        },
+        "kernel_cutlass_kernel_b12xcommpcie_dma_kernels_AddLaunch_object_at__tensorptrbf16gmemalign16o10_tensorptrbf16gmemalign16o10_tensorptrbf16gmemalign16o10__0": {
+          "count": 960,
+          "sum_us": 14236.898999999958,
+          "example_args": {
+            "External id": 48221,
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 153,
+            "correlation": 161272,
+            "registers per thread": 27,
+            "shared memory": 0,
+            "blocks per SM": 0.340426,
+            "warps per SM": 2.723404,
+            "grid": [
+              64,
+              1,
+              1
+            ],
+            "block": [
+              256,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 6
+          }
+        },
+        "_ZN7cutlass13device_kernelINS_4gemm6kernel13GemmUniversalINS1_17GroupProblemShapeIN4cute5tupleIJlllEEEEENS1_10collective13CollectiveMmaINS1_47MainloopSm120ArrayTmaWarpSpecializedBlockScaledILi2ELi3ENS6_IJNS5_1CILi1EEESD_SD_EEENS1_59KernelPtrArrayTmaWarpSpecializedCooperativeBlockScaledSm120ILi3EEEEENS6_IJNSC_ILi128EEESI_NSC_ILi256EEEEEENS6_IJNS_12float_e2m1_tENS_13float_ue4m3_tEEEENS6_IJPNS6_IJlSD_NSC_ILi0EEEEEEPNS5_6LayoutINS6_IJNS6_IJNS6_IJNSC_ILi32EEENSC_ILi4EEEEEEiEEENS6_IJNS6_IJNSC_ILi16EEEST_EEEiEEENS6_IJSD_iEEEEEENS6_IJSY_NS6_IJNS6_IJSO_SD_EEENSC_ILi512EEEEEENS6_IJSO_iEEEEEEEEEEESN_S18_NS5_8TiledMMAINS5_8MMA_AtomIJNS5_5SM12011BLOCKSCALED19SM120_16x8x64_TN_VSISL_SL_fSM_Li16EEEEEENSR_INS6_IJST_NSC_ILi2EEESD_EEENS6_IJSD_ST_SO_EEEEENS6_IJSI_NSR_INS6_IJNSC_ILi8EEES1G_S1G_EEENS6_IJSD_SW_S1K_EEEEENSC_ILi64EEEEEEEENS6_IJNS5_13SM90_TMA_LOADES1R_EEENS6_IJNS5_14ComposedLayoutINS5_7SwizzleILi3ELi4ELi3EEENS5_18smem_ptr_flag_bitsILi4EEENSR_INS6_IJS1K_SJ_EEENS6_IJSJ_SD_EEEEEEENSR_INS6_IJNS6_IJSU_SD_EEENS6_IJSX_SD_ST_EEEEEENS6_IJNS6_IJSX_S12_EEENS6_IJS11_ST_S12_EEEEEEEEEEENS6_IJNS5_9Copy_AtomIJNS5_17SM75_U32x4_LDSM_NENS_15integer_subbyteILi4ELb0EEEEEENS2A_IJNS5_13UniversalCopyISM_SM_EESM_EEEEEENS5_8identityES1S_S29_S2I_S2J_EENS_8epilogue10collective18CollectiveEpilogueINS2L_30Sm90PtrArrayTmaWarpSpecializedILi3ELi2ELi4ELb1ELb0ELi2EEEJSK_NS6_IJS1O_SS_EEENS_10bfloat16_tESQ_S2R_SQ_NS2L_6fusion15FusionCallbacksINS2L_31Sm120PtrArrayTmaWarpSpecializedILi3ELi2ELi4ELb1ELb0ELi2EEENS2S_17LinearCombinationIS2R_fS2R_fLNS_15FloatRoundStyleE2EEESK_S2Q_JEEES1R_NS1T_INS1U_ILi2ELi4ELi3EEENS1W_ILi16EEENSR_INS6_IJS1K_SS_EEENS6_IJSS_SD_EEEEEEENS5_17SM75_U32x2_LDSM_NENS5_14SM90_TMA_STOREES35_NS5_17SM90_U32x2_STSM_NENS2A_IJS38_NS_6half_tEEEEvEEEvvEEEEvNT_6ParamsE": {
+          "count": 204,
+          "sum_us": 11416.942999999996,
+          "example_args": {
+            "External id": 26289,
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 102499,
+            "registers per thread": 168,
+            "shared memory": 89088,
+            "blocks per SM": 1.0,
+            "warps per SM": 12.0,
+            "grid": [
+              1,
+              188,
+              1
+            ],
+            "block": [
+              384,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "Memcpy DtoD (Device -> Device)": {
+          "count": 601,
+          "sum_us": 10308.294999999956,
+          "example_args": {
+            "External id": 340,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 918,
+            "bytes": 1671168,
+            "memory bandwidth (GB/s)": 1492.1142857142856
+          }
+        },
+        "triton_poi_fused_add_copy_index_select_mul_slice_split_stack_sub_unsqueeze_view_5": {
+          "count": 2541,
+          "sum_us": 9472.505000000005,
+          "example_args": {
+            "External id": 528,
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1812,
+            "registers per thread": 92,
+            "shared memory": 0,
+            "blocks per SM": 2.893617,
+            "warps per SM": 11.574468,
+            "grid": [
+              544,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "kernel_cutlass_kernel_b12xcommpcie_oneshot_cute_FusedOneshotLaunch_object_at__ptri64gmem_ptri64gmem_ptri32gmemalign16_ptri32gmemalign16_ptri32gmemalign16_ptri32gmemalign16_ptri32gmemalign_0": {
+          "count": 225,
+          "sum_us": 8386.287999999997,
+          "example_args": {
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 4045,
+            "correlation": 103116,
+            "registers per thread": 56,
+            "shared memory": 132,
+            "blocks per SM": 0.005319,
+            "warps per SM": 0.085106,
+            "grid": [
+              1,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_poi_fused_add_mul_1": {
+          "count": 2652,
+          "sum_us": 7596.018999999968,
+          "example_args": {
+            "External id": 1188,
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 4196,
+            "registers per thread": 23,
+            "shared memory": 0,
+            "blocks per SM": 4.340425,
+            "warps per SM": 17.361702,
+            "grid": [
+              816,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 36
+          }
+        },
+        "triton_red_fused_mm_t_4": {
+          "count": 69,
+          "sum_us": 6421.563000000001,
+          "example_args": {
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 103116,
+            "registers per thread": 40,
+            "shared memory": 64,
+            "blocks per SM": 32.680851,
+            "warps per SM": 522.893616,
+            "grid": [
+              6144,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "triton_poi_fused_mul_silu_slice_0": {
+          "count": 2652,
+          "sum_us": 5166.114000000045,
+          "example_args": {
+            "External id": 1181,
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 55,
+            "correlation": 4141,
+            "registers per thread": 26,
+            "shared memory": 0,
+            "blocks per SM": 0.723404,
+            "warps per SM": 5.787234,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              256,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 12
+          }
+        },
+        "triton_red_fused_4": {
+          "count": 1988,
+          "sum_us": 4753.822000000037,
+          "example_args": {
+            "External id": 871,
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 3164,
+            "registers per thread": 28,
+            "shared memory": 8192,
+            "blocks per SM": 0.723404,
+            "warps per SM": 11.574468,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "triton_red_fused_mm_t_0": {
+          "count": 147,
+          "sum_us": 4730.065000000002,
+          "example_args": {
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 4045,
+            "correlation": 103116,
+            "registers per thread": 23,
+            "shared memory": 64,
+            "blocks per SM": 32.680851,
+            "warps per SM": 522.893616,
+            "grid": [
+              6144,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "_fused_indexer_q_rope_quant_kernel": {
+          "count": 816,
+          "sum_us": 3152.7489999999984,
+          "example_args": {
+            "External id": 351,
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1036,
+            "registers per thread": 19,
+            "shared memory": 0,
+            "blocks per SM": 23.148935,
+            "warps per SM": 23.148935,
+            "grid": [
+              136,
+              32,
+              1
+            ],
+            "block": [
+              32,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 48
+          }
+        },
+        "triton_poi_fused_3": {
+          "count": 1955,
+          "sum_us": 2631.7160000000504,
+          "example_args": {
+            "External id": 870,
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 3157,
+            "registers per thread": 77,
+            "shared memory": 0,
+            "blocks per SM": 0.047872,
+            "warps per SM": 0.191489,
+            "grid": [
+              9,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_red_fused_6": {
+          "count": 87,
+          "sum_us": 1970.8640000000005,
+          "example_args": {
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 103116,
+            "registers per thread": 27,
+            "shared memory": 64,
+            "blocks per SM": 14.808511,
+            "warps per SM": 236.936172,
+            "grid": [
+              2784,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "triton_red_fused_3": {
+          "count": 663,
+          "sum_us": 1744.2649999999992,
+          "example_args": {
+            "External id": 523,
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1733,
+            "registers per thread": 28,
+            "shared memory": 8192,
+            "blocks per SM": 1.085106,
+            "warps per SM": 17.361702,
+            "grid": [
+              204,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 36
+          }
+        },
+        "triton_red_fused_10": {
+          "count": 69,
+          "sum_us": 1538.7260000000003,
+          "example_args": {
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 103116,
+            "registers per thread": 35,
+            "shared memory": 32,
+            "blocks per SM": 21.787233,
+            "warps per SM": 174.297867,
+            "grid": [
+              4096,
+              1,
+              1
+            ],
+            "block": [
+              256,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "triton_red_fused_mm_t_2": {
+          "count": 56,
+          "sum_us": 1207.7089999999998,
+          "example_args": {
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 130930,
+            "registers per thread": 30,
+            "shared memory": 64,
+            "blocks per SM": 13.957447,
+            "warps per SM": 223.319153,
+            "grid": [
+              2624,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "triton_poi_fused_4": {
+          "count": 664,
+          "sum_us": 1034.4509999999984,
+          "example_args": {
+            "External id": 526,
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1784,
+            "registers per thread": 85,
+            "shared memory": 0,
+            "blocks per SM": 0.095745,
+            "warps per SM": 0.382979,
+            "grid": [
+              18,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 1
+          }
+        },
+        "triton_red_fused_mm_rms_norm_split_with_sizes_t_5": {
+          "count": 56,
+          "sum_us": 682.4829999999998,
+          "example_args": {
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 130930,
+            "registers per thread": 29,
+            "shared memory": 4096,
+            "blocks per SM": 10.893617,
+            "warps per SM": 174.297867,
+            "grid": [
+              2048,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "triton_red_fused_fused_add_rms_norm_0": {
+          "count": 99,
+          "sum_us": 487.8849999999997,
+          "example_args": {
+            "External id": 513,
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1588,
+            "registers per thread": 37,
+            "shared memory": 64,
+            "blocks per SM": 0.723404,
+            "warps per SM": 11.574468,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "void tensorrt_llm::kernels::cutlass_kernels::fusedBuildExpertMapsSortFirstTokenKernel<32, 8, 9>(int const*, int*, int*, long*, long, int, int, int, int)": {
+          "count": 99,
+          "sum_us": 422.89000000000016,
+          "example_args": {
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 4045,
+            "correlation": 103116,
+            "registers per thread": 255,
+            "shared memory": 32928,
+            "blocks per SM": 0.005319,
+            "warps per SM": 0.005319,
+            "grid": [
+              1,
+              1,
+              1
+            ],
+            "block": [
+              32,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_red_fused_2": {
+          "count": 18,
+          "sum_us": 409.38700000000006,
+          "example_args": {
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 131608,
+            "registers per thread": 27,
+            "shared memory": 64,
+            "blocks per SM": 14.808511,
+            "warps per SM": 236.936172,
+            "grid": [
+              2784,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "triton_red_fused_1": {
+          "count": 136,
+          "sum_us": 327.8799999999997,
+          "example_args": {
+            "External id": 349,
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1002,
+            "registers per thread": 28,
+            "shared memory": 8192,
+            "blocks per SM": 1.085106,
+            "warps per SM": 17.361702,
+            "grid": [
+              204,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 36
+          }
+        },
+        "triton_red_fused_eq_rms_norm_scalar_tensor_unsqueeze_where_2": {
+          "count": 102,
+          "sum_us": 210.7549999999999,
+          "example_args": {
+            "External id": 26119,
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 101547,
+            "registers per thread": 24,
+            "shared memory": 64,
+            "blocks per SM": 0.723404,
+            "warps per SM": 11.574468,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "triton_red_fused_add_fused_add_rms_norm_rms_norm_2": {
+          "count": 33,
+          "sum_us": 201.95700000000005,
+          "example_args": {
+            "External id": 26389,
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 102669,
+            "registers per thread": 40,
+            "shared memory": 64,
+            "blocks per SM": 0.723404,
+            "warps per SM": 11.574468,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "triton_poi_fused_mul_silu_slice_1": {
+          "count": 99,
+          "sum_us": 154.627,
+          "example_args": {
+            "External id": 515,
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1614,
+            "registers per thread": 16,
+            "shared memory": 0,
+            "blocks per SM": 4.340425,
+            "warps per SM": 34.723404,
+            "grid": [
+              816,
+              1,
+              1
+            ],
+            "block": [
+              256,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 72
+          }
+        },
+        "triton_poi_fused_0": {
+          "count": 102,
+          "sum_us": 154.432,
+          "example_args": {
+            "External id": 26114,
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 101510,
+            "registers per thread": 24,
+            "shared memory": 0,
+            "blocks per SM": 4.340425,
+            "warps per SM": 17.361702,
+            "grid": [
+              816,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 36
+          }
+        },
+        "triton_red_fused_mm_t_1": {
+          "count": 3,
+          "sum_us": 142.436,
+          "example_args": {
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129623,
+            "registers per thread": 30,
+            "shared memory": 64,
+            "blocks per SM": 32.680851,
+            "warps per SM": 522.893616,
+            "grid": [
+              6144,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "Memcpy HtoD (Pinned -> Device)": {
+          "count": 280,
+          "sum_us": 136.1609999999999,
+          "example_args": {
+            "External id": 23,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 60,
+            "bytes": 4,
+            "memory bandwidth (GB/s)": 0.0125
+          }
+        },
+        "triton_red_fused_add_rms_norm_2": {
+          "count": 69,
+          "sum_us": 129.411,
+          "example_args": {
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 4043,
+            "correlation": 103116,
+            "registers per thread": 37,
+            "shared memory": 64,
+            "blocks per SM": 0.005319,
+            "warps per SM": 0.085106,
+            "grid": [
+              1,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_poi_fused_add_copy_index_select_mul_slice_split_stack_sub_unsqueeze_view_6": {
+          "count": 33,
+          "sum_us": 122.53000000000002,
+          "example_args": {
+            "External id": 26129,
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 101747,
+            "registers per thread": 92,
+            "shared memory": 0,
+            "blocks per SM": 2.893617,
+            "warps per SM": 11.574468,
+            "grid": [
+              544,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "triton_red_fused_rms_norm_5": {
+          "count": 69,
+          "sum_us": 120.61199999999997,
+          "example_args": {
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 103116,
+            "registers per thread": 38,
+            "shared memory": 64,
+            "blocks per SM": 0.005319,
+            "warps per SM": 0.085106,
+            "grid": [
+              1,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_red_fused_rms_norm_3": {
+          "count": 33,
+          "sum_us": 119.87800000000001,
+          "example_args": {
+            "External id": 26121,
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 101579,
+            "registers per thread": 26,
+            "shared memory": 64,
+            "blocks per SM": 0.723404,
+            "warps per SM": 11.574468,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "triton_poi_fused_add_copy_index_select_mul_slice_split_stack_sub_unsqueeze_view_3": {
+          "count": 33,
+          "sum_us": 118.18499999999999,
+          "example_args": {
+            "External id": 354,
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1081,
+            "registers per thread": 92,
+            "shared memory": 0,
+            "blocks per SM": 2.893617,
+            "warps per SM": 11.574468,
+            "grid": [
+              544,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "triton_red_fused_rms_norm_0": {
+          "count": 34,
+          "sum_us": 92.06900000000002,
+          "example_args": {
+            "External id": 346,
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 937,
+            "registers per thread": 37,
+            "shared memory": 64,
+            "blocks per SM": 0.723404,
+            "warps per SM": 11.574468,
+            "grid": [
+              136,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 24
+          }
+        },
+        "triton_red_fused_8": {
+          "count": 69,
+          "sum_us": 90.24000000000001,
+          "example_args": {
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 103116,
+            "registers per thread": 21,
+            "shared memory": 64,
+            "blocks per SM": 0.015957,
+            "warps per SM": 0.255319,
+            "grid": [
+              3,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 1
+          }
+        },
+        "triton_poi_fused_7": {
+          "count": 69,
+          "sum_us": 83.61699999999999,
+          "example_args": {
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 103116,
+            "registers per thread": 24,
+            "shared memory": 0,
+            "blocks per SM": 0.010638,
+            "warps per SM": 0.010638,
+            "grid": [
+              2,
+              1,
+              1
+            ],
+            "block": [
+              32,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_poi_fused_add_index_select_mm_mul_slice_split_stack_sub_unsqueeze_view_11": {
+          "count": 69,
+          "sum_us": 82.33799999999998,
+          "example_args": {
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 103116,
+            "registers per thread": 30,
+            "shared memory": 512,
+            "blocks per SM": 0.010638,
+            "warps per SM": 0.021277,
+            "grid": [
+              2,
+              1,
+              1
+            ],
+            "block": [
+              64,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_poi_fused_9": {
+          "count": 69,
+          "sum_us": 76.194,
+          "example_args": {
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 103116,
+            "registers per thread": 34,
+            "shared memory": 0,
+            "blocks per SM": 0.010638,
+            "warps per SM": 0.010638,
+            "grid": [
+              2,
+              1,
+              1
+            ],
+            "block": [
+              32,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_red_fused_mm_mul_silu_slice_t_2": {
+          "count": 3,
+          "sum_us": 75.65,
+          "example_args": {
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129623,
+            "registers per thread": 78,
+            "shared memory": 2048,
+            "blocks per SM": 4.085106,
+            "warps per SM": 16.340425,
+            "grid": [
+              768,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 34
+          }
+        },
+        "triton_poi_fused_5": {
+          "count": 51,
+          "sum_us": 72.41700000000002,
+          "example_args": {
+            "External id": 26127,
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 101715,
+            "registers per thread": 85,
+            "shared memory": 0,
+            "blocks per SM": 0.095745,
+            "warps per SM": 0.382979,
+            "grid": [
+              18,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 1
+          }
+        },
+        "triton_poi_fused_cat_eq_rms_norm_scalar_tensor_unsqueeze_where_3": {
+          "count": 69,
+          "sum_us": 71.39300000000001,
+          "example_args": {
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 103116,
+            "registers per thread": 21,
+            "shared memory": 0,
+            "blocks per SM": 0.255319,
+            "warps per SM": 1.021277,
+            "grid": [
+              48,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 2
+          }
+        },
+        "triton_poi_fused_add_index_select_mm_mul_slice_split_stack_sub_unsqueeze_view_6": {
+          "count": 57,
+          "sum_us": 59.93899999999998,
+          "example_args": {
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129139,
+            "registers per thread": 24,
+            "shared memory": 0,
+            "blocks per SM": 0.042553,
+            "warps per SM": 0.170213,
+            "grid": [
+              8,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_poi_fused_copy_mm_slice_view_12": {
+          "count": 69,
+          "sum_us": 58.754,
+          "example_args": {
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 103116,
+            "registers per thread": 16,
+            "shared memory": 0,
+            "blocks per SM": 0.085106,
+            "warps per SM": 0.340426,
+            "grid": [
+              16,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 1
+          }
+        },
+        "triton_poi_fused_copy_mm_slice_view_7": {
+          "count": 57,
+          "sum_us": 56.51299999999998,
+          "example_args": {
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129139,
+            "registers per thread": 16,
+            "shared memory": 0,
+            "blocks per SM": 0.085106,
+            "warps per SM": 0.340426,
+            "grid": [
+              16,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 1
+          }
+        },
+        "triton_poi_fused_2": {
+          "count": 34,
+          "sum_us": 54.56,
+          "example_args": {
+            "External id": 352,
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 1053,
+            "registers per thread": 85,
+            "shared memory": 0,
+            "blocks per SM": 0.095745,
+            "warps per SM": 0.382979,
+            "grid": [
+              18,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 1
+          }
+        },
+        "triton_red_fused_7": {
+          "count": 2,
+          "sum_us": 45.985,
+          "example_args": {
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129623,
+            "registers per thread": 28,
+            "shared memory": 64,
+            "blocks per SM": 21.787233,
+            "warps per SM": 348.595734,
+            "grid": [
+              4096,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "Memcpy DtoH (Device -> Pinned)": {
+          "count": 74,
+          "sum_us": 41.44100000000001,
+          "example_args": {
+            "External id": 249,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 700,
+            "bytes": 4,
+            "memory bandwidth (GB/s)": 0.010416666666666666
+          }
+        },
+        "triton_poi_fused_add_bitwise_and_bitwise_not_bitwise_or_ge_lt_mul_sub_0": {
+          "count": 33,
+          "sum_us": 40.608000000000004,
+          "example_args": {
+            "External id": 318,
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 858,
+            "registers per thread": 16,
+            "shared memory": 0,
+            "blocks per SM": 0.026596,
+            "warps per SM": 0.026596,
+            "grid": [
+              5,
+              1,
+              1
+            ],
+            "block": [
+              32,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_red_fused_5": {
+          "count": 4,
+          "sum_us": 27.328000000000003,
+          "example_args": {
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129139,
+            "registers per thread": 37,
+            "shared memory": 4096,
+            "blocks per SM": 10.893617,
+            "warps per SM": 174.297867,
+            "grid": [
+              2048,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "triton_red_fused_mm_t_3": {
+          "count": 1,
+          "sum_us": 22.304,
+          "example_args": {
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 130591,
+            "registers per thread": 30,
+            "shared memory": 64,
+            "blocks per SM": 13.957447,
+            "warps per SM": 223.319153,
+            "grid": [
+              2624,
+              1,
+              1
+            ],
+            "block": [
+              512,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 100
+          }
+        },
+        "triton_poi_fused_add_index_select_mm_mul_slice_split_stack_sub_unsqueeze_view_7": {
+          "count": 19,
+          "sum_us": 20.64000000000001,
+          "example_args": {
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 130591,
+            "registers per thread": 26,
+            "shared memory": 512,
+            "blocks per SM": 0.010638,
+            "warps per SM": 0.042553,
+            "grid": [
+              2,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_poi_fused_copy_mm_slice_view_8": {
+          "count": 19,
+          "sum_us": 19.39200000000001,
+          "example_args": {
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 130591,
+            "registers per thread": 16,
+            "shared memory": 0,
+            "blocks per SM": 0.085106,
+            "warps per SM": 0.680851,
+            "grid": [
+              16,
+              1,
+              1
+            ],
+            "block": [
+              256,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 1
+          }
+        },
+        "triton_red_fused_mm_rms_norm_split_with_sizes_t_6": {
+          "count": 1,
+          "sum_us": 11.713,
+          "example_args": {
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 130591,
+            "registers per thread": 44,
+            "shared memory": 32,
+            "blocks per SM": 2.723404,
+            "warps per SM": 21.787233,
+            "grid": [
+              512,
+              1,
+              1
+            ],
+            "block": [
+              256,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 45
+          }
+        },
+        "triton_poi_fused_6": {
+          "count": 2,
+          "sum_us": 2.176,
+          "example_args": {
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129623,
+            "registers per thread": 27,
+            "shared memory": 0,
+            "blocks per SM": 0.021277,
+            "warps per SM": 0.021277,
+            "grid": [
+              4,
+              1,
+              1
+            ],
+            "block": [
+              32,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_poi_fused_add_index_select_mm_mul_slice_split_stack_sub_unsqueeze_view_8": {
+          "count": 2,
+          "sum_us": 2.144,
+          "example_args": {
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129623,
+            "registers per thread": 26,
+            "shared memory": 512,
+            "blocks per SM": 0.010638,
+            "warps per SM": 0.042553,
+            "grid": [
+              2,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_poi_fused_copy_mm_slice_view_9": {
+          "count": 2,
+          "sum_us": 2.048,
+          "example_args": {
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129623,
+            "registers per thread": 16,
+            "shared memory": 0,
+            "blocks per SM": 0.170213,
+            "warps per SM": 0.680851,
+            "grid": [
+              32,
+              1,
+              1
+            ],
+            "block": [
+              128,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 1
+          }
+        },
+        "triton_poi_fused_add_bitwise_and_bitwise_or_ge_lt_mul_sub_0": {
+          "count": 1,
+          "sum_us": 1.216,
+          "example_args": {
+            "External id": 37276,
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129061,
+            "registers per thread": 18,
+            "shared memory": 0,
+            "blocks per SM": 0.005319,
+            "warps per SM": 0.005319,
+            "grid": [
+              1,
+              1,
+              1
+            ],
+            "block": [
+              32,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "triton_poi_fused_bitwise_and_bitwise_not_bitwise_or_ge_lt_1": {
+          "count": 1,
+          "sum_us": 0.992,
+          "example_args": {
+            "External id": 37277,
+            "queued": 0,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 129069,
+            "registers per thread": 16,
+            "shared memory": 0,
+            "blocks per SM": 0.005319,
+            "warps per SM": 0.005319,
+            "grid": [
+              1,
+              1,
+              1
+            ],
+            "block": [
+              32,
+              1,
+              1
+            ],
+            "est. achieved occupancy %": 0
+          }
+        },
+        "Memcpy HtoD (Pageable -> Device)": {
+          "count": 1,
+          "sum_us": 0.32,
+          "example_args": {
+            "External id": 36317,
+            "device": 3,
+            "context": 1,
+            "stream": 19,
+            "correlation": 128750,
+            "bytes": 4,
+            "memory bandwidth (GB/s)": 0.0125
+          }
+        }
+      }
+    }
+  ],
+  "interpretation": "Observed GPU events, not configuration-based path inference. Summed durations overlap across streams."
+}

@@ -1,0 +1,22 @@
+[
+  {
+    "trace": "/data/profiles/glm5.3-arvq/dp0_pp0_tp0_dcp0_ep0_rank0.1789367339795623530.pt.trace.json.gz",
+    "fused_oneshot_kernel_count": 0,
+    "names": []
+  },
+  {
+    "trace": "/data/profiles/glm5.3-arvq/dp0_pp0_tp1_dcp1_ep1_rank1.1789367339788734484.pt.trace.json.gz",
+    "fused_oneshot_kernel_count": 0,
+    "names": []
+  },
+  {
+    "trace": "/data/profiles/glm5.3-arvq/dp0_pp0_tp2_dcp2_ep2_rank2.1789367339792444794.pt.trace.json.gz",
+    "fused_oneshot_kernel_count": 0,
+    "names": []
+  },
+  {
+    "trace": "/data/profiles/glm5.3-arvq/dp0_pp0_tp3_dcp3_ep3_rank3.1789367339783558914.pt.trace.json.gz",
+    "fused_oneshot_kernel_count": 0,
+    "names": []
+  }
+]

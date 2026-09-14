@@ -149,7 +149,7 @@ def markdown(result):
         " | Runs | DecodeTPS mean | TTFTms mean | "
         "Emitted/step | Stepms proxy | Draft acceptance | "
         "NewTPS normalized estimate |\n"
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|\n"
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |\n"
     )
 
     def v(n):

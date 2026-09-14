@@ -5,6 +5,8 @@ and cold experts use additive FP4 vector codebooks. Both hybrid branches use
 four residual activation planes in the native FP4 MMA path. Prefill and decode
 use the same quantized weights.
 
+Checkpoint: [jarrelscy/GLM-5.3-Vision-NVFP4-ARVQ-hybrid](https://huggingface.co/jarrelscy/GLM-5.3-Vision-NVFP4-ARVQ-hybrid).
+
 The initial checkpoint is an **untuned transcode of existing AQLM weights**.
 It is intended for serving and kernel experiments. Its numerical kernel checks
 do not establish model accuracy; conversion adds substantial approximation.
@@ -31,6 +33,11 @@ tokens, and full CUDA graphs. Set `PARALLEL=tp4-1m` to disable drafting.
 Conversion tools, frozen-fit reuse, and checkpoint auditing are described in
 [convert/README.md](convert/README.md). The format and loader details are in
 [the kernel documentation](../../vllm/model_executor/layers/quantization/arvq/README.md).
+
+The image also includes pinned PCIe communication support. The default profile
+uses tuned fused one-shot reduction for a single BF16 token row and copy-engine
+DMA for large TP payloads, with NCCL between those measured size ranges.
+See [PCIe policy and measurements](PCIE.md) for both paths and their size gates.
 
 ## Measure
 

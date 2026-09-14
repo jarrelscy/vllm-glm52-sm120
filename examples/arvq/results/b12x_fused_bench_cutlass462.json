@@ -1,0 +1,372 @@
+{
+  "command": "/graft/b12x_fused_bench.py --output /graft/out/b12x_fused_bench_cutlass462.json",
+  "b12x_commit": "9043b448622764a598969518d413b3fd8b3c0c07",
+  "b12x_worktree": "/b12x-src",
+  "source_file_sha256": "075f6f5495b3be374273df0152505c61fd9222d35bac18b21075a14c3beaa771",
+  "torch": "2.11.0+cu130",
+  "cutlass_dsl": "4.6.2",
+  "gpu_before": "0, GPU-36f0ddfa-b377-b286-0924-c45d0c5b765c, NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition, P1, 2272 MHz, 13365 MHz, 75.76 W, 0x0000000000000000, 95649 MiB\n1, GPU-6cdd5303-fda8-28a8-c451-8fcc6a23988b, NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition, P1, 2272 MHz, 13365 MHz, 60.86 W, 0x0000000000000000, 95691 MiB\n2, GPU-2f54a097-cbca-8076-405a-180d37c6be40, NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition, P1, 2272 MHz, 13365 MHz, 76.83 W, 0x0000000000000000, 95691 MiB\n3, GPU-c8161054-971a-1f81-fba0-be8bf1a3c3c3, NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition, P1, 2272 MHz, 13365 MHz, 72.11 W, 0x0000000000000000, 95691 MiB",
+  "world": 4,
+  "hidden": 6144,
+  "reset_contract": "Every captured operation resets input; fused arms also reset residual. Copies included equally in both arms.",
+  "environment": {
+    "B12X_PCIE_TP4_REMOTE_PUSH": "1",
+    "CUTE_DSL_ARCH": "sm_120a",
+    "NCCL_P2P_LEVEL": "SYS",
+    "NCCL_IB_DISABLE": "1"
+  },
+  "points": [
+    {
+      "kind": "fused_decode",
+      "tokens": 1,
+      "bytes": 12288,
+      "transport": [
+        "stage_remote_push",
+        false,
+        true,
+        256
+      ],
+      "correctness": {
+        "output": {
+          "finite": true,
+          "nonzero": true,
+          "identical_across_ranks": true,
+          "relative_l2": 0.003908106591552496,
+          "max_abs_error": 0.0625
+        },
+        "residual": {
+          "finite": true,
+          "nonzero": true,
+          "identical_across_ranks": true,
+          "relative_l2": 0.003189951181411743,
+          "max_abs_error": 0.0625
+        },
+        "after_replays": {
+          "finite": true,
+          "nonzero": true,
+          "identical_across_ranks": true,
+          "relative_l2": 0.003908106591552496,
+          "max_abs_error": 0.0625
+        }
+      },
+      "compiled_launcher_cache_misses": 6,
+      "max_torch_allocated_bytes": 2697216,
+      "slowest_rank_us_samples": {
+        "nccl_plus_vllm_fused_norm": [
+          15.42572021484375,
+          15.222200155258179,
+          14.7542405128479,
+          15.513279438018799,
+          15.520600080490112,
+          15.481239557266235,
+          15.546239614486694
+        ],
+        "b12x_remote_push_fused": [
+          17.920960187911987,
+          18.0184805393219,
+          18.041880130767822,
+          18.00271987915039,
+          18.01635980606079,
+          18.009920120239258,
+          18.038840293884277
+        ]
+      },
+      "median_us": {
+        "nccl_plus_vllm_fused_norm": 15.481239557266235,
+        "b12x_remote_push_fused": 18.01635980606079
+      },
+      "speedup_nccl_over_b12x": 0.859287876347711
+    },
+    {
+      "kind": "fused_decode",
+      "tokens": 4,
+      "bytes": 49152,
+      "transport": [
+        "stage_remote_push",
+        true,
+        true,
+        256
+      ],
+      "correctness": {
+        "output": {
+          "finite": true,
+          "nonzero": true,
+          "identical_across_ranks": true,
+          "relative_l2": 0.003637147368863225,
+          "max_abs_error": 0.03125
+        },
+        "residual": {
+          "finite": true,
+          "nonzero": true,
+          "identical_across_ranks": true,
+          "relative_l2": 0.0031973510049283504,
+          "max_abs_error": 0.0625
+        },
+        "after_replays": {
+          "finite": true,
+          "nonzero": true,
+          "identical_across_ranks": true,
+          "relative_l2": 0.003637147368863225,
+          "max_abs_error": 0.03125
+        }
+      },
+      "compiled_launcher_cache_misses": 6,
+      "max_torch_allocated_bytes": 2697216,
+      "slowest_rank_us_samples": {
+        "nccl_plus_vllm_fused_norm": [
+          16.51047945022583,
+          16.46515965461731,
+          16.49683952331543,
+          16.50823950767517,
+          16.480120420455933,
+          16.5201997756958,
+          16.48859977722168
+        ],
+        "b12x_remote_push_fused": [
+          63.00352096557617,
+          62.906718254089355,
+          63.09463977813721,
+          63.18123817443848,
+          62.97339916229248,
+          63.143959045410156,
+          63.07191848754883
+        ]
+      },
+      "median_us": {
+        "nccl_plus_vllm_fused_norm": 16.49683952331543,
+        "b12x_remote_push_fused": 63.07191848754883
+      },
+      "speedup_nccl_over_b12x": 0.261556012864459
+    },
+    {
+      "kind": "fused_decode",
+      "tokens": 5,
+      "bytes": 61440,
+      "transport": [
+        "stage_remote_push",
+        true,
+        true,
+        256
+      ],
+      "correctness": {
+        "output": {
+          "finite": true,
+          "nonzero": true,
+          "identical_across_ranks": true,
+          "relative_l2": 0.0037353539373725653,
+          "max_abs_error": 0.03125
+        },
+        "residual": {
+          "finite": true,
+          "nonzero": true,
+          "identical_across_ranks": true,
+          "relative_l2": 0.003213221672922373,
+          "max_abs_error": 0.0625
+        },
+        "after_replays": {
+          "finite": true,
+          "nonzero": true,
+          "identical_across_ranks": true,
+          "relative_l2": 0.0037353539373725653,
+          "max_abs_error": 0.03125
+        }
+      },
+      "compiled_launcher_cache_misses": 6,
+      "max_torch_allocated_bytes": 2697216,
+      "slowest_rank_us_samples": {
+        "nccl_plus_vllm_fused_norm": [
+          17.354719638824463,
+          16.685880422592163,
+          17.298359870910645,
+          16.98256015777588,
+          17.112079858779907,
+          17.113879919052124,
+          17.008559703826904
+        ],
+        "b12x_remote_push_fused": [
+          80.27795791625977,
+          80.33384323120117,
+          80.0841236114502,
+          80.20815849304199,
+          80.16427993774414,
+          80.20327568054199,
+          80.35240173339844
+        ]
+      },
+      "median_us": {
+        "nccl_plus_vllm_fused_norm": 17.112079858779907,
+        "b12x_remote_push_fused": 80.20815849304199
+      },
+      "speedup_nccl_over_b12x": 0.21334587628345025
+    },
+    {
+      "kind": "fused_decode",
+      "tokens": 16,
+      "bytes": 196608,
+      "transport": [
+        "stage_remote_push",
+        true,
+        true,
+        256
+      ],
+      "correctness": {
+        "output": {
+          "finite": true,
+          "nonzero": true,
+          "identical_across_ranks": true,
+          "relative_l2": 0.003698737593367696,
+          "max_abs_error": 0.0625
+        },
+        "residual": {
+          "finite": true,
+          "nonzero": true,
+          "identical_across_ranks": true,
+          "relative_l2": 0.003220414277166128,
+          "max_abs_error": 0.0625
+        },
+        "after_replays": {
+          "finite": true,
+          "nonzero": true,
+          "identical_across_ranks": true,
+          "relative_l2": 0.003698737593367696,
+          "max_abs_error": 0.0625
+        }
+      },
+      "compiled_launcher_cache_misses": 6,
+      "max_torch_allocated_bytes": 2697216,
+      "slowest_rank_us_samples": {
+        "nccl_plus_vllm_fused_norm": [
+          26.11340045928955,
+          26.443641185760498,
+          26.524639129638672,
+          26.027920246124268,
+          26.182000637054443,
+          26.503400802612305,
+          26.307120323181152
+        ],
+        "b12x_remote_push_fused": [
+          244.59020614624023,
+          244.45375442504883,
+          244.55659866333008,
+          244.43767547607422,
+          244.13415908813477,
+          244.25996780395508,
+          244.28211212158203
+        ]
+      },
+      "median_us": {
+        "nccl_plus_vllm_fused_norm": 26.307120323181152,
+        "b12x_remote_push_fused": 244.43767547607422
+      },
+      "speedup_nccl_over_b12x": 0.10762301789993955
+    },
+    {
+      "kind": "dma_prefill",
+      "tokens": 2048,
+      "bytes": 25165824,
+      "wire_mode": "",
+      "transport": "copy-engine ring reduce-scatter/all-gather, BF16",
+      "inplace_input_output": true,
+      "correctness": {
+        "finite": true,
+        "nonzero": true,
+        "identical_across_ranks": true,
+        "relative_l2": 0.0031071146950125694,
+        "max_abs_error": 0.0625,
+        "after_replays": {
+          "finite": true,
+          "nonzero": true,
+          "identical_across_ranks": true,
+          "relative_l2": 0.0031071146950125694,
+          "max_abs_error": 0.0625
+        }
+      },
+      "raw_scratch_bytes_excluding_flags": 75497472,
+      "max_torch_allocated_bytes": 52183040,
+      "slowest_rank_us_samples": {
+        "nccl_bf16": [
+          934.8492431640625,
+          934.6195220947266,
+          934.9893951416016,
+          934.7505950927734,
+          934.7887420654297,
+          934.5326232910156,
+          935.1602172851562
+        ],
+        "b12x_copy_engine_bf16": [
+          727.3735046386719,
+          727.8609466552734,
+          727.5604248046875,
+          728.3448028564453,
+          728.1607818603516,
+          727.9183197021484,
+          728.3887481689453
+        ]
+      },
+      "median_us": {
+        "nccl_bf16": 934.7887420654297,
+        "b12x_copy_engine_bf16": 727.9183197021484
+      },
+      "speedup_nccl_over_b12x": 1.2841945542020827
+    },
+    {
+      "kind": "dma_prefill",
+      "tokens": 4096,
+      "bytes": 50331648,
+      "wire_mode": "",
+      "transport": "copy-engine ring reduce-scatter/all-gather, BF16",
+      "inplace_input_output": true,
+      "correctness": {
+        "finite": true,
+        "nonzero": true,
+        "identical_across_ranks": true,
+        "relative_l2": 0.0031055689323693514,
+        "max_abs_error": 0.0625,
+        "after_replays": {
+          "finite": true,
+          "nonzero": true,
+          "identical_across_ranks": true,
+          "relative_l2": 0.0031055689323693514,
+          "max_abs_error": 0.0625
+        }
+      },
+      "raw_scratch_bytes_excluding_flags": 75497472,
+      "max_torch_allocated_bytes": 102514688,
+      "slowest_rank_us_samples": {
+        "nccl_bf16": [
+          1846.7855834960938,
+          1847.1746826171875,
+          1847.28759765625,
+          1846.7271423339844,
+          1846.7759704589844,
+          1846.768798828125,
+          1846.8350219726562
+        ],
+        "b12x_copy_engine_bf16": [
+          1463.3540344238281,
+          1463.5255432128906,
+          1463.6474609375,
+          1463.0337524414062,
+          1463.7103271484375,
+          1465.0627136230469,
+          1463.2028198242188
+        ]
+      },
+      "median_us": {
+        "nccl_bf16": 1846.7855834960938,
+        "b12x_copy_engine_bf16": 1463.5255432128906
+      },
+      "speedup_nccl_over_b12x": 1.261874513950627
+    }
+  ],
+  "gpu_after": "0, GPU-36f0ddfa-b377-b286-0924-c45d0c5b765c, NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition, P1, 2317 MHz, 13365 MHz, 117.22 W, 0x0000000000000000, 95723 MiB\n1, GPU-6cdd5303-fda8-28a8-c451-8fcc6a23988b, NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition, P1, 2332 MHz, 13365 MHz, 100.27 W, 0x0000000000000000, 95723 MiB\n2, GPU-2f54a097-cbca-8076-405a-180d37c6be40, NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition, P1, 2355 MHz, 13365 MHz, 113.71 W, 0x0000000000000000, 95723 MiB\n3, GPU-c8161054-971a-1f81-fba0-be8bf1a3c3c3, NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition, P1, 2332 MHz, 13365 MHz, 114.88 W, 0x0000000000000000, 95723 MiB",
+  "in_container_git_error": "CalledProcessError(128, ['git', '-C', '/b12x-src', 'rev-parse', 'HEAD'])",
+  "host_worktree": "/home/jarrelscy/glm52/b12x-graft/b12x-src",
+  "source_hash_verification": "Measured container source SHA256 matches host source in recorded git worktree",
+  "source_hashes": {
+    "pcie_oneshot.py": "075f6f5495b3be374273df0152505c61fd9222d35bac18b21075a14c3beaa771",
+    "_oneshot_cute.py": "f1567a6a5a216f246fb6f011d6b30f153543011aff23871086a46448709fd357",
+    "pcie_dma.py": "496f0f2df3d1e84357f89c3bf0077e0cda9596659f7074a64bdf7af707705dd3",
+    "_dma_kernels.py": "6f173ce05183e28ae7cf121ff863620026e368a3eeb6cc07a14f83f4f9f6e3a1"
+  }
+}

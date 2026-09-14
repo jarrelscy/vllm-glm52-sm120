@@ -140,6 +140,26 @@ class PostGradPassManager(CustomGraphPass):  # type: ignore[misc]
 
         # Set the current vllm config to allow tracing CustomOp instances
         with set_current_vllm_config(config, check_compile=False):
+            from vllm.model_executor.layers.pcie_fused_ar_rms import (
+                _fused_max_bytes,
+                pcie_fused_ar_rms_enabled,
+            )
+
+            if pcie_fused_ar_rms_enabled() and config.model_config is not None:
+                from vllm.compilation.passes.fusion.b12x_allreduce_rms import (
+                    B12xAllReduceRMSFusionPass,
+                )
+                from vllm.distributed import get_tp_group
+
+                group = get_tp_group()
+                if group.world_size == 4:
+                    self.passes += [
+                        B12xAllReduceRMSFusionPass(
+                            group.unique_name,
+                            config.model_config.get_hidden_size(),
+                            _fused_max_bytes(),
+                        )
+                    ]
             if self.pass_config.eliminate_noops:
                 self.passes += [NoOpEliminationPass(config)]
 

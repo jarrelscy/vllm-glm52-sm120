@@ -24,6 +24,7 @@ import torch
 import vllm.envs as envs
 from vllm import ir
 from vllm.distributed import tensor_model_parallel_all_reduce
+from vllm.distributed.device_communicators.b12x_pcie_all_reduce import _parse_byte_size
 from vllm.distributed.utils import is_weak_contiguous
 from vllm.logger import init_logger
 from vllm.utils.torch_utils import direct_register_custom_op
@@ -146,6 +147,11 @@ direct_register_custom_op(
 )
 
 
+@torch.compiler.assume_constant_result
+def _fused_max_bytes() -> int:
+    return _parse_byte_size(envs.VLLM_PCIE_ONESHOT_FUSED_ADD_RMS_NORM_MAX_SIZE)
+
+
 def fused_ar_rms_norm(
     hidden_states: torch.Tensor,
     residual: torch.Tensor,
@@ -158,6 +164,17 @@ def fused_ar_rms_norm(
     python variable keeps flowing, matching the stock in-place
     fused_add_rms_norm contract.
     """
+    # vLLM traces once and specializes ranges afterwards. A Python shape
+    # branch during tracing loses the one-row arm permanently. Keep the
+    # ordinary operations visible; B12xAllReduceRMSFusionPass replaces the
+    # pair only in the independently compiled [1,1] range.
+    if torch.compiler.is_compiling():
+        reduced = tensor_model_parallel_all_reduce(hidden_states)
+        return norm(reduced, residual)
+    max_bytes = _fused_max_bytes()
+    if hidden_states.numel() * hidden_states.element_size() > max_bytes:
+        reduced = tensor_model_parallel_all_reduce(hidden_states)
+        return norm(reduced, residual)
     out = torch.ops.vllm.glm_pcie_fused_ar_rms(
         hidden_states, residual, norm.weight, norm.variance_epsilon
     )

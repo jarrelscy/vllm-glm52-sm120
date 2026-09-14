@@ -1,0 +1,131 @@
+{
+  "command": "/lab/serving_experiment/b12x_fused_bench.py --output /lab/serving_experiment/b12x_fused_sweep_t128_c1.json --reps 3 --iters 30 --skip-dma --fused-tokens 1 4",
+  "b12x_commit": "9043b448622764a598969518d413b3fd8b3c0c07",
+  "b12x_worktree": "/lab/b12x_src_snapshot",
+  "source_file_sha256": "075f6f5495b3be374273df0152505c61fd9222d35bac18b21075a14c3beaa771",
+  "torch": "2.11.0+cu130",
+  "cutlass_dsl": "4.5.2",
+  "gpu_before": "0, GPU-36f0ddfa-b377-b286-0924-c45d0c5b765c, NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition, P1, 2272 MHz, 13365 MHz, 78.24 W, 0x0000000000000000, 95649 MiB\n1, GPU-6cdd5303-fda8-28a8-c451-8fcc6a23988b, NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition, P1, 2272 MHz, 13365 MHz, 60.99 W, 0x0000000000000000, 95691 MiB\n2, GPU-2f54a097-cbca-8076-405a-180d37c6be40, NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition, P1, 2272 MHz, 13365 MHz, 78.21 W, 0x0000000000000000, 95691 MiB\n3, GPU-c8161054-971a-1f81-fba0-be8bf1a3c3c3, NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition, P1, 2272 MHz, 13365 MHz, 73.32 W, 0x0000000000000000, 95691 MiB",
+  "world": 4,
+  "hidden": 6144,
+  "reset_contract": "Every captured operation resets input; fused arms also reset residual. Copies included equally in both arms.",
+  "environment": {
+    "B12X_PCIE_TP4_REMOTE_PUSH": "1",
+    "CUTE_DSL_ARCH": "sm_120a",
+    "NCCL_P2P_LEVEL": "SYS",
+    "NCCL_IB_DISABLE": "1"
+  },
+  "geometry_overrides": {
+    "B12X_PCIE_FUSED_THREADS": "128",
+    "B12X_PCIE_FUSED_CTAS_PER_ROW": "1"
+  },
+  "points": [
+    {
+      "kind": "fused_decode",
+      "tokens": 1,
+      "bytes": 12288,
+      "transport": [
+        "stage_remote_push",
+        true,
+        false,
+        128
+      ],
+      "correctness": {
+        "output": {
+          "finite": true,
+          "nonzero": true,
+          "identical_across_ranks": true,
+          "relative_l2": 0.0034367917105555534,
+          "max_abs_error": 0.0625
+        },
+        "residual": {
+          "finite": true,
+          "nonzero": true,
+          "identical_across_ranks": true,
+          "relative_l2": 0.003189951181411743,
+          "max_abs_error": 0.0625
+        },
+        "after_replays": {
+          "finite": true,
+          "nonzero": true,
+          "identical_across_ranks": true,
+          "relative_l2": 0.0034367917105555534,
+          "max_abs_error": 0.0625
+        }
+      },
+      "compiled_launcher_cache_misses": 3,
+      "max_torch_allocated_bytes": 1382400,
+      "slowest_rank_us_samples": {
+        "nccl_plus_vllm_fused_norm": [
+          14.694000283877054,
+          15.491066376368204,
+          15.526266892751059
+        ],
+        "b12x_remote_push_fused": [
+          13.375332951545715,
+          13.344533244768778,
+          13.283600409825643
+        ]
+      },
+      "median_us": {
+        "nccl_plus_vllm_fused_norm": 15.491066376368204,
+        "b12x_remote_push_fused": 13.344533244768778
+      },
+      "speedup_nccl_over_b12x": 1.1608548678494164
+    },
+    {
+      "kind": "fused_decode",
+      "tokens": 4,
+      "bytes": 49152,
+      "transport": [
+        "stage_remote_push",
+        true,
+        false,
+        128
+      ],
+      "correctness": {
+        "output": {
+          "finite": true,
+          "nonzero": true,
+          "identical_across_ranks": true,
+          "relative_l2": 0.003509907051920891,
+          "max_abs_error": 0.0625
+        },
+        "residual": {
+          "finite": true,
+          "nonzero": true,
+          "identical_across_ranks": true,
+          "relative_l2": 0.0031973510049283504,
+          "max_abs_error": 0.0625
+        },
+        "after_replays": {
+          "finite": true,
+          "nonzero": true,
+          "identical_across_ranks": true,
+          "relative_l2": 0.003509907051920891,
+          "max_abs_error": 0.0625
+        }
+      },
+      "compiled_launcher_cache_misses": 3,
+      "max_torch_allocated_bytes": 1382400,
+      "slowest_rank_us_samples": {
+        "nccl_plus_vllm_fused_norm": [
+          16.5010670820872,
+          16.436933477719624,
+          16.506533821423847
+        ],
+        "b12x_remote_push_fused": [
+          64.56160147984822,
+          64.61626688639323,
+          64.60386514663696
+        ]
+      },
+      "median_us": {
+        "nccl_plus_vllm_fused_norm": 16.5010670820872,
+        "b12x_remote_push_fused": 64.60386514663696
+      },
+      "speedup_nccl_over_b12x": 0.2554191927159978
+    }
+  ],
+  "gpu_after": "0, GPU-36f0ddfa-b377-b286-0924-c45d0c5b765c, NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition, P1, 2287 MHz, 13365 MHz, 79.39 W, 0x0000000000000000, 95721 MiB\n1, GPU-6cdd5303-fda8-28a8-c451-8fcc6a23988b, NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition, P1, 2272 MHz, 13365 MHz, 62.95 W, 0x0000000000000000, 95721 MiB\n2, GPU-2f54a097-cbca-8076-405a-180d37c6be40, NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition, P1, 2310 MHz, 13365 MHz, 79.24 W, 0x0000000000000000, 95721 MiB\n3, GPU-c8161054-971a-1f81-fba0-be8bf1a3c3c3, NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition, P1, 2287 MHz, 13365 MHz, 75.62 W, 0x0000000000000000, 95721 MiB"
+}

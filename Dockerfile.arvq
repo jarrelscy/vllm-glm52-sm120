@@ -1,6 +1,22 @@
 # The base supplies compatible compiled vLLM extensions and GLM dependencies.
 ARG BASE_IMAGE=glm52-vision-sm120:latest
 FROM ${BASE_IMAGE}
+ARG B12X_REV=9043b448622764a598969518d413b3fd8b3c0c07
+LABEL ai.arvq.b12x.revision=${B12X_REV}
+# Copy only the pinned module and license. Installing the distribution would
+# activate its vLLM plugin entry points and replace the base's DSL dependencies.
+RUN git init /tmp/arvq-b12x \
+    && git -C /tmp/arvq-b12x remote add origin https://github.com/local-inference-lab/b12x \
+    && git -C /tmp/arvq-b12x fetch --depth=1 origin ${B12X_REV} \
+    && git -C /tmp/arvq-b12x checkout --detach FETCH_HEAD \
+    && test "$(git -C /tmp/arvq-b12x rev-parse HEAD)" = "${B12X_REV}" \
+    && rm -rf /opt/vllm/.venv/lib/python3.12/site-packages/b12x \
+    && cp -a /tmp/arvq-b12x/b12x /opt/vllm/.venv/lib/python3.12/site-packages/b12x \
+    && mkdir -p /usr/local/share/arvq-b12x \
+    && cp /tmp/arvq-b12x/LICENSE /usr/local/share/arvq-b12x/LICENSE \
+    && printf '%s\n' "${B12X_REV}" > /usr/local/share/arvq-b12x/REVISION \
+    && rm -rf /tmp/arvq-b12x
+RUN /opt/vllm/.venv/bin/python -c "import importlib.metadata as m; assert not any('b12x' in e.value for e in m.entry_points(group='vllm.general_plugins')), 'b12x automatic plugins must remain absent'"
 # Overlay the complete fork package so model loaders, vision, MTP and quantization
 # come from this branch. Existing compiled extensions in the base are retained.
 COPY vllm /opt/vllm/vllm

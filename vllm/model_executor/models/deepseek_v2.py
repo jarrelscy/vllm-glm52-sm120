@@ -54,11 +54,6 @@ from vllm.model_executor.layers.fused_moe import (
     fused_moe_make_expert_params_mapping,
 )
 from vllm.model_executor.layers.layernorm import LayerNorm, RMSNorm
-from vllm.model_executor.layers.pcie_fused_ar_rms import (
-    defer_mlp_all_reduce,
-    fused_ar_rms_norm,
-    pcie_fused_ar_rms_enabled,
-)
 from vllm.model_executor.layers.linear import (
     ColumnParallelLinear,
     MergedColumnParallelLinear,
@@ -68,6 +63,11 @@ from vllm.model_executor.layers.linear import (
 )
 from vllm.model_executor.layers.logits_processor import LogitsProcessor
 from vllm.model_executor.layers.mla import MLAModules, MultiHeadLatentAttentionWrapper
+from vllm.model_executor.layers.pcie_fused_ar_rms import (
+    defer_mlp_all_reduce,
+    fused_ar_rms_norm,
+    pcie_fused_ar_rms_enabled,
+)
 from vllm.model_executor.layers.quantization import QuantizationConfig
 from vllm.model_executor.layers.quantization.utils.fp8_utils import (
     per_token_group_quant_fp8,
@@ -1417,11 +1417,10 @@ class DeepseekV2Model(nn.Module):
         # b12x PCIe fused AR+add+rmsnorm (lever #2). Enabled ONLY on this
         # model's own layers so standalone DeepseekV2DecoderLayer users (MTP
         # drafters, EAGLE heads) keep stock reduced outputs.
+        self.aux_hidden_state_layers = tuple[int, ...]()
         self.pcie_fuse_final_norm = False
         if pcie_fused_ar_rms_enabled():
             self._enable_pcie_fused_ar_rms()
-
-        self.aux_hidden_state_layers = tuple[int, ...]()
 
         # Needed by load_weights
         qk_nope_head_dim = getattr(config, "qk_nope_head_dim", 0)
@@ -1452,9 +1451,7 @@ class DeepseekV2Model(nn.Module):
             return
         if get_tensor_model_parallel_world_size() <= 1:
             return
-        layers = [
-            self.layers[i] for i in range(self.start_layer, self.end_layer)
-        ]
+        layers = [self.layers[i] for i in range(self.start_layer, self.end_layer)]
         if any(layer.use_sequence_parallel_moe for layer in layers):
             logger.warning_once(
                 "VLLM_GLM_PCIE_FUSED_AR_RMS: disabled (sequence-parallel MoE)."
@@ -1695,13 +1692,9 @@ class DeepseekV2Model(nn.Module):
             # live on the MoERunner's RoutedExperts submodule.
             if any(
                 f".mlp.experts.{p}" in name
-                for p in (
-                    "w13_", "w2_", "w2m_", "w2c_", "nvfp4_", "arvq_", "hyb_"
-                )
+                for p in ("w13_", "w2_", "w2m_", "w2c_", "nvfp4_", "arvq_", "hyb_")
             ):
-                name = name.replace(
-                    ".mlp.experts.", ".mlp.experts.routed_experts."
-                )
+                name = name.replace(".mlp.experts.", ".mlp.experts.routed_experts.")
 
             is_fusion_moe_shared_experts_layer = (
                 rocm_aiter_moe_shared_expert_enabled and ("mlp.shared_experts" in name)

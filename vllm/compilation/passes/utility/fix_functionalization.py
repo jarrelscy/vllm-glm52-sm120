@@ -112,6 +112,11 @@ class FixFunctionalizationPass(VllmInductorPass):
                 mutated_args = {1: "result"}
                 self.defunctionalize(graph, node, mutated_args)
             elif (
+                hasattr(torch.ops.vllm, "glm_pcie_fused_ar_rms")
+                and at_target == torch.ops.vllm.glm_pcie_fused_ar_rms.default
+            ):
+                self.defunctionalize(graph, node, {1: "residual"})
+            elif (
                 hasattr(torch.ops.vllm, "flashinfer_trtllm_fused_allreduce_norm")
                 and at_target
                 == torch.ops.vllm.flashinfer_trtllm_fused_allreduce_norm.default

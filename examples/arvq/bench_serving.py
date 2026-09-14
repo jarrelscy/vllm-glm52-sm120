@@ -10,11 +10,12 @@ import hashlib
 import json
 import os
 import pathlib
-import re
 import statistics
 import time
 import urllib.parse
 import urllib.request
+
+import regex as re
 
 FILLER = "The quick brown fox jumps over the lazy dog. "
 PREFIXES = (
@@ -277,7 +278,7 @@ def markdown(report):
         "matching request and no counter reset.\n\n"
         "| Prompt target | Run | Actual output | TTFTms | DecodeTPS | "
         "Emitted/draft | Serverms/draft proxy | NormalizedTPS estimate |\n"
-        "|---:|---:|---:|---:|---:|---:|---:|---:|\n"
+        "| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |\n"
     )
 
     def v(x):

@@ -1,0 +1,194 @@
+{
+  "groups": [
+    {
+      "label": "original_mtp_on_clean",
+      "profile_runner_family": "V2",
+      "prompt_target": 128,
+      "prompt_usage_counts": [
+        136
+      ],
+      "measured_runs": 3,
+      "completion_tokens": 1536,
+      "decode_tps_mean": 97.16283054560016,
+      "decode_tps_min": 96.50252353524188,
+      "decode_tps_max": 97.87193315314843,
+      "ttft_ms_mean": 672.3327917667726,
+      "draft_steps_total": 384.0,
+      "accepted_draft_tokens_total": 1152.0,
+      "proposed_draft_tokens_total": 1152.0,
+      "accepted_per_draft_step": 3.0,
+      "draft_acceptance_fraction": 1.0,
+      "emitted_per_step": 4.0,
+      "step_ms_proxy": 41.09182863491393,
+      "step_proxy_method": "serverdecode/drafts",
+      "counter_isolation_all_runs": true,
+      "ignore_eos": true,
+      "max_tokens": 512,
+      "seed": 173,
+      "warmup_runs_per_length": 1,
+      "prompt_hashes": [
+        "0e0c8294e5faef58abde23dc3d15965186ed292c16b282aa5b75e196508a7dde"
+      ]
+    },
+    {
+      "label": "original_mtp_on_clean",
+      "profile_runner_family": "V2",
+      "prompt_target": 4096,
+      "prompt_usage_counts": [
+        4106
+      ],
+      "measured_runs": 3,
+      "completion_tokens": 1536,
+      "decode_tps_mean": 92.46850631180261,
+      "decode_tps_min": 92.29706393147904,
+      "decode_tps_max": 92.71107480161474,
+      "ttft_ms_mean": 1456.0647074443598,
+      "draft_steps_total": 390.0,
+      "accepted_draft_tokens_total": 1152.0,
+      "proposed_draft_tokens_total": 1170.0,
+      "accepted_per_draft_step": 2.953846153846154,
+      "draft_acceptance_fraction": 0.9846153846153847,
+      "emitted_per_step": 3.953846153846154,
+      "step_ms_proxy": 42.51922558252819,
+      "step_proxy_method": "serverdecode/drafts",
+      "counter_isolation_all_runs": true,
+      "ignore_eos": true,
+      "max_tokens": 512,
+      "seed": 173,
+      "warmup_runs_per_length": 1,
+      "prompt_hashes": [
+        "af1c0da7152771d5f451d52e856ed5cf64286169abee5507e93ec9d465ad50d7"
+      ]
+    },
+    {
+      "label": "original_mtp_off_clean",
+      "profile_runner_family": "V1",
+      "prompt_target": 128,
+      "prompt_usage_counts": [
+        136
+      ],
+      "measured_runs": 3,
+      "completion_tokens": 1536,
+      "decode_tps_mean": 44.34930210488721,
+      "decode_tps_min": 44.32951643706833,
+      "decode_tps_max": 44.3662410611545,
+      "ttft_ms_mean": 637.9816533687214,
+      "draft_steps_total": 0,
+      "accepted_draft_tokens_total": 0,
+      "proposed_draft_tokens_total": 0,
+      "accepted_per_draft_step": null,
+      "draft_acceptance_fraction": null,
+      "emitted_per_step": 1,
+      "step_ms_proxy": 22.549136290575795,
+      "step_proxy_method": "serverdecode/post-first-emission-tokens;MTPoff",
+      "counter_isolation_all_runs": true,
+      "ignore_eos": true,
+      "max_tokens": 512,
+      "seed": 173,
+      "warmup_runs_per_length": 1,
+      "prompt_hashes": [
+        "0e0c8294e5faef58abde23dc3d15965186ed292c16b282aa5b75e196508a7dde"
+      ]
+    },
+    {
+      "label": "original_mtp_off_clean",
+      "profile_runner_family": "V1",
+      "prompt_target": 4096,
+      "prompt_usage_counts": [
+        4106
+      ],
+      "measured_runs": 3,
+      "completion_tokens": 1536,
+      "decode_tps_mean": 44.55273377989227,
+      "decode_tps_min": 44.50051358553332,
+      "decode_tps_max": 44.58369895849573,
+      "ttft_ms_mean": 97.59093727916479,
+      "draft_steps_total": 0,
+      "accepted_draft_tokens_total": 0,
+      "proposed_draft_tokens_total": 0,
+      "accepted_per_draft_step": null,
+      "draft_acceptance_fraction": null,
+      "emitted_per_step": 1,
+      "step_ms_proxy": 22.44845175701306,
+      "step_proxy_method": "serverdecode/post-first-emission-tokens;MTPoff",
+      "counter_isolation_all_runs": true,
+      "ignore_eos": true,
+      "max_tokens": 512,
+      "seed": 173,
+      "warmup_runs_per_length": 1,
+      "prompt_hashes": [
+        "af1c0da7152771d5f451d52e856ed5cf64286169abee5507e93ec9d465ad50d7"
+      ]
+    },
+    {
+      "label": "new_mtp_off_headline",
+      "profile_runner_family": "V1",
+      "prompt_target": 128,
+      "prompt_usage_counts": [
+        136
+      ],
+      "measured_runs": 1,
+      "completion_tokens": 512,
+      "decode_tps_mean": 48.66411403950154,
+      "decode_tps_min": 48.66411403950154,
+      "decode_tps_max": 48.66411403950154,
+      "ttft_ms_mean": 234.43644307553768,
+      "draft_steps_total": 0,
+      "accepted_draft_tokens_total": 0,
+      "proposed_draft_tokens_total": 0,
+      "accepted_per_draft_step": null,
+      "draft_acceptance_fraction": null,
+      "emitted_per_step": 1,
+      "step_ms_proxy": 20.55016277656834,
+      "step_proxy_method": "serverdecode/post-first-emission-tokens;MTPoff",
+      "counter_isolation_all_runs": true,
+      "ignore_eos": true,
+      "max_tokens": 512,
+      "seed": 173,
+      "warmup_runs_per_length": 1,
+      "prompt_hashes": [
+        "0e0c8294e5faef58abde23dc3d15965186ed292c16b282aa5b75e196508a7dde"
+      ]
+    },
+    {
+      "label": "new_mtp_on_headline",
+      "profile_runner_family": "V2",
+      "prompt_target": 128,
+      "prompt_usage_counts": [
+        136
+      ],
+      "measured_runs": 1,
+      "completion_tokens": 512,
+      "decode_tps_mean": 138.1970055030405,
+      "decode_tps_min": 138.1970055030405,
+      "decode_tps_max": 138.1970055030405,
+      "ttft_ms_mean": 249.53327793627977,
+      "draft_steps_total": 128.0,
+      "accepted_draft_tokens_total": 384.0,
+      "proposed_draft_tokens_total": 384.0,
+      "accepted_per_draft_step": 3.0,
+      "draft_acceptance_fraction": 1.0,
+      "emitted_per_step": 4.0,
+      "step_ms_proxy": 28.889812369016,
+      "step_proxy_method": "serverdecode/drafts",
+      "counter_isolation_all_runs": true,
+      "ignore_eos": true,
+      "max_tokens": 512,
+      "seed": 173,
+      "warmup_runs_per_length": 1,
+      "prompt_hashes": [
+        "0e0c8294e5faef58abde23dc3d15965186ed292c16b282aa5b75e196508a7dde"
+      ],
+      "normalized_to_original_emitted_per_step_tps_estimate": 138.45711245566812,
+      "normalization_reference": "original_mtp_on_clean"
+    }
+  ],
+  "notes": [
+    "Measured decodeTPS is arithmetic mean of per-request token-ID-verified rates, excluding first emissionbatch.",
+    "MTPstep duration is pooled server requestdecode time / pooled draftrequest steps, not GPU kernel latency.",
+    "MTPoff assumes one forward per token after firstemission, and uses serverdecode/postfirsttokens.",
+    "NormalizedTPS is a counter-derived estimate at original pooled1+accepted/drafts; it is not a measured forced-acceptance rerun.",
+    "Naturalprofile MTPoff usesV1 and MTPon usesV2; original/new matchedpairs share runner andFULL_AND_PIECEWISE. On/off comparisons therefore include a runner difference.",
+    "Throughput on repeatedpangram input can reflect nearly100% MTPacceptance; do not generalize to realistic workload quality."
+  ]
+}

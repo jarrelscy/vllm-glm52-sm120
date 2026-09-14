@@ -1,0 +1,13 @@
+{
+  "image": "glm53-arvq-sm120:pcie",
+  "image_id": "sha256:588a58de5a8d0d5a36d65d6e226028bbbb09232af8eae3ce3e1a63f821d22534",
+  "container_id": "6baf06c971e1ffb9abefe6bd92177169f0973d20948ea533393b62dfe36fd716",
+  "utc": "2026-09-14T06:23:19.586536+00:00",
+  "environment": {
+    "CUDAGRAPH_MODE": "FULL_AND_PIECEWISE",
+    "PARALLEL": "tp4-1m-mtp",
+    "ENABLE_LMCACHE": "0",
+    "MAXLEN": "950000",
+    "MAX_NUM_SEQS": "4"
+  }
+}

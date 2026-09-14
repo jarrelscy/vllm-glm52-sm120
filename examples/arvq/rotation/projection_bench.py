@@ -75,7 +75,16 @@ def decoded_source(proj):
 
 
 def main():
-    argparse.ArgumentParser(description=__doc__).parse_args()
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument(
+        "--blocks",
+        nargs="+",
+        type=int,
+        choices=[0, 32, 128],
+        default=[0],
+        help="Input rotation width: 0 disables rotation (default); 32/128 opt in.",
+    )
+    args = ap.parse_args()
     from assign_api import assign, pack
 
     oldpack = bind(ROOT / "hybrid.so", "hybrid_pack", [ptr] * 3 + [integer] * 3 + [ptr])
@@ -95,7 +104,7 @@ def main():
         original = decoded_source(proj)
         n, k = original.shape
         split = 16 if proj == "gateup" else 2
-        for block in [0, 32, 128]:
+        for block in args.blocks:
             artifact = torch.load(
                 ROOT / f"fit_l3_{proj}_b{block}.pt", weights_only=True
             )

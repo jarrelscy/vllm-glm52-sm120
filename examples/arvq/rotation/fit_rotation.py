@@ -79,6 +79,14 @@ def rel(a, b):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--layers", nargs="+", type=int, default=[3, 40, 77])
+    ap.add_argument(
+        "--blocks",
+        nargs="+",
+        type=int,
+        choices=[0, 32, 128],
+        default=[0],
+        help="Input rotation width: 0 disables rotation (default); 32/128 opt in.",
+    )
     args = ap.parse_args()
     torch.backends.cuda.matmul.allow_tf32 = False
     torch.set_num_threads(8)
@@ -96,7 +104,7 @@ def main():
             )
             torch.manual_seed(72)
             activations = torch.randn(16, k, device="cuda")
-            for block in [0, 32, 128]:
+            for block in args.blocks:
                 start = time.perf_counter()
                 tw = rotate(train, signs, block)
                 vw = rotate(test, signs, block)

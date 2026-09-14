@@ -1,9 +1,15 @@
-# Rotated ARVQ prototype
+# Retired rotation experiment
 
-Status: implemented and numerically verified; not enabled in serving. The user
-selected H128 rotation for the next ARVQ format revision and accepts its measured
-small packing cost. `format.json` records that choice. The first matched
-experiment does **not** show a reconstruction benefit from rotation.
+Status: **retired**. Rotation is excluded from the production format and active
+tuning plan. The full checkpoint and serving profile are unrotated. This folder
+is retained only to reproduce historical experiments; H32/H128 are not planned
+production variants. The first matched experiment showed no reconstruction benefit.
+
+`fit_rotation.py` and `projection_bench.py` default to `--blocks 0` (identity).
+Use `--blocks 0 32 128` explicitly to reproduce the three-way ablation, or
+`--blocks 128` for H128 only. These are conversion/experiment options, not a
+runtime switch for existing weights. Already rotated weights must be re-encoded
+without rotation before disabling their matching activation transform.
 
 The complete published `jarrelscy/GLM-5.3-Vision-NVFP4-ARVQ-hybrid` checkpoint
 is **unrotated**. The H128 files are standalone tuning samples for layer 3,
@@ -134,8 +140,6 @@ portable scripts: imports, paths, help handling, and formatting were adapted
 without changing numerical operations. No production weights or serving
 configuration were changed to enable rotation.
 
-Next quality experiment: train the selected H128 variant from the matching
-original donor with real activation calibration and measure held-out loss.
-An identity control remains useful for research. Selecting the format is not
-an accuracy claim; production conversion and loader integration remain separate
-work from this prototype.
+Active tuning should use unrotated ARVQ (`b0` / identity). Do not use the H32/H128
+sample weights for the production checkpoint. Their matching activation transform
+is required to interpret those historical artifacts correctly.

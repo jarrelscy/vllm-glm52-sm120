@@ -1,0 +1,275 @@
+{
+  "source": {
+    "scope": "final repo runtime C/N direct output ON vs OFF, gate+scatter ON both, unchanged weights and shared8"
+  },
+  "checkpoint": "/lab/arvq_8x8_experiment/initial_fit_layer3",
+  "tp_rank": 3,
+  "scope": "Complete real8+8 grouped/compact layer3 including CPU synchronization, fused cold gather/route sum and register-eight-pair hot on both arms; no TP collective. Both arms retain qualified cold activation and shared8 hot; only cold output scatter is changed; native cold decoding is identical.",
+  "sort": "0",
+  "results": [
+    {
+      "tokens": 2048,
+      "case": "mixed",
+      "bitwise_int16_equal": true,
+      "median_ms": [
+        9.179248474538326,
+        9.189989417791367
+      ],
+      "samples_ms": [
+        [
+          9.31506510823965,
+          9.179248474538326,
+          9.1722896322608,
+          9.178698994219303,
+          9.195717982947826
+        ],
+        [
+          9.213848039507866,
+          9.317594580352306,
+          9.189989417791367,
+          9.184828959405422,
+          9.127611294388771
+        ]
+      ],
+      "speedup": 0.9988312344264242,
+      "memory": [
+        {
+          "incremental_peak_allocated_bytes": 483367424,
+          "incremental_peak_reserved_bytes": 488636416,
+          "total_peak_allocated_bytes": 1317677056,
+          "total_peak_reserved_bytes": 1377828864
+        },
+        {
+          "incremental_peak_allocated_bytes": 483367424,
+          "incremental_peak_reserved_bytes": 488636416,
+          "total_peak_allocated_bytes": 1317677056,
+          "total_peak_reserved_bytes": 1377828864
+        }
+      ],
+      "additional_peak_allocated_bytes": 0,
+      "serving_free_mib_supplied": null,
+      "headroom_assessment": "not qualified: actual loaded-server headroom not supplied",
+      "routed_bytes": 402653184
+    },
+    {
+      "tokens": 2048,
+      "case": "allhot",
+      "bitwise_int16_equal": true,
+      "median_ms": [
+        8.765831589698792,
+        8.755641989409924
+      ],
+      "samples_ms": [
+        [
+          8.832190185785294,
+          8.743053302168846,
+          8.745362050831318,
+          8.765831589698792,
+          8.771171793341637
+        ],
+        [
+          8.770172484219074,
+          8.755641989409924,
+          8.743923157453537,
+          8.772561326622963,
+          8.754563517868519
+        ]
+      ],
+      "speedup": 1.0011637753463645,
+      "memory": [
+        {
+          "incremental_peak_allocated_bytes": 483197952,
+          "incremental_peak_reserved_bytes": 488636416,
+          "total_peak_allocated_bytes": 1317505536,
+          "total_peak_reserved_bytes": 1361051648
+        },
+        {
+          "incremental_peak_allocated_bytes": 483197952,
+          "incremental_peak_reserved_bytes": 488636416,
+          "total_peak_allocated_bytes": 1317505536,
+          "total_peak_reserved_bytes": 1361051648
+        }
+      ],
+      "additional_peak_allocated_bytes": 0,
+      "serving_free_mib_supplied": null,
+      "headroom_assessment": "not qualified: actual loaded-server headroom not supplied",
+      "routed_bytes": 402653184
+    },
+    {
+      "tokens": 2048,
+      "case": "allcold",
+      "bitwise_int16_equal": true,
+      "median_ms": [
+        8.773242123425007,
+        8.754263631999493
+      ],
+      "samples_ms": [
+        [
+          8.989675901830196,
+          8.749373257160187,
+          8.773242123425007,
+          8.736962452530861,
+          8.774111978709698
+        ],
+        [
+          8.86284839361906,
+          8.780071511864662,
+          8.696693927049637,
+          8.6979353800416,
+          8.754263631999493
+        ]
+      ],
+      "speedup": 1.0021679140843032,
+      "memory": [
+        {
+          "incremental_peak_allocated_bytes": 428427776,
+          "incremental_peak_reserved_bytes": 429916160,
+          "total_peak_allocated_bytes": 1262735360,
+          "total_peak_reserved_bytes": 1302331392
+        },
+        {
+          "incremental_peak_allocated_bytes": 428427776,
+          "incremental_peak_reserved_bytes": 429916160,
+          "total_peak_allocated_bytes": 1262735360,
+          "total_peak_reserved_bytes": 1302331392
+        }
+      ],
+      "additional_peak_allocated_bytes": 0,
+      "serving_free_mib_supplied": null,
+      "headroom_assessment": "not qualified: actual loaded-server headroom not supplied",
+      "routed_bytes": 402653184
+    },
+    {
+      "tokens": 4096,
+      "case": "mixed",
+      "bitwise_int16_equal": true,
+      "median_ms": [
+        12.506583705544472,
+        12.108176946640015
+      ],
+      "samples_ms": [
+        [
+          12.506583705544472,
+          12.429727241396904,
+          12.416946701705456,
+          12.534243054687977,
+          12.718928046524525
+        ],
+        [
+          12.136225588619709,
+          12.098507024347782,
+          12.099717743694782,
+          12.108176946640015,
+          12.576201930642128
+        ]
+      ],
+      "speedup": 1.0329039425720494,
+      "memory": [
+        {
+          "incremental_peak_allocated_bytes": 886595584,
+          "incremental_peak_reserved_bytes": 809500672,
+          "total_peak_allocated_bytes": 1746267648,
+          "total_peak_reserved_bytes": 2051014656
+        },
+        {
+          "incremental_peak_allocated_bytes": 886595584,
+          "incremental_peak_reserved_bytes": 809500672,
+          "total_peak_allocated_bytes": 1746267648,
+          "total_peak_reserved_bytes": 2051014656
+        }
+      ],
+      "additional_peak_allocated_bytes": 0,
+      "serving_free_mib_supplied": null,
+      "headroom_assessment": "not qualified: actual loaded-server headroom not supplied",
+      "routed_bytes": 805306368
+    },
+    {
+      "tokens": 4096,
+      "case": "allhot",
+      "bitwise_int16_equal": true,
+      "median_ms": [
+        17.100890167057514,
+        17.53593608736992
+      ],
+      "samples_ms": [
+        [
+          16.984082758426666,
+          16.921695321798325,
+          17.100890167057514,
+          18.373449333012104,
+          18.56824290007353
+        ],
+        [
+          16.953522339463234,
+          16.93462487310171,
+          17.53593608736992,
+          18.068188801407814,
+          18.637260422110558
+        ]
+      ],
+      "speedup": 0.9751911778108189,
+      "memory": [
+        {
+          "incremental_peak_allocated_bytes": 886260736,
+          "incremental_peak_reserved_bytes": 809500672,
+          "total_peak_allocated_bytes": 1745930752,
+          "total_peak_reserved_bytes": 2051014656
+        },
+        {
+          "incremental_peak_allocated_bytes": 886260736,
+          "incremental_peak_reserved_bytes": 809500672,
+          "total_peak_allocated_bytes": 1745930752,
+          "total_peak_reserved_bytes": 2051014656
+        }
+      ],
+      "additional_peak_allocated_bytes": 0,
+      "serving_free_mib_supplied": null,
+      "headroom_assessment": "not qualified: actual loaded-server headroom not supplied",
+      "routed_bytes": 805306368
+    },
+    {
+      "tokens": 4096,
+      "case": "allcold",
+      "bitwise_int16_equal": true,
+      "median_ms": [
+        9.001355618238449,
+        9.02438536286354
+      ],
+      "samples_ms": [
+        [
+          9.170970879495144,
+          8.998136036098003,
+          9.009734727442265,
+          9.001355618238449,
+          8.997595869004726
+        ],
+        [
+          9.04955342411995,
+          9.02438536286354,
+          9.036564268171787,
+          9.00682620704174,
+          8.956126868724823
+        ]
+      ],
+      "speedup": 0.9974480539450519,
+      "memory": [
+        {
+          "incremental_peak_allocated_bytes": 856852992,
+          "incremental_peak_reserved_bytes": 807403520,
+          "total_peak_allocated_bytes": 1716523008,
+          "total_peak_reserved_bytes": 2048917504
+        },
+        {
+          "incremental_peak_allocated_bytes": 856852992,
+          "incremental_peak_reserved_bytes": 807403520,
+          "total_peak_allocated_bytes": 1716523008,
+          "total_peak_reserved_bytes": 2048917504
+        }
+      ],
+      "additional_peak_allocated_bytes": 0,
+      "serving_free_mib_supplied": null,
+      "headroom_assessment": "not qualified: actual loaded-server headroom not supplied",
+      "routed_bytes": 805306368
+    }
+  ]
+}

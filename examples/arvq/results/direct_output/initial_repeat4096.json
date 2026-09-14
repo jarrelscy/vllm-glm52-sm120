@@ -1,0 +1,163 @@
+{
+  "source": {
+    "baseline": "/home/jarrelscy/homeassistant/cold-format-lab/register8_shared_activation_experiment/candidate_helper.py",
+    "baseline_sha256": "bf8efe972b4baf7acf22ba790b86ac0d9cc782a29c227e71cc6b55d0c598613e",
+    "status": "CPU prepared; not GPU qualified"
+  },
+  "checkpoint": "/lab/arvq_8x8_experiment/initial_fit_layer3",
+  "tp_rank": 3,
+  "scope": "Complete real8+8 grouped/compact layer3 including CPU synchronization, fused cold gather/route sum and register-eight-pair hot on both arms; no TP collective. Both arms retain qualified cold activation; candidate writes cold GEMM results directly into expert-major routed storage, then inverse-maps exact top-k summation; both arms use eight-row shared activation.",
+  "sort": "0",
+  "results": [
+    {
+      "tokens": 4096,
+      "case": "allhot",
+      "bitwise_int16_equal": true,
+      "median_ms": [
+        18.817429896444082,
+        18.88818945735693
+      ],
+      "samples_ms": [
+        [
+          17.24201627075672,
+          17.126135528087616,
+          17.20691565424204,
+          18.646138720214367,
+          18.830799497663975,
+          18.80406029522419,
+          18.772128969430923,
+          18.9733998849988,
+          19.01737041771412,
+          19.076240248978138,
+          19.104150123894215,
+          19.080109894275665
+        ],
+        [
+          17.166055738925934,
+          17.136226408183575,
+          17.53872726112604,
+          18.367129378020763,
+          18.894040025770664,
+          18.882338888943195,
+          18.84298026561737,
+          18.910279497504234,
+          19.040290266275406,
+          19.05420981347561,
+          19.10089049488306,
+          19.085259176790714
+        ]
+      ],
+      "speedup": 0.9962537668804838,
+      "memory": [
+        {
+          "incremental_peak_allocated_bytes": 899589120,
+          "incremental_peak_reserved_bytes": 893386752,
+          "total_peak_allocated_bytes": 1759259136,
+          "total_peak_reserved_bytes": 1828716544
+        },
+        {
+          "incremental_peak_allocated_bytes": 899589120,
+          "incremental_peak_reserved_bytes": 893386752,
+          "total_peak_allocated_bytes": 1759259136,
+          "total_peak_reserved_bytes": 1828716544
+        }
+      ],
+      "additional_peak_allocated_bytes": 0,
+      "serving_free_mib_supplied": null,
+      "headroom_assessment": "not qualified: actual loaded-server headroom not supplied",
+      "routed_bytes": 805306368
+    },
+    {
+      "tokens": 4096,
+      "case": "mixed",
+      "bitwise_int16_equal": true,
+      "median_ms": [
+        14.851225074380636,
+        14.003559481352568
+      ],
+      "samples_ms": [
+        [
+          13.97858839482069,
+          13.92338890582323,
+          13.916028663516045,
+          14.154310338199139,
+          14.488049782812595,
+          14.853039756417274,
+          14.888981357216835,
+          14.849410392343998,
+          14.876531437039375,
+          14.939931221306324,
+          14.976399950683117,
+          15.039061196148396
+        ],
+        [
+          13.156036846339703,
+          13.104436919093132,
+          13.12737725675106,
+          13.109896332025528,
+          13.815238140523434,
+          13.963970355689526,
+          14.059669338166714,
+          14.043459668755531,
+          14.04314860701561,
+          14.058520086109638,
+          14.1978794708848,
+          14.24369029700756
+        ]
+      ],
+      "speedup": 1.0605321521400926,
+      "memory": [
+        {
+          "incremental_peak_allocated_bytes": 899923456,
+          "incremental_peak_reserved_bytes": 943718400,
+          "total_peak_allocated_bytes": 1759595520,
+          "total_peak_reserved_bytes": 1828716544
+        },
+        {
+          "incremental_peak_allocated_bytes": 899923456,
+          "incremental_peak_reserved_bytes": 943718400,
+          "total_peak_allocated_bytes": 1759595520,
+          "total_peak_reserved_bytes": 1828716544
+        }
+      ],
+      "additional_peak_allocated_bytes": 0,
+      "serving_free_mib_supplied": null,
+      "headroom_assessment": "not qualified: actual loaded-server headroom not supplied",
+      "routed_bytes": 805306368
+    }
+  ],
+  "direct_mm_fp32_oracle": [
+    {
+      "m": 1,
+      "equal": true
+    },
+    {
+      "m": 32,
+      "equal": true
+    },
+    {
+      "m": 33,
+      "equal": true
+    },
+    {
+      "m": 64,
+      "equal": true
+    },
+    {
+      "m": 65,
+      "equal": true
+    },
+    {
+      "m": 128,
+      "equal": true
+    },
+    {
+      "m": 129,
+      "equal": true
+    },
+    {
+      "m": 257,
+      "equal": true
+    }
+  ]
+}

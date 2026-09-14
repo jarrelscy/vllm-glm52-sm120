@@ -1,0 +1,68 @@
+[
+  {
+    "cache_entries": {
+      "inverse_kernel": 1,
+      "scatter_kernel": 1
+    },
+    "cold": 1,
+    "rows": 1,
+    "inverse_bits": true,
+    "scatter_raw_bits": true,
+    "graph": true
+  },
+  {
+    "cache_entries": {
+      "inverse_kernel": 1,
+      "scatter_kernel": 1
+    },
+    "cold": 16384,
+    "rows": 1024,
+    "inverse_bits": true,
+    "scatter_raw_bits": true,
+    "graph": true
+  },
+  {
+    "cache_entries": {
+      "inverse_kernel": 1,
+      "scatter_kernel": 1
+    },
+    "cold": 20001,
+    "rows": 731,
+    "inverse_bits": true,
+    "scatter_raw_bits": true,
+    "graph": true
+  },
+  {
+    "cache_entries": {
+      "inverse_kernel": 1,
+      "scatter_kernel": 1
+    },
+    "cold": 24576,
+    "rows": 512,
+    "inverse_bits": true,
+    "scatter_raw_bits": true,
+    "graph": true
+  },
+  {
+    "cache_entries": {
+      "inverse_kernel": 1,
+      "scatter_kernel": 1
+    },
+    "cold": 30003,
+    "rows": 117,
+    "inverse_bits": true,
+    "scatter_raw_bits": true,
+    "graph": true
+  },
+  {
+    "cache_entries": {
+      "inverse_kernel": 1,
+      "scatter_kernel": 1
+    },
+    "cold": 32768,
+    "rows": 32,
+    "inverse_bits": true,
+    "scatter_raw_bits": true,
+    "graph": true
+  }
+]

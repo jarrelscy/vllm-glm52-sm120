@@ -1,0 +1,1733 @@
+{
+  "torch_version": "2.11.0+cu130",
+  "rows": [
+    {
+      "projection": "gateup",
+      "m": 32,
+      "n": 1024,
+      "k": 6144,
+      "fp32_bits_equal": true,
+      "kernel_sequences_equal": true,
+      "regular": [
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_64x64_32x6_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_64x64_32x6_tn_align8::Params)",
+          "grid": [
+            8,
+            2,
+            20
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 49152
+        },
+        {
+          "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, float, float, float, false, float, float, float, true, false, false, false>(cublasLt::cublasSplitKParams<float>, float const*, float const*, float*, float*, float const*, float const*, float const*, float const*, float*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+          "grid": [
+            32,
+            2,
+            1
+          ],
+          "block": [
+            32,
+            16,
+            1
+          ],
+          "shared": 0
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_64x64_32x6_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_64x64_32x6_tn_align8::Params)",
+          "grid": [
+            8,
+            2,
+            20
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 49152
+        },
+        {
+          "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, float, float, float, false, float, float, float, true, false, false, false>(cublasLt::cublasSplitKParams<float>, float const*, float const*, float*, float*, float const*, float const*, float const*, float const*, float*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+          "grid": [
+            32,
+            2,
+            1
+          ],
+          "block": [
+            32,
+            16,
+            1
+          ],
+          "shared": 0
+        }
+      ],
+      "direct": [
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_64x64_32x6_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_64x64_32x6_tn_align8::Params)",
+          "grid": [
+            8,
+            2,
+            20
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 49152
+        },
+        {
+          "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, float, float, float, false, float, float, float, true, false, false, false>(cublasLt::cublasSplitKParams<float>, float const*, float const*, float*, float*, float const*, float const*, float const*, float const*, float*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+          "grid": [
+            32,
+            2,
+            1
+          ],
+          "block": [
+            32,
+            16,
+            1
+          ],
+          "shared": 0
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_64x64_32x6_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_64x64_32x6_tn_align8::Params)",
+          "grid": [
+            8,
+            2,
+            20
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 49152
+        },
+        {
+          "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, float, float, float, false, float, float, float, true, false, false, false>(cublasLt::cublasSplitKParams<float>, float const*, float const*, float*, float*, float const*, float const*, float const*, float const*, float*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+          "grid": [
+            32,
+            2,
+            1
+          ],
+          "block": [
+            32,
+            16,
+            1
+          ],
+          "shared": 0
+        }
+      ]
+    },
+    {
+      "projection": "gateup",
+      "m": 33,
+      "n": 1024,
+      "k": 6144,
+      "fp32_bits_equal": true,
+      "kernel_sequences_equal": true,
+      "regular": [
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x64_64x3_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x64_64x3_tn_align8::Params)",
+          "grid": [
+            8,
+            1,
+            16
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 73728
+        },
+        {
+          "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, float, float, float, false, float, float, float, true, false, false, false>(cublasLt::cublasSplitKParams<float>, float const*, float const*, float*, float*, float const*, float const*, float const*, float const*, float*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+          "grid": [
+            32,
+            3,
+            1
+          ],
+          "block": [
+            32,
+            16,
+            1
+          ],
+          "shared": 0
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x64_64x3_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x64_64x3_tn_align8::Params)",
+          "grid": [
+            8,
+            1,
+            16
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 73728
+        },
+        {
+          "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, float, float, float, false, float, float, float, true, false, false, false>(cublasLt::cublasSplitKParams<float>, float const*, float const*, float*, float*, float const*, float const*, float const*, float const*, float*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+          "grid": [
+            32,
+            3,
+            1
+          ],
+          "block": [
+            32,
+            16,
+            1
+          ],
+          "shared": 0
+        }
+      ],
+      "direct": [
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x64_64x3_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x64_64x3_tn_align8::Params)",
+          "grid": [
+            8,
+            1,
+            16
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 73728
+        },
+        {
+          "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, float, float, float, false, float, float, float, true, false, false, false>(cublasLt::cublasSplitKParams<float>, float const*, float const*, float*, float*, float const*, float const*, float const*, float const*, float*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+          "grid": [
+            32,
+            3,
+            1
+          ],
+          "block": [
+            32,
+            16,
+            1
+          ],
+          "shared": 0
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x64_64x3_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x64_64x3_tn_align8::Params)",
+          "grid": [
+            8,
+            1,
+            16
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 73728
+        },
+        {
+          "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, float, float, float, false, float, float, float, true, false, false, false>(cublasLt::cublasSplitKParams<float>, float const*, float const*, float*, float*, float const*, float const*, float const*, float const*, float*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+          "grid": [
+            32,
+            3,
+            1
+          ],
+          "block": [
+            32,
+            16,
+            1
+          ],
+          "shared": 0
+        }
+      ]
+    },
+    {
+      "projection": "gateup",
+      "m": 64,
+      "n": 1024,
+      "k": 6144,
+      "fp32_bits_equal": true,
+      "kernel_sequences_equal": true,
+      "regular": [
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x64_64x3_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x64_64x3_tn_align8::Params)",
+          "grid": [
+            8,
+            1,
+            16
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 73728
+        },
+        {
+          "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, float, float, float, false, float, float, float, true, false, false, false>(cublasLt::cublasSplitKParams<float>, float const*, float const*, float*, float*, float const*, float const*, float const*, float const*, float*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+          "grid": [
+            32,
+            4,
+            1
+          ],
+          "block": [
+            32,
+            16,
+            1
+          ],
+          "shared": 0
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x64_64x3_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x64_64x3_tn_align8::Params)",
+          "grid": [
+            8,
+            1,
+            16
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 73728
+        },
+        {
+          "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, float, float, float, false, float, float, float, true, false, false, false>(cublasLt::cublasSplitKParams<float>, float const*, float const*, float*, float*, float const*, float const*, float const*, float const*, float*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+          "grid": [
+            32,
+            4,
+            1
+          ],
+          "block": [
+            32,
+            16,
+            1
+          ],
+          "shared": 0
+        }
+      ],
+      "direct": [
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x64_64x3_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x64_64x3_tn_align8::Params)",
+          "grid": [
+            8,
+            1,
+            16
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 73728
+        },
+        {
+          "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, float, float, float, false, float, float, float, true, false, false, false>(cublasLt::cublasSplitKParams<float>, float const*, float const*, float*, float*, float const*, float const*, float const*, float const*, float*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+          "grid": [
+            32,
+            4,
+            1
+          ],
+          "block": [
+            32,
+            16,
+            1
+          ],
+          "shared": 0
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x64_64x3_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x64_64x3_tn_align8::Params)",
+          "grid": [
+            8,
+            1,
+            16
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 73728
+        },
+        {
+          "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, float, float, float, false, float, float, float, true, false, false, false>(cublasLt::cublasSplitKParams<float>, float const*, float const*, float*, float*, float const*, float const*, float const*, float const*, float*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+          "grid": [
+            32,
+            4,
+            1
+          ],
+          "block": [
+            32,
+            16,
+            1
+          ],
+          "shared": 0
+        }
+      ]
+    },
+    {
+      "projection": "gateup",
+      "m": 65,
+      "n": 1024,
+      "k": 6144,
+      "fp32_bits_equal": true,
+      "kernel_sequences_equal": true,
+      "regular": [
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8::Params)",
+          "grid": [
+            8,
+            1,
+            16
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 65536
+        },
+        {
+          "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, float, float, float, false, float, float, float, true, false, false, false>(cublasLt::cublasSplitKParams<float>, float const*, float const*, float*, float*, float const*, float const*, float const*, float const*, float*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+          "grid": [
+            32,
+            5,
+            1
+          ],
+          "block": [
+            32,
+            16,
+            1
+          ],
+          "shared": 0
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8::Params)",
+          "grid": [
+            8,
+            1,
+            16
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 65536
+        },
+        {
+          "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, float, float, float, false, float, float, float, true, false, false, false>(cublasLt::cublasSplitKParams<float>, float const*, float const*, float*, float*, float const*, float const*, float const*, float const*, float*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+          "grid": [
+            32,
+            5,
+            1
+          ],
+          "block": [
+            32,
+            16,
+            1
+          ],
+          "shared": 0
+        }
+      ],
+      "direct": [
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8::Params)",
+          "grid": [
+            8,
+            1,
+            16
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 65536
+        },
+        {
+          "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, float, float, float, false, float, float, float, true, false, false, false>(cublasLt::cublasSplitKParams<float>, float const*, float const*, float*, float*, float const*, float const*, float const*, float const*, float*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+          "grid": [
+            32,
+            5,
+            1
+          ],
+          "block": [
+            32,
+            16,
+            1
+          ],
+          "shared": 0
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8::Params)",
+          "grid": [
+            8,
+            1,
+            16
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 65536
+        },
+        {
+          "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, float, float, float, false, float, float, float, true, false, false, false>(cublasLt::cublasSplitKParams<float>, float const*, float const*, float*, float*, float const*, float const*, float const*, float const*, float*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+          "grid": [
+            32,
+            5,
+            1
+          ],
+          "block": [
+            32,
+            16,
+            1
+          ],
+          "shared": 0
+        }
+      ]
+    },
+    {
+      "projection": "gateup",
+      "m": 127,
+      "n": 1024,
+      "k": 6144,
+      "fp32_bits_equal": true,
+      "kernel_sequences_equal": true,
+      "regular": [
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8::Params)",
+          "grid": [
+            8,
+            1,
+            16
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 65536
+        },
+        {
+          "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, float, float, float, false, float, float, float, true, false, false, false>(cublasLt::cublasSplitKParams<float>, float const*, float const*, float*, float*, float const*, float const*, float const*, float const*, float*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+          "grid": [
+            32,
+            8,
+            1
+          ],
+          "block": [
+            32,
+            16,
+            1
+          ],
+          "shared": 0
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8::Params)",
+          "grid": [
+            8,
+            1,
+            16
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 65536
+        },
+        {
+          "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, float, float, float, false, float, float, float, true, false, false, false>(cublasLt::cublasSplitKParams<float>, float const*, float const*, float*, float*, float const*, float const*, float const*, float const*, float*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+          "grid": [
+            32,
+            8,
+            1
+          ],
+          "block": [
+            32,
+            16,
+            1
+          ],
+          "shared": 0
+        }
+      ],
+      "direct": [
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8::Params)",
+          "grid": [
+            8,
+            1,
+            16
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 65536
+        },
+        {
+          "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, float, float, float, false, float, float, float, true, false, false, false>(cublasLt::cublasSplitKParams<float>, float const*, float const*, float*, float*, float const*, float const*, float const*, float const*, float*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+          "grid": [
+            32,
+            8,
+            1
+          ],
+          "block": [
+            32,
+            16,
+            1
+          ],
+          "shared": 0
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8::Params)",
+          "grid": [
+            8,
+            1,
+            16
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 65536
+        },
+        {
+          "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, float, float, float, false, float, float, float, true, false, false, false>(cublasLt::cublasSplitKParams<float>, float const*, float const*, float*, float*, float const*, float const*, float const*, float const*, float*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+          "grid": [
+            32,
+            8,
+            1
+          ],
+          "block": [
+            32,
+            16,
+            1
+          ],
+          "shared": 0
+        }
+      ]
+    },
+    {
+      "projection": "gateup",
+      "m": 128,
+      "n": 1024,
+      "k": 6144,
+      "fp32_bits_equal": true,
+      "kernel_sequences_equal": true,
+      "regular": [
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8::Params)",
+          "grid": [
+            8,
+            1,
+            16
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 65536
+        },
+        {
+          "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, float, float, float, false, float, float, float, true, false, false, false>(cublasLt::cublasSplitKParams<float>, float const*, float const*, float*, float*, float const*, float const*, float const*, float const*, float*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+          "grid": [
+            32,
+            8,
+            1
+          ],
+          "block": [
+            32,
+            16,
+            1
+          ],
+          "shared": 0
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8::Params)",
+          "grid": [
+            8,
+            1,
+            16
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 65536
+        },
+        {
+          "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, float, float, float, false, float, float, float, true, false, false, false>(cublasLt::cublasSplitKParams<float>, float const*, float const*, float*, float*, float const*, float const*, float const*, float const*, float*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+          "grid": [
+            32,
+            8,
+            1
+          ],
+          "block": [
+            32,
+            16,
+            1
+          ],
+          "shared": 0
+        }
+      ],
+      "direct": [
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8::Params)",
+          "grid": [
+            8,
+            1,
+            16
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 65536
+        },
+        {
+          "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, float, float, float, false, float, float, float, true, false, false, false>(cublasLt::cublasSplitKParams<float>, float const*, float const*, float*, float*, float const*, float const*, float const*, float const*, float*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+          "grid": [
+            32,
+            8,
+            1
+          ],
+          "block": [
+            32,
+            16,
+            1
+          ],
+          "shared": 0
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8::Params)",
+          "grid": [
+            8,
+            1,
+            16
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 65536
+        },
+        {
+          "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, float, float, float, false, float, float, float, true, false, false, false>(cublasLt::cublasSplitKParams<float>, float const*, float const*, float*, float*, float const*, float const*, float const*, float const*, float*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+          "grid": [
+            32,
+            8,
+            1
+          ],
+          "block": [
+            32,
+            16,
+            1
+          ],
+          "shared": 0
+        }
+      ]
+    },
+    {
+      "projection": "gateup",
+      "m": 129,
+      "n": 1024,
+      "k": 6144,
+      "fp32_bits_equal": true,
+      "kernel_sequences_equal": true,
+      "regular": [
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x128_32x5_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x128_32x5_tn_align8::Params)",
+          "grid": [
+            16,
+            1,
+            11
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 81920
+        },
+        {
+          "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, float, float, float, false, float, float, float, true, false, false, false>(cublasLt::cublasSplitKParams<float>, float const*, float const*, float*, float*, float const*, float const*, float const*, float const*, float*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+          "grid": [
+            32,
+            9,
+            1
+          ],
+          "block": [
+            32,
+            16,
+            1
+          ],
+          "shared": 0
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x128_32x5_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x128_32x5_tn_align8::Params)",
+          "grid": [
+            16,
+            1,
+            11
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 81920
+        },
+        {
+          "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, float, float, float, false, float, float, float, true, false, false, false>(cublasLt::cublasSplitKParams<float>, float const*, float const*, float*, float*, float const*, float const*, float const*, float const*, float*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+          "grid": [
+            32,
+            9,
+            1
+          ],
+          "block": [
+            32,
+            16,
+            1
+          ],
+          "shared": 0
+        }
+      ],
+      "direct": [
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x128_32x5_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x128_32x5_tn_align8::Params)",
+          "grid": [
+            16,
+            1,
+            11
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 81920
+        },
+        {
+          "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, float, float, float, false, float, float, float, true, false, false, false>(cublasLt::cublasSplitKParams<float>, float const*, float const*, float*, float*, float const*, float const*, float const*, float const*, float*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+          "grid": [
+            32,
+            9,
+            1
+          ],
+          "block": [
+            32,
+            16,
+            1
+          ],
+          "shared": 0
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x128_32x5_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x128_32x5_tn_align8::Params)",
+          "grid": [
+            16,
+            1,
+            11
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 81920
+        },
+        {
+          "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, float, float, float, false, float, float, float, true, false, false, false>(cublasLt::cublasSplitKParams<float>, float const*, float const*, float*, float*, float const*, float const*, float const*, float const*, float*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+          "grid": [
+            32,
+            9,
+            1
+          ],
+          "block": [
+            32,
+            16,
+            1
+          ],
+          "shared": 0
+        }
+      ]
+    },
+    {
+      "projection": "gateup",
+      "m": 192,
+      "n": 1024,
+      "k": 6144,
+      "fp32_bits_equal": true,
+      "kernel_sequences_equal": true,
+      "regular": [
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x128_64x3_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x128_64x3_tn_align8::Params)",
+          "grid": [
+            16,
+            1,
+            10
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 98304
+        },
+        {
+          "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, float, float, float, false, float, float, float, true, false, false, false>(cublasLt::cublasSplitKParams<float>, float const*, float const*, float*, float*, float const*, float const*, float const*, float const*, float*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+          "grid": [
+            32,
+            12,
+            1
+          ],
+          "block": [
+            32,
+            16,
+            1
+          ],
+          "shared": 0
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x128_64x3_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x128_64x3_tn_align8::Params)",
+          "grid": [
+            16,
+            1,
+            10
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 98304
+        },
+        {
+          "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, float, float, float, false, float, float, float, true, false, false, false>(cublasLt::cublasSplitKParams<float>, float const*, float const*, float*, float*, float const*, float const*, float const*, float const*, float*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+          "grid": [
+            32,
+            12,
+            1
+          ],
+          "block": [
+            32,
+            16,
+            1
+          ],
+          "shared": 0
+        }
+      ],
+      "direct": [
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x128_64x3_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x128_64x3_tn_align8::Params)",
+          "grid": [
+            16,
+            1,
+            10
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 98304
+        },
+        {
+          "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, float, float, float, false, float, float, float, true, false, false, false>(cublasLt::cublasSplitKParams<float>, float const*, float const*, float*, float*, float const*, float const*, float const*, float const*, float*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+          "grid": [
+            32,
+            12,
+            1
+          ],
+          "block": [
+            32,
+            16,
+            1
+          ],
+          "shared": 0
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x128_64x3_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x128_64x3_tn_align8::Params)",
+          "grid": [
+            16,
+            1,
+            10
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 98304
+        },
+        {
+          "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, float, float, float, false, float, float, float, true, false, false, false>(cublasLt::cublasSplitKParams<float>, float const*, float const*, float*, float*, float const*, float const*, float const*, float const*, float*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+          "grid": [
+            32,
+            12,
+            1
+          ],
+          "block": [
+            32,
+            16,
+            1
+          ],
+          "shared": 0
+        }
+      ]
+    },
+    {
+      "projection": "gateup",
+      "m": 257,
+      "n": 1024,
+      "k": 6144,
+      "fp32_bits_equal": true,
+      "kernel_sequences_equal": true,
+      "regular": [
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8::Params)",
+          "grid": [
+            24,
+            1,
+            7
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 65536
+        },
+        {
+          "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, float, float, float, false, float, float, float, true, false, false, false>(cublasLt::cublasSplitKParams<float>, float const*, float const*, float*, float*, float const*, float const*, float const*, float const*, float*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+          "grid": [
+            32,
+            17,
+            1
+          ],
+          "block": [
+            32,
+            16,
+            1
+          ],
+          "shared": 0
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8::Params)",
+          "grid": [
+            24,
+            1,
+            7
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 65536
+        },
+        {
+          "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, float, float, float, false, float, float, float, true, false, false, false>(cublasLt::cublasSplitKParams<float>, float const*, float const*, float*, float*, float const*, float const*, float const*, float const*, float*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+          "grid": [
+            32,
+            17,
+            1
+          ],
+          "block": [
+            32,
+            16,
+            1
+          ],
+          "shared": 0
+        }
+      ],
+      "direct": [
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8::Params)",
+          "grid": [
+            24,
+            1,
+            7
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 65536
+        },
+        {
+          "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, float, float, float, false, float, float, float, true, false, false, false>(cublasLt::cublasSplitKParams<float>, float const*, float const*, float*, float*, float const*, float const*, float const*, float const*, float*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+          "grid": [
+            32,
+            17,
+            1
+          ],
+          "block": [
+            32,
+            16,
+            1
+          ],
+          "shared": 0
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8::Params)",
+          "grid": [
+            24,
+            1,
+            7
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 65536
+        },
+        {
+          "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, float, float, float, false, float, float, float, true, false, false, false>(cublasLt::cublasSplitKParams<float>, float const*, float const*, float*, float*, float const*, float const*, float const*, float const*, float*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+          "grid": [
+            32,
+            17,
+            1
+          ],
+          "block": [
+            32,
+            16,
+            1
+          ],
+          "shared": 0
+        }
+      ]
+    },
+    {
+      "projection": "down",
+      "m": 32,
+      "n": 6144,
+      "k": 512,
+      "fp32_bits_equal": true,
+      "kernel_sequences_equal": true,
+      "regular": [
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_wmma_tensorop_s161616gemm_f16_32x32_128x1_tn_align8>(cutlass_80_wmma_tensorop_s161616gemm_f16_32x32_128x1_tn_align8::Params)",
+          "grid": [
+            8,
+            24,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 17408
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_wmma_tensorop_s161616gemm_f16_32x32_128x1_tn_align8>(cutlass_80_wmma_tensorop_s161616gemm_f16_32x32_128x1_tn_align8::Params)",
+          "grid": [
+            8,
+            24,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 17408
+        }
+      ],
+      "direct": [
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_wmma_tensorop_s161616gemm_f16_32x32_128x1_tn_align8>(cutlass_80_wmma_tensorop_s161616gemm_f16_32x32_128x1_tn_align8::Params)",
+          "grid": [
+            8,
+            24,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 17408
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_wmma_tensorop_s161616gemm_f16_32x32_128x1_tn_align8>(cutlass_80_wmma_tensorop_s161616gemm_f16_32x32_128x1_tn_align8::Params)",
+          "grid": [
+            8,
+            24,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 17408
+        }
+      ]
+    },
+    {
+      "projection": "down",
+      "m": 33,
+      "n": 6144,
+      "k": 512,
+      "fp32_bits_equal": true,
+      "kernel_sequences_equal": true,
+      "regular": [
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_64x64_32x6_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_64x64_32x6_tn_align8::Params)",
+          "grid": [
+            8,
+            12,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 49152
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_64x64_32x6_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_64x64_32x6_tn_align8::Params)",
+          "grid": [
+            8,
+            12,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 49152
+        }
+      ],
+      "direct": [
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_64x64_32x6_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_64x64_32x6_tn_align8::Params)",
+          "grid": [
+            8,
+            12,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 49152
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_64x64_32x6_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_64x64_32x6_tn_align8::Params)",
+          "grid": [
+            8,
+            12,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 49152
+        }
+      ]
+    },
+    {
+      "projection": "down",
+      "m": 64,
+      "n": 6144,
+      "k": 512,
+      "fp32_bits_equal": true,
+      "kernel_sequences_equal": true,
+      "regular": [
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_64x64_32x6_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_64x64_32x6_tn_align8::Params)",
+          "grid": [
+            8,
+            12,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 49152
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_64x64_32x6_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_64x64_32x6_tn_align8::Params)",
+          "grid": [
+            8,
+            12,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 49152
+        }
+      ],
+      "direct": [
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_64x64_32x6_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_64x64_32x6_tn_align8::Params)",
+          "grid": [
+            8,
+            12,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 49152
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_64x64_32x6_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_64x64_32x6_tn_align8::Params)",
+          "grid": [
+            8,
+            12,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 49152
+        }
+      ]
+    },
+    {
+      "projection": "down",
+      "m": 65,
+      "n": 6144,
+      "k": 512,
+      "fp32_bits_equal": true,
+      "kernel_sequences_equal": true,
+      "regular": [
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x64_64x4_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x64_64x4_tn_align8::Params)",
+          "grid": [
+            16,
+            6,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 98304
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x64_64x4_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x64_64x4_tn_align8::Params)",
+          "grid": [
+            16,
+            6,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 98304
+        }
+      ],
+      "direct": [
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x64_64x4_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x64_64x4_tn_align8::Params)",
+          "grid": [
+            16,
+            6,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 98304
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x64_64x4_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x64_64x4_tn_align8::Params)",
+          "grid": [
+            16,
+            6,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 98304
+        }
+      ]
+    },
+    {
+      "projection": "down",
+      "m": 127,
+      "n": 6144,
+      "k": 512,
+      "fp32_bits_equal": true,
+      "kernel_sequences_equal": true,
+      "regular": [
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x64_32x6_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x64_32x6_tn_align8::Params)",
+          "grid": [
+            16,
+            6,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 73728
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x64_32x6_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x64_32x6_tn_align8::Params)",
+          "grid": [
+            16,
+            6,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 73728
+        }
+      ],
+      "direct": [
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x64_32x6_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x64_32x6_tn_align8::Params)",
+          "grid": [
+            16,
+            6,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 73728
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x64_32x6_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x64_32x6_tn_align8::Params)",
+          "grid": [
+            16,
+            6,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 73728
+        }
+      ]
+    },
+    {
+      "projection": "down",
+      "m": 128,
+      "n": 6144,
+      "k": 512,
+      "fp32_bits_equal": true,
+      "kernel_sequences_equal": true,
+      "regular": [
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x64_32x6_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x64_32x6_tn_align8::Params)",
+          "grid": [
+            16,
+            6,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 73728
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x64_32x6_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x64_32x6_tn_align8::Params)",
+          "grid": [
+            16,
+            6,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 73728
+        }
+      ],
+      "direct": [
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x64_32x6_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x64_32x6_tn_align8::Params)",
+          "grid": [
+            16,
+            6,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 73728
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x64_32x6_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x64_32x6_tn_align8::Params)",
+          "grid": [
+            16,
+            6,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 73728
+        }
+      ]
+    },
+    {
+      "projection": "down",
+      "m": 129,
+      "n": 6144,
+      "k": 512,
+      "fp32_bits_equal": true,
+      "kernel_sequences_equal": true,
+      "regular": [
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x64_64x4_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x64_64x4_tn_align8::Params)",
+          "grid": [
+            24,
+            6,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 98304
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x64_64x4_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x64_64x4_tn_align8::Params)",
+          "grid": [
+            24,
+            6,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 98304
+        }
+      ],
+      "direct": [
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x64_64x4_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x64_64x4_tn_align8::Params)",
+          "grid": [
+            24,
+            6,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 98304
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x64_64x4_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x64_64x4_tn_align8::Params)",
+          "grid": [
+            24,
+            6,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 98304
+        }
+      ]
+    },
+    {
+      "projection": "down",
+      "m": 192,
+      "n": 6144,
+      "k": 512,
+      "fp32_bits_equal": true,
+      "kernel_sequences_equal": true,
+      "regular": [
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x64_64x4_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x64_64x4_tn_align8::Params)",
+          "grid": [
+            24,
+            6,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 98304
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x64_64x4_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x64_64x4_tn_align8::Params)",
+          "grid": [
+            24,
+            6,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 98304
+        }
+      ],
+      "direct": [
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x64_64x4_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x64_64x4_tn_align8::Params)",
+          "grid": [
+            24,
+            6,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 98304
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x64_64x4_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x64_64x4_tn_align8::Params)",
+          "grid": [
+            24,
+            6,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 98304
+        }
+      ]
+    },
+    {
+      "projection": "down",
+      "m": 257,
+      "n": 6144,
+      "k": 512,
+      "fp32_bits_equal": true,
+      "kernel_sequences_equal": true,
+      "regular": [
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8::Params)",
+          "grid": [
+            24,
+            6,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 65536
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8::Params)",
+          "grid": [
+            24,
+            6,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 65536
+        }
+      ],
+      "direct": [
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8::Params)",
+          "grid": [
+            24,
+            6,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 65536
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8>(cutlass_80_tensorop_s16816gemm_f16_128x128_32x4_tn_align8::Params)",
+          "grid": [
+            24,
+            6,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "shared": 65536
+        }
+      ]
+    }
+  ]
+}

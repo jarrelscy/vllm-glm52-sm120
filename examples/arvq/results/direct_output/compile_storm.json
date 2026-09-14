@@ -1,0 +1,13 @@
+{
+  "observed_unix": 1789418525.4656045,
+  "recent_600s_ttir_counts": {
+    "inverse_kernel.ttir": 1224,
+    "scatter_kernel.ttir": 928,
+    "kernel.ttir": 1,
+    "triton_poi_fused_add_index_select_mm_mul_slice_split_stack_sub_unsqueeze_view_5.ttir": 1,
+    "triton_red_fused_mm_rms_norm_split_with_sizes_t_5.ttir": 1,
+    "triton_red_fused_mm_rms_norm_split_with_sizes_t_4.ttir": 4,
+    "triton_poi_fused_0.ttir": 1
+  },
+  "diagnosis": "Direct-output inverse cold count C and scatter element count N are constexpr; specialize on routing-dependent values."
+}

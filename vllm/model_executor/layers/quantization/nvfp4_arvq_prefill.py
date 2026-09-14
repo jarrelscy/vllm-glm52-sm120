@@ -151,6 +151,32 @@ def grouped_cold_prefill(
         counts_cpu = []
         native_cold = cold_ids
 
+    inverse = None
+    if (
+        os.environ.get("VLLM_ARVQ_DIRECT_COLD_OUTPUT", "0") == "1"
+        and tokens == 4096
+        and n13 == 1024
+        and top_k == 8
+        and hidden == 6144
+        and chunk_tokens == 128
+        and x.is_cuda
+        and x.is_contiguous()
+        and x.dtype == torch.bfloat16
+        and topk_weights.dtype == torch.float32
+        and topk_weights.is_contiguous()
+        and _compact_prefill_enabled()
+        and os.environ.get("VLLM_ARVQ_FUSED_ROUTE_SUM", "0") == "1"
+        and 2 * cold_slots.numel() >= slots
+    ):
+        from vllm.model_executor.layers.quantization import (
+            nvfp4_arvq_direct_output as direct_output,
+        )
+
+        # Its last reader above has been queued on the same stream. Reuse the
+        # allocation only after native_cold has consumed local_ids completely.
+        inverse = local_ids.view(torch.int32)[:slots]
+        direct_output.make_inverse(inverse, cold_slots, sorted_slots, slots)
+
     # FP32 preserves the native hot outputs and final route-sum ordering.
     # T4096,H6144,top8 =>768MiB, without a full repeated-input allocation.
     routed = torch.empty((slots, hidden), device=x.device, dtype=torch.float32)
@@ -233,9 +259,16 @@ def grouped_cold_prefill(
                 ).half()
                 gate, up = h13.chunk(2, dim=-1)
                 act = (torch.nn.functional.silu(gate) * up).half()
-                routed[route_slots] = active_projection(
-                    act, cold, hot, tensors[6:], alphas[1], hidden, 2, 1
-                )
+                if inverse is None:
+                    routed[route_slots] = active_projection(
+                        act, cold, hot, tensors[6:], alphas[1], hidden, 2, 1
+                    )
+                else:
+                    native_out = active_projection(
+                        act, cold, hot, tensors[6:], alphas[1], hidden, 2, 1
+                    )
+                    direct_output.scatter(routed, route_slots, native_out, inverse)
+                    del native_out
     else:
         _native_prefill_routes(
             x,
@@ -255,7 +288,9 @@ def grouped_cold_prefill(
         nvfp4_arvq_cold_scatter as cold_scatter,
     )
 
-    scatter_cold = cold_scatter.prepare(x, sorted_slots, routed)
+    scatter_cold = (
+        cold_scatter.prepare(x, sorted_slots, routed) if inverse is None else None
+    )
     start = 0
     for expert, count in enumerate(counts_cpu):
         stop = start + count
@@ -311,13 +346,21 @@ def grouped_cold_prefill(
                 act = (torch.nn.functional.silu(gate) * up).to(torch.float16)
                 del h13, gate, up
             w2 = decode("w2", expert)
-            out = torch.mm(act, w2.T, out_dtype=torch.float32)
-            # Unique route destinations: no atomic accumulation or ordering race.
-            if scatter_cold is None:
-                routed[route_slots] = out
+            if inverse is None:
+                out = torch.mm(act, w2.T, out_dtype=torch.float32)
+                # Preserve the existing prepared batch-scatter fallback.
+                if scatter_cold is None:
+                    routed[route_slots] = out
+                else:
+                    scatter_cold(out, route_slots)
+                del out
             else:
-                scatter_cold(out, route_slots)
-            del act, w2, out
+                destination = routed[start:stop]
+                assert destination.is_contiguous()
+                assert destination.stride() == (hidden, 1)
+                torch.ops.aten.mm.dtype_out(act, w2.T, torch.float32, out=destination)
+                del destination
+            del act, w2
         start = stop
 
     if (
@@ -333,6 +376,8 @@ def grouped_cold_prefill(
     ):
         from vllm.model_executor.layers.quantization.nvfp4_arvq_route_sum import run
 
+        if inverse is not None:
+            return direct_output.sum_routes(routed, topk_weights, inverse, x.dtype)
         return run(routed, topk_weights, x.dtype)
 
     outputs = []

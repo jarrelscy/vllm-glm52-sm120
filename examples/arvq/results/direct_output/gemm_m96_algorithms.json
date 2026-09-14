@@ -1,0 +1,21 @@
+{
+  "calls": 24,
+  "distinct_descriptors": [
+    {
+      "Adesc": "type=R_16F rows=6144 cols=1024 ld=6144",
+      "Bdesc": "type=R_16F rows=6144 cols=96 ld=6144",
+      "Cdesc": "type=R_32F rows=1024 cols=96 ld=1024",
+      "Ddesc": "type=R_32F rows=1024 cols=96 ld=1024",
+      "computeDesc": "computeType=COMPUTE_32F scaleType=R_32F transa=OP_T smCountTarget=188",
+      "algo": "algoId=21 tile=MATMUL_TILE_128x128 stages=MATMUL_STAGES_32x4 reductionScheme=REDUCTION_SCHEME_OUTPUT_TYPE numSplitsK=18"
+    },
+    {
+      "Adesc": "type=R_16F rows=512 cols=6144 ld=512",
+      "Bdesc": "type=R_16F rows=512 cols=96 ld=512",
+      "Cdesc": "type=R_32F rows=6144 cols=96 ld=6144",
+      "Ddesc": "type=R_32F rows=6144 cols=96 ld=6144",
+      "computeDesc": "computeType=COMPUTE_32F scaleType=R_32F transa=OP_T smCountTarget=188",
+      "algo": "algoId=21 tile=MATMUL_TILE_128x64 stages=MATMUL_STAGES_64x4"
+    }
+  ]
+}

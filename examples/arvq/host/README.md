@@ -24,13 +24,29 @@ The override preserves the measured bind mounts and cache directories, builds
 `glm53-arvq-sm120:paired-compact`. Adjust these host paths for another machine.
 
 Settings: TP4 + DCP4, MTP three drafts, paired dense NVFP4 P4 through sixteen positions,
-CUDA graph sizes `[1,2,4,8,16]`, four requests, 4096 batched tokens, 950000 context
-limit, utilization 0.96, LMCache disabled, and the measured PCIe communication
-policy. Grouped cold prefill is enabled with `VLLM_ARVQ_GROUPED_PREFILL=1`
+CUDA graph sizes `[1,2,4,8,16,32]`, eight request slots, 4096 batched tokens,
+**1048576 total tokens per request**, utilization 0.94, and LMCache enabled.
+The measured PCIe communication policy is retained. The shared GPU KV capacity
+is **1073920 tokens**, not that capacity per request. LMCache uses the dedicated
+ARVQ directory, CPU24 GiB and disk100 GiB per worker, the DCP-aware V3 connector,
+256-token chunks, and stable hashing. Grouped cold prefill is enabled with `VLLM_ARVQ_GROUPED_PREFILL=1`
 for eligible batches of at least 2048 tokens, including startup memory profiling.
 Native route compaction is enabled with `VLLM_ARVQ_COMPACT_PREFILL=1`; dense
 pairing uses `VLLM_NVFP4_P4_PAIRED=1`. Both library defaults remain OFF.
 `PARALLEL=tp4-1m` can explicitly select the no-MTP mode.
+
+To select four request slots with matching graph coverage:
+
+```bash
+MAX_NUM_SEQS=4 ARVQ_CAPTURE_SIZES='[1,2,4,8,16]' ./switch.sh glm5.3-arvq
+```
+
+The default command selects eight. `MAX_NUM_SEQS` is an admission limit, not a
+reservation of the full context window for every slot. With eight slots and
+LMCache enabled, measured total short-prompt MTP throughput was 136.2/277.3/344.9
+tokens/s at one/four/eight simultaneous streams, with all drafts accepted.
+See [full-context/concurrency validation](../results/context_concurrency/NOTES.md).
+No full-million-token input request was run in this configuration test.
 
 The full local checkpoint remains unrotated. Rotation is retired from production
 and active tuning; `rotation-prototype-v1` retains historical experiments only.
@@ -48,7 +64,7 @@ ARVQ-named cold shard is rejected. Initial integration matched the merged image,
 complete command, critical environment, and every bind mount against the measured
 M8+MTP container. The current paired/compact override passes compose validation,
 and the live server confirms paired mode, native maximum 16, grouped prefill,
-and compaction ON. The live A/B process retains diagnostic toggle mode with its
-marker ON; future switch launches use fixed production mode `1`.
+and compaction ON. The final full-context launch uses fixed production mode `1` for both prefill
+options, eight slots, LMCache, and no diagnostic overrides.
 The published patch passes a reverse-application check against the updated
 host script. These checks do not invoke the script's global stop loop.

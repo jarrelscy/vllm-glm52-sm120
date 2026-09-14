@@ -4,6 +4,22 @@ The measured single-stream progression reaches **53.276 tokens/s without MTP**
 and **141.661 tokens/s with MTP**. These are two distinct serving modes, not
 aggregate throughput across simultaneous requests.
 
+## Full position limit, eight request slots, and LMCache
+
+The current host profile allows **1048576 total tokens per request**, with up to
+**eight** active requests sharing **1073920 GPU KV-cache tokens**. LMCache is ON,
+utilization is 0.94, graph captures include 32 positions, and dense native P4
+still stops at 16 (32 uses the existing BF16 reconstruction fallback).
+
+Measured total short-prompt MTP throughput is **136.16 / 277.34 / 344.89 tokens/s**
+at one/four/eight streams. The full-position four-slot reference with LMCache OFF
+measured 136.26/280.22 at one/four streams. These compare configurations that
+also differ in LMCache and memory reservation; they do not isolate slot count.
+All drafts were accepted on these short inputs. Eight-slot 8k-prompt/64-output
+smoke requests passed, but shared their prompt and GPU prefix; they were not
+eight independent full-context memory stress tests. No million-token request
+was run. [Raw results and limits](results/context_concurrency/NOTES.md).
+
 ## Latest paired-dense and compact-prefill profile
 
 The host profile now enables paired dense P4 through 16 positions and compact

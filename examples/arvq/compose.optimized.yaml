@@ -9,7 +9,18 @@ services:
       VLLM_NVFP4_P4_PAIRED: '1'
       VLLM_ARVQ_GROUPED_PREFILL: '1'
       VLLM_ARVQ_COMPACT_PREFILL: '1'
-      MAX_NUM_SEQS: '4'
+      MAX_NUM_SEQS: '${MAX_NUM_SEQS:-8}'
+      MAXLEN: '1048576'
+      UTIL: '0.94'
+      ENABLE_LMCACHE: '${ENABLE_LMCACHE:-1}'
+      LMCACHE_LOCAL_CPU: 'True'
+      LMCACHE_MAX_LOCAL_CPU_SIZE: '24'
+      LMCACHE_LOCAL_DISK: file:///lmcache/disk
+      LMCACHE_MAX_LOCAL_DISK_SIZE: '100'
+      LMCACHE_CHUNK_SIZE: '256'
+      LMCACHE_USE_GPU_CONNECTOR_V3: 'True'
+      LMCACHE_PRE_CACHING_HASH_ALGORITHM: sha256_cbor
+      PYTHONHASHSEED: '0'
     command:
     - --trust-remote-code
     - --reasoning-parser
@@ -19,4 +30,4 @@ services:
     - --profiler-config.torch_profiler_with_stack=false
     - ${PREFIX_CACHING_FLAG:---enable-prefix-caching}
     - --compilation-config
-    - '{"mode":3,"cudagraph_mode":"${CUDAGRAPH_MODE:-FULL_AND_PIECEWISE}","compile_sizes":[1],"cudagraph_capture_sizes":[1,2,4,8,16]}'
+    - '{"mode":3,"cudagraph_mode":"${CUDAGRAPH_MODE:-FULL_AND_PIECEWISE}","compile_sizes":[1],"cudagraph_capture_sizes":${ARVQ_CAPTURE_SIZES:-[1,2,4,8,16,32]}}'

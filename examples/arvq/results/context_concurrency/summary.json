@@ -1,0 +1,84 @@
+{
+  "short": [
+    {
+      "profile": "seq4",
+      "lmcache": false,
+      "concurrency": 1,
+      "total_tps": 136.25843713910962,
+      "request_latency_median_s": 3.757360673509538,
+      "ttft_median_s": 0.2328880310524255,
+      "mean_per_request_decode_tps": 144.98971745673953,
+      "accepted_fraction": 1.0
+    },
+    {
+      "profile": "seq4",
+      "lmcache": false,
+      "concurrency": 4,
+      "total_tps": 280.2232878917927,
+      "request_latency_median_s": 7.258063843473792,
+      "ttft_median_s": 0.7090984280221164,
+      "mean_per_request_decode_tps": 77.6238239852742,
+      "accepted_fraction": 1.0
+    },
+    {
+      "profile": "seq8",
+      "lmcache": true,
+      "concurrency": 1,
+      "total_tps": 136.15761334454663,
+      "request_latency_median_s": 3.7601614454761147,
+      "ttft_median_s": 0.2331547907087952,
+      "mean_per_request_decode_tps": 144.88514027563687,
+      "accepted_fraction": 1.0
+    },
+    {
+      "profile": "seq8",
+      "lmcache": true,
+      "concurrency": 4,
+      "total_tps": 277.3428806960537,
+      "request_latency_median_s": 7.351323796901852,
+      "ttft_median_s": 0.7262810487300158,
+      "mean_per_request_decode_tps": 76.7955530816163,
+      "accepted_fraction": 1.0
+    },
+    {
+      "profile": "seq8",
+      "lmcache": true,
+      "concurrency": 8,
+      "total_tps": 344.8949272294142,
+      "request_latency_median_s": 11.84106554207392,
+      "ttft_median_s": 1.9905608121771365,
+      "mean_per_request_decode_tps": 49.58652807914489,
+      "accepted_fraction": 1.0
+    }
+  ],
+  "long_smoke": {
+    "concurrency": 8,
+    "wall_span_s": 14.554376031272113,
+    "aggregate_output_tps": 35.17842323847456,
+    "ttft_ms_per_stream": [
+      12473.578264005482,
+      12470.864208880812,
+      12472.880840301514,
+      12471.753841266036,
+      12470.365865156054,
+      12473.058759234846,
+      12473.28776633367,
+      12472.65963209793
+    ],
+    "tokenizer_prompt_tokens": 8221,
+    "speculative": {
+      "draft_request_steps": 197.0,
+      "accepted_tokens": 320.0,
+      "proposed_tokens": 591.0,
+      "acceptance_fraction": 0.5414551607445008,
+      "emitted_per_draft_request_step": 2.6243654822335025,
+      "summed_server_request_decode_s": 15.347402580548078,
+      "isolation_matches_batch": true
+    }
+  },
+  "capacity": {
+    "seq4": 1222912,
+    "seq8": 1073920
+  },
+  "max_model_len": 1048576
+}

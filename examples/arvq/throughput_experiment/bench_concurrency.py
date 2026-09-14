@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: Copyright contributors to the vLLM project
 """Concurrent serving throughput from actual token usage and overlapping wall span."""
 
 import argparse
@@ -161,8 +163,8 @@ def main():
         "--expect-parallel", choices=["tp4-1m", "tp4-1m-mtp"], required=True
     )
     a = ap.parse_args()
-    if min(a.concurrency) < 1 or max(a.concurrency) > 4 or a.runs < 1:
-        ap.error("Use concurrency1..4 and at least one measured run.")
+    if min(a.concurrency) < 1 or max(a.concurrency) > 8 or a.runs < 1:
+        ap.error("Use concurrency1..8 and at least one measured run.")
     container = json.loads(
         subprocess.check_output(
             ["docker", "inspect", "homeassistant-vllm-glm5.3-hybrid-1m-1"]
@@ -174,6 +176,8 @@ def main():
         or env.get("VLLM_ENABLE_NVFP4_P4_O_PROJ") != "1"
     ):
         raise RuntimeError("Wrong runtime profile or dense flag; refusing benchmark.")
+    if max(a.concurrency) > int(env.get("MAX_NUM_SEQS", "4")):
+        raise RuntimeError("Requested concurrency exceeds active max_num_seqs")
     os.environ["OPENAI_API_KEY"] = env.get("VLLM_API_KEY", "")
     base = a.endpoint.rstrip("/")
     b.fetch(base.removesuffix("/v1") + "/health")
@@ -194,6 +198,8 @@ def main():
             None,
         ),
         "parallel": env["PARALLEL"],
+        "max_model_len": int(env["MAXLEN"]),
+        "max_num_seqs": int(env["MAX_NUM_SEQS"]),
         "model": model,
         "dense_p4": True,
         "max_tokens": a.max_tokens,
@@ -219,6 +225,16 @@ def main():
                 "ENABLE_LMCACHE",
                 "CUDAGRAPH_MODE",
                 "MAXLEN",
+                "UTIL",
+                "VLLM_NVFP4_P4_PAIRED",
+                "LMCACHE_LOCAL_CPU",
+                "LMCACHE_MAX_LOCAL_CPU_SIZE",
+                "LMCACHE_LOCAL_DISK",
+                "LMCACHE_MAX_LOCAL_DISK_SIZE",
+                "LMCACHE_CHUNK_SIZE",
+                "LMCACHE_USE_GPU_CONNECTOR_V3",
+                "LMCACHE_PRE_CACHING_HASH_ALGORITHM",
+                "PYTHONHASHSEED",
             ]
         },
         "runs": [],

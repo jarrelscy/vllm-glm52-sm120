@@ -27,7 +27,9 @@ ARVQ_MODEL_DIR=/data/models/jarrelscy/GLM-5.3-Vision-NVFP4-ARVQ-hybrid \
 The API listens on port 8001 and serves
 `jarrelscy/GLM-5.3-Vision-NVFP4-ARVQ-hybrid`. The checkpoint's `arvq` metadata
 automatically selects the loader; no activation flag or on-load transcode is
-required. The supplied profile enables TP4, DCP4, native MTP with three draft
+required. Both `rvq256_128x8` (8+7) and `rvq256_256x8` (8+8) are supported;
+the current checkpoint remains 8+7. Metadata must match the stored indices
+and codebooks. The supplied profile enables TP4, DCP4, native MTP with three draft
 tokens, and full CUDA graphs. Set `PARALLEL=tp4-1m` to disable drafting.
 
 Conversion tools, frozen-fit reuse, and checkpoint auditing are described in

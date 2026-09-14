@@ -58,6 +58,31 @@ def _kernels():
     return _LIB
 
 
+_FORMATS = {"rvq256_128x8": (60, 384), "rvq256_256x8": (64, 512)}
+
+
+def _layout(codebooks):
+    entries = codebooks.numel()
+    if entries not in (384, 512):
+        raise ValueError(f"Invalid ARVQ codebook size {entries}; expected 384 or 512")
+    return (60 if entries == 384 else 64), entries
+
+
+def _launch_for_codebooks(lib, codebooks):
+    _, entries = _layout(codebooks)
+    if entries == 384:
+        return lib.hybrid_launch
+    try:
+        launch = lib.hybrid_launch_8x8
+    except AttributeError as error:
+        raise RuntimeError(
+            "ARVQ 8+8 requires hybrid_launch_8x8; rebuild arvq/build.sh"
+        ) from error
+    launch.argtypes = lib.hybrid_launch.argtypes
+    launch.restype = ctypes.c_int
+    return launch
+
+
 def _ptr(t):
     return ctypes.c_void_p(t.data_ptr())
 
@@ -68,7 +93,12 @@ def _check(err):
 
 
 def _projection(x, cold_ids, hot_ids, tensors, alpha, n, split, hot_parts):
+    # Dense hot-only callers alias dummy cold pointers to the packed hot weight.
+    hot_only = tensors[0] is tensors[1]
+    if not hot_only:
+        _layout(tensors[1])
     lib = _kernels()
+    launch = lib.hybrid_launch if hot_only else _launch_for_codebooks(lib, tensors[1])
     slots, k = x.shape
     planes = 4
     packed = torch.empty((slots, planes, k // 8), device=x.device, dtype=torch.int32)
@@ -83,7 +113,7 @@ def _projection(x, cold_ids, hot_ids, tensors, alpha, n, split, hot_parts):
     # cold_ids, hot_ids, partial, output.
     args = [*tensors, packed, scales, cold_ids, hot_ids, partial, out]
     _check(
-        lib.hybrid_launch(
+        launch(
             *[_ptr(t) for t in args],
             alpha,
             n,
@@ -187,6 +217,12 @@ def _arvq_mlp_fake(x, topk_weights, topk_ids, lookups, tensors, alphas, chunk_to
 class NvFp4ArvqHybridConfig(NvFp4AqlmHybridConfig):
     """Explicit ARVQ checkpoint marker within the existing hybrid envelope."""
 
+    def __init__(self, *args, arvq_format="rvq256_128x8", **kwargs):
+        if arvq_format not in _FORMATS:
+            raise ValueError(f"Unsupported ARVQ format: {arvq_format}")
+        super().__init__(*args, **kwargs)
+        self.arvq_format = arvq_format
+
     @classmethod
     def from_config(cls, config):
         from vllm.model_executor.layers.quantization.modelopt import (
@@ -195,12 +231,13 @@ class NvFp4ArvqHybridConfig(NvFp4AqlmHybridConfig):
 
         marker = config["arvq"]
         expected = {
-            "format": "rvq256_128x8",
             "activation_planes": 4,
             "weight_scale_group": 128,
             "version": 1,
         }
-        if any(marker.get(k) != v for k, v in expected.items()):
+        if marker.get("format") not in _FORMATS or any(
+            marker.get(k) != v for k, v in expected.items()
+        ):
             raise ValueError(f"Unsupported ARVQ checkpoint metadata: {marker}")
         books = {
             int(k): {n: int(v[n]) for n in ("n_nvfp4", "n_base", "n_cold")}
@@ -211,7 +248,7 @@ class NvFp4ArvqHybridConfig(NvFp4AqlmHybridConfig):
         nvfp4 = cast(
             ModelOptNvFp4Config, ModelOptNvFp4Config.from_config(config["nvfp4"])
         )
-        return cls(nvfp4, books)
+        return cls(nvfp4, books, arvq_format=marker["format"])
 
     @classmethod
     def get_min_capability(cls):
@@ -246,6 +283,7 @@ class NvFp4ArvqHybridConfig(NvFp4AqlmHybridConfig):
         idx = self._aqlm_layer_idx(prefix)
         if isinstance(layer, RoutedExperts) and idx is not None:
             return ArvqExpertsMoEMethod(
+                arvq_format=self.arvq_format,
                 moe_config=layer.moe_config,
                 layer_idx=idx,
                 **self.aqlm_layer_books[idx],
@@ -256,7 +294,12 @@ class NvFp4ArvqHybridConfig(NvFp4AqlmHybridConfig):
 
 
 class ArvqExpertsMoEMethod(TPHybridExpertsMoEMethod):
-    def __init__(self, *args, **kwargs):
+    arvq_format = "rvq256_128x8"
+
+    def __init__(self, *args, arvq_format="rvq256_128x8", **kwargs):
+        if arvq_format not in _FORMATS:
+            raise ValueError(f"Unsupported ARVQ format: {arvq_format}")
+        self.arvq_format = arvq_format
         super().__init__(*args, **kwargs)
         if self.n_base:
             raise ValueError("Serialized ARVQ supports hot and cold experts only")
@@ -275,6 +318,7 @@ class ArvqExpertsMoEMethod(TPHybridExpertsMoEMethod):
         params_dtype,
         **extra_weight_attrs,
     ):
+        words, entries = _FORMATS[self.arvq_format]
         h, ish = hidden_size, intermediate_size_per_partition
         t, rank = self._tp, self._tpr
         if h % 128 or ish % 128 or self.n_nvfp4 + self.n_cold != num_experts:
@@ -295,7 +339,7 @@ class ArvqExpertsMoEMethod(TPHybridExpertsMoEMethod):
                 shard = _rowk_loader(rank, t, axis=2)
             make(
                 f"arvq_{proj}_packed",
-                (self.n_cold, n // 16, k // 64, 60),
+                (self.n_cold, n // 16, k // 64, words),
                 torch.uint32,
                 shard,
             )
@@ -305,7 +349,7 @@ class ArvqExpertsMoEMethod(TPHybridExpertsMoEMethod):
                 torch.uint8,
                 shard,
             )
-            make(f"arvq_{proj}_codebooks", (384,), torch.uint32, rep)
+            make(f"arvq_{proj}_codebooks", (entries,), torch.uint32, rep)
             make(f"arvq_{proj}_global", (1,), torch.float32, rep)
         na = self.n_nvfp4
         make(
@@ -336,7 +380,16 @@ class ArvqExpertsMoEMethod(TPHybridExpertsMoEMethod):
         make("nvfp4_w2_scale2", (na, 1), torch.float32, rep)
 
     def process_weights_after_loading(self, layer):
-        _kernels()
+        words, entries = _FORMATS[self.arvq_format]
+        for proj in ("w13", "w2"):
+            packed = getattr(layer, f"arvq_{proj}_packed")
+            cb = getattr(layer, f"arvq_{proj}_codebooks")
+            if packed.ndim != 4 or packed.shape[-1] != words or cb.numel() != entries:
+                raise ValueError(
+                    "Serialized ARVQ packed/codebook layout disagrees with format"
+                )
+        lib = _kernels()
+        _launch_for_codebooks(lib, layer.arvq_w13_codebooks)
         device = layer.hyb_kind.device
         kind = layer.hyb_kind.long()
         if not bool(((kind == 0) | (kind == 2)).all().item()):

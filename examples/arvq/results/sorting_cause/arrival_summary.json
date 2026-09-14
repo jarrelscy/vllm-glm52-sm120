@@ -1,0 +1,146 @@
+[
+  {
+    "pair": 0,
+    "arrival": "independent",
+    "tps": 436.94062330014884,
+    "first_emission_spread_s": 1.5551661094650626,
+    "distinct_outputs": 2,
+    "gpu0_active_sm_mhz": 1911.3260869565217,
+    "gpu0_active_temp_c": 75.71739130434783,
+    "sw_thermal_flags": [
+      "Not Active"
+    ],
+    "hw_thermal_flags": [
+      "Not Active"
+    ],
+    "sw_power_flags": [
+      "Active"
+    ]
+  },
+  {
+    "pair": 0,
+    "arrival": "batched",
+    "tps": 433.83496728863537,
+    "first_emission_spread_s": 1.5273399660363793,
+    "distinct_outputs": 2,
+    "gpu0_active_sm_mhz": 1880.391304347826,
+    "gpu0_active_temp_c": 82.04347826086956,
+    "sw_thermal_flags": [
+      "Not Active"
+    ],
+    "hw_thermal_flags": [
+      "Not Active"
+    ],
+    "sw_power_flags": [
+      "Active"
+    ]
+  },
+  {
+    "pair": 1,
+    "arrival": "batched",
+    "tps": 416.8346402011621,
+    "first_emission_spread_s": 1.2249757898971438,
+    "distinct_outputs": 2,
+    "gpu0_active_sm_mhz": 1817.875,
+    "gpu0_active_temp_c": 86.5,
+    "sw_thermal_flags": [
+      "Not Active"
+    ],
+    "hw_thermal_flags": [
+      "Not Active"
+    ],
+    "sw_power_flags": [
+      "Active"
+    ]
+  },
+  {
+    "pair": 1,
+    "arrival": "independent",
+    "tps": 415.96358325561727,
+    "first_emission_spread_s": 1.667132421862334,
+    "distinct_outputs": 2,
+    "gpu0_active_sm_mhz": 1794.857142857143,
+    "gpu0_active_temp_c": 89.81632653061224,
+    "sw_thermal_flags": [
+      "Not Active"
+    ],
+    "hw_thermal_flags": [
+      "Not Active"
+    ],
+    "sw_power_flags": [
+      "Active"
+    ]
+  },
+  {
+    "pair": 2,
+    "arrival": "independent",
+    "tps": 415.17100587048037,
+    "first_emission_spread_s": 1.7089236578904092,
+    "distinct_outputs": 2,
+    "gpu0_active_sm_mhz": 1792.1020408163265,
+    "gpu0_active_temp_c": 90.91836734693878,
+    "sw_thermal_flags": [
+      "Not Active"
+    ],
+    "hw_thermal_flags": [
+      "Not Active"
+    ],
+    "sw_power_flags": [
+      "Active"
+    ]
+  },
+  {
+    "pair": 2,
+    "arrival": "batched",
+    "tps": 411.4600351483201,
+    "first_emission_spread_s": 1.704300639219582,
+    "distinct_outputs": 2,
+    "gpu0_active_sm_mhz": 1779.3265306122448,
+    "gpu0_active_temp_c": 90.9795918367347,
+    "sw_thermal_flags": [
+      "Not Active"
+    ],
+    "hw_thermal_flags": [
+      "Not Active"
+    ],
+    "sw_power_flags": [
+      "Active"
+    ]
+  },
+  {
+    "pair": 3,
+    "arrival": "batched",
+    "tps": 415.9445100162131,
+    "first_emission_spread_s": 1.6563541740179062,
+    "distinct_outputs": 2,
+    "gpu0_active_sm_mhz": 1789.5510204081634,
+    "gpu0_active_temp_c": 91.0,
+    "sw_thermal_flags": [
+      "Not Active"
+    ],
+    "hw_thermal_flags": [
+      "Not Active"
+    ],
+    "sw_power_flags": [
+      "Active"
+    ]
+  },
+  {
+    "pair": 3,
+    "arrival": "independent",
+    "tps": 411.7974701046481,
+    "first_emission_spread_s": 1.706141081172973,
+    "distinct_outputs": 2,
+    "gpu0_active_sm_mhz": 1768.857142857143,
+    "gpu0_active_temp_c": 91.0,
+    "sw_thermal_flags": [
+      "Not Active"
+    ],
+    "hw_thermal_flags": [
+      "Not Active"
+    ],
+    "sw_power_flags": [
+      "Active"
+    ]
+  }
+]

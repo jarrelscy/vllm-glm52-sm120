@@ -8,11 +8,14 @@ import torch
 from vllm.model_executor.layers.quantization import nvfp4_arvq_prefill as prefill
 
 
+@pytest.mark.parametrize("words,entries", [(60, 384), (64, 512)])
 @pytest.mark.parametrize("compact", [False, True])
 @pytest.mark.parametrize(
     "scenario", ["mixed", "all_hot", "all_cold", "low_count", "zero"]
 )
-def test_grouped_preserves_mixed_route_order(monkeypatch, compact, scenario):
+def test_grouped_preserves_mixed_route_order(
+    monkeypatch, compact, scenario, words, entries
+):
     monkeypatch.setenv("VLLM_ARVQ_COMPACT_PREFILL", "1" if compact else "0")
     torch.manual_seed(7)
     hidden, intermediate = 128, 128
@@ -32,8 +35,8 @@ def test_grouped_preserves_mixed_route_order(monkeypatch, compact, scenario):
     for n, k in ((256, 128), (128, 128)):
         tensors.extend(
             [
-                torch.zeros(2 * (n // 16) * (k // 64) * 60 + 1, dtype=torch.int32),
-                torch.zeros(384, dtype=torch.int32),
+                torch.zeros(2 * (n // 16) * (k // 64) * words + 1, dtype=torch.int32),
+                torch.zeros(entries, dtype=torch.int32),
                 torch.zeros(2, n // 16, k // 128, 16, dtype=torch.uint8),
                 torch.zeros(1, n // 16, k // 64, 4, 32, dtype=torch.int32),
                 torch.zeros(1, n, k // 64, dtype=torch.int32),
@@ -43,6 +46,7 @@ def test_grouped_preserves_mixed_route_order(monkeypatch, compact, scenario):
     decoded = []
 
     def decode(packed, codebooks, scales, alpha, n, k):
+        assert packed.numel() == (n // 16) * (k // 64) * words + 1
         decoded.append((n, k))
         return w13[0] if n == 256 else w2[0]
 
@@ -185,13 +189,14 @@ def test_sorted_diagnostic_marker(monkeypatch):
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="requires SM120 GPU")
 @pytest.mark.parametrize("dtype", [torch.float16, torch.bfloat16])
-def test_dequant_matches_independent_natural_codes(dtype):
+@pytest.mark.parametrize("bits,entries,words", [(15, 384, 60), (16, 512, 64)])
+def test_dequant_matches_independent_natural_codes(dtype, bits, entries, words):
     if torch.cuda.get_device_capability()[0] != 12:
         pytest.skip("requires SM120 GPU")
     torch.manual_seed(9)
     n, k = 32, 128
     position = torch.arange(n * k // 8).reshape(n, k // 8)
-    a, b = position * 17 % 256, position * 31 % 128
+    a, b = position * 17 % 256, position * 31 % (128 if bits == 15 else 256)
     natural = (a | (b << 8)).reshape(n // 16, 16, k // 64, 8)
     fragments = torch.stack(
         [
@@ -204,16 +209,16 @@ def test_dequant_matches_independent_natural_codes(dtype):
         ],
         1,
     ).reshape(-1, 128)
-    bit = torch.arange(128) * 15
-    native = torch.zeros(fragments.shape[0], 61, dtype=torch.int64)
+    bit = torch.arange(128) * bits
+    native = torch.zeros(fragments.shape[0], words + 1, dtype=torch.int64)
     indices = (bit // 32).expand(fragments.shape[0], -1)
     shifted = fragments << (bit % 32)
     native.scatter_add_(1, indices, shifted & 0xFFFFFFFF)
     native.scatter_add_(1, indices + 1, shifted >> 32)
     packed = torch.cat(
-        (native[:, :60].reshape(-1).int(), torch.zeros(1, dtype=torch.int32))
+        (native[:, :words].reshape(-1).int(), torch.zeros(1, dtype=torch.int32))
     )
-    cb = torch.randint(-(1 << 31), (1 << 31) - 1, (384,), dtype=torch.int32)
+    cb = torch.randint(-(1 << 31), (1 << 31) - 1, (entries,), dtype=torch.int32)
     scales = torch.tensor([0, 1, 8, 0x38, 0x7E], dtype=torch.uint8).repeat(7)[:n]
     scales = scales.reshape(n // 16, 1, 16)
     levels = torch.tensor(
@@ -231,3 +236,85 @@ def test_dequant_matches_independent_natural_codes(dtype):
         captured = prefill.dequantize_cold(*args, 0.0137, n, k, dtype=dtype)
     graph.replay()
     torch.testing.assert_close(captured, actual, atol=0, rtol=0)
+
+
+@pytest.mark.parametrize("entries", [384, 512])
+@pytest.mark.parametrize("dtype", [torch.float16, torch.bfloat16])
+def test_prefill_decoder_dispatch_cpu(monkeypatch, entries, dtype):
+    from types import SimpleNamespace
+
+    calls = []
+
+    def old(*args):
+        calls.append("old")
+        return 0
+
+    def new(*args):
+        calls.append("new")
+        return 0
+
+    old.argtypes = []  # type: ignore[attr-defined]
+    lib = SimpleNamespace(
+        arvq_dequant=old,
+        arvq_dequant_fp16=old,
+        arvq_dequant_8x8=new,
+        arvq_dequant_fp16_8x8=new,
+    )
+    monkeypatch.setattr(prefill, "_LIB", lib)
+    monkeypatch.setattr(
+        torch.cuda, "current_stream", lambda: SimpleNamespace(cuda_stream=0)
+    )
+    words = 60 if entries == 384 else 64
+    prefill.dequantize_cold(
+        torch.empty(2 * words + (entries == 384), dtype=torch.int32),
+        torch.empty(entries, dtype=torch.int32),
+        torch.empty(16, dtype=torch.uint8),
+        1.0,
+        16,
+        128,
+        dtype,
+    )
+    assert calls == ["old" if entries == 384 else "new"]
+    if entries == 512:
+        delattr(
+            lib,
+            "arvq_dequant_fp16_8x8" if dtype == torch.float16 else "arvq_dequant_8x8",
+        )
+        with pytest.raises(RuntimeError, match="rebuild"):
+            prefill.dequantize_cold(
+                torch.empty(129, dtype=torch.int32),
+                torch.empty(512),
+                torch.empty(16),
+                1.0,
+                16,
+                128,
+                dtype,
+            )
+
+
+@pytest.mark.parametrize(
+    "entries,n,k,length",
+    [
+        (384, 16, 128, 120),
+        (512, 16, 128, 127),
+        (384, 0, 128, 1),
+        (512, 16, 0, 0),
+        (384, -16, 128, 1),
+    ],
+)
+def test_invalid_prefill_guard_or_shape_before_library(
+    monkeypatch, entries, n, k, length
+):
+    monkeypatch.setattr(prefill, "_LIB", None)
+    monkeypatch.setattr(
+        prefill.ctypes, "CDLL", lambda path: pytest.fail("library accessed")
+    )
+    with pytest.raises(ValueError, match="packed layout"):
+        prefill.dequantize_cold(
+            torch.empty(length, dtype=torch.int32),
+            torch.empty(entries, dtype=torch.int32),
+            torch.empty(16, dtype=torch.uint8),
+            1.0,
+            n,
+            k,
+        )

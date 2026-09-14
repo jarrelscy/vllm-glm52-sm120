@@ -22,11 +22,17 @@ def _method(rank=0, tp=4):
     return method
 
 
+@pytest.mark.parametrize(
+    "arvq_format,words,entries", [("rvq256_128x8", 60, 384), ("rvq256_256x8", 64, 512)]
+)
 @pytest.mark.parametrize("rank", range(4))
-def test_serialized_tensor_parallel_loaders(rank):
+def test_serialized_tensor_parallel_loaders(rank, arvq_format, words, entries):
     method = _method(rank)
+    method.arvq_format = arvq_format
     layer = torch.nn.Module()
     method.create_weights(layer, 2, 128, 128, torch.bfloat16)
+    assert layer.arvq_w13_packed.shape[-1] == words
+    assert layer.arvq_w13_codebooks.numel() == entries
     for name, param in layer.named_parameters():
         shape = list(param.shape)
         if name.startswith("arvq_w13_") and name.endswith(("packed", "scales")):
@@ -56,10 +62,12 @@ def test_reject_incompatible_checkpoint_marker():
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="requires SM120 GPU")
-def test_custom_mlp_graph_chunk_and_compile():
+@pytest.mark.parametrize("arvq_format", ["rvq256_128x8", "rvq256_256x8"])
+def test_custom_mlp_graph_chunk_and_compile(arvq_format):
     if torch.cuda.get_device_capability()[0] != 12:
         pytest.skip("requires SM120 GPU")
     method = _method(tp=1)
+    method.arvq_format = arvq_format
     torch.manual_seed(41)
     with torch.device("cuda"):
         layer = torch.nn.Module()
@@ -108,7 +116,7 @@ def test_custom_mlp_graph_chunk_and_compile():
     with torch.cuda.graph(graph):
         actual = run(x, weights, ids)
     graph.replay()
-    torch.cuda.synchronize()
+    torch.accelerator.synchronize()
     assert torch.equal(expected, actual)
     traced = torch.compile(run, backend="eager", fullgraph=True)
     assert torch.equal(expected, traced(x, weights, ids))
@@ -156,3 +164,57 @@ def test_real_model_loader_remaps_serialized_arvq(monkeypatch, draft):
     loaded = owner.load_weights(model, inputs)
     assert loaded == set(params)
     assert all(torch.equal(p, torch.tensor([3.0])) for p in params.values())
+
+
+@pytest.mark.parametrize("fmt", ["rvq256_128x8", "rvq256_256x8"])
+def test_both_checkpoint_markers(monkeypatch, fmt):
+    from vllm.model_executor.layers.quantization.modelopt import ModelOptNvFp4Config
+
+    monkeypatch.setattr(ModelOptNvFp4Config, "from_config", lambda config: None)
+    config = {
+        "arvq": {
+            "format": fmt,
+            "activation_planes": 4,
+            "weight_scale_group": 128,
+            "version": 1,
+        },
+        "nvfp4": {},
+        "aqlm_layer_books": {"3": {"n_base": 0, "n_cold": 1, "n_nvfp4": 1}},
+    }
+    assert NvFp4ArvqHybridConfig.from_config(config).arvq_format == fmt
+    config["arvq"]["version"] = 2
+    with pytest.raises(ValueError, match="Unsupported ARVQ"):
+        NvFp4ArvqHybridConfig.from_config(config)
+
+
+def test_static_codebook_abi_dispatch():
+    from types import SimpleNamespace
+
+    from vllm.model_executor.layers.quantization.nvfp4_arvq_hybrid import (
+        _launch_for_codebooks,
+    )
+
+    old = SimpleNamespace(argtypes=[])
+    new = SimpleNamespace()
+    lib = SimpleNamespace(hybrid_launch=old)
+    assert _launch_for_codebooks(lib, torch.empty(384)) is old
+    with pytest.raises(RuntimeError, match="rebuild"):
+        _launch_for_codebooks(lib, torch.empty(512))
+    lib.hybrid_launch_8x8 = new
+    assert _launch_for_codebooks(lib, torch.empty(512)) is new
+    with pytest.raises(ValueError, match="codebook size"):
+        _launch_for_codebooks(lib, torch.empty(385))
+
+
+@pytest.mark.parametrize("fmt", ["rvq256_128x8", "rvq256_256x8"])
+def test_bad_loaded_layout_rejected_before_cuda(monkeypatch, fmt):
+    from vllm.model_executor.layers.quantization import nvfp4_arvq_hybrid as mod
+
+    method = _method()
+    method.arvq_format = fmt
+    layer = torch.nn.Module()
+    method.create_weights(layer, 2, 128, 128, torch.bfloat16)
+    layer.arvq_w13_codebooks = torch.nn.Parameter(torch.empty(385), requires_grad=False)
+    monkeypatch.setattr(mod, "_kernels", lambda: pytest.fail("CUDA library accessed"))
+    with pytest.raises(ValueError, match="layout"):
+        method.process_weights_after_loading(layer)

@@ -1,0 +1,20 @@
+{
+  "tensor_total_bytes": 289207222976,
+  "cold_tensor_bytes": {
+    "global": 600,
+    "codebooks": 230400,
+    "packed": 118996992000,
+    "scales": 3966566400
+  },
+  "cold_tensor_counts": {
+    "global": 150,
+    "codebooks": 150,
+    "packed": 150,
+    "scales": 150
+  },
+  "packed_extra_full_checkpoint": 7933132800,
+  "codebook_extra_checkpoint_bytes": 76800,
+  "extra_resident_bytes_per_rank": 1983360000,
+  "extra_resident_bytes_box": 7933440000,
+  "method": "Sum actual 233 safetensors headers; 150 cold packed tensors widen 60 to64 u32words/tile; 150 replicated codebooks expand384to512 u32. TP4shards packed/scales butreplicates codebooks."
+}

@@ -1,0 +1,55 @@
+{
+  "scope": "CPU source-derived estimate; 8+8 weights not deployed; available-memory remainder unlogged",
+  "cache_dtype": "fp8_ds_mla",
+  "tp": 4,
+  "dcp": 4,
+  "physical_block_tokens": 64,
+  "global_block_tokens": 256,
+  "mla_layers": 79,
+  "mla_bytes_per_local_token": 656,
+  "indexer_layers": 22,
+  "indexer_bytes_per_local_token": 132,
+  "pool_bytes_per_block_per_rank": 3502592,
+  "pool_bytes_per_global_token_per_rank": 13682.0,
+  "baseline_blocks": 4196,
+  "baseline_global_tokens": 1074176,
+  "baseline_allocated_kv_bytes_per_rank": 14696876032,
+  "extra_weight_payload_bytes_per_rank": 1983283200,
+  "extra_codebook_bytes_per_rank": 76800,
+  "extra_total_bytes_per_rank": 1983360000,
+  "extra_divmod_pool_block": [
+    566,
+    892928
+  ],
+  "displaced_blocks_range": [
+    566,
+    567
+  ],
+  "remaining_blocks_range": [
+    3629,
+    3630
+  ],
+  "remaining_global_tokens_range": [
+    929024,
+    929280
+  ],
+  "displaced_global_tokens_range": [
+    144896,
+    145152
+  ],
+  "full_context_blocks_required": 4096,
+  "full_context_kv_bytes_per_rank": 14346616832,
+  "additional_budget_for_full_context_bytes_range": [
+    1629598209,
+    1633100800
+  ],
+  "assumption": "Other peak allocations unchanged; no additional CUDA allocator rounding or changed transient memory. Baseline B=4196*page+r, 0<=r<page. Capacity floor((B-delta)/page).",
+  "source_files": [
+    "vllm/v1/kv_cache_interface.py:MLAAttentionSpec.real_page_size_bytes",
+    "vllm/v1/kv_cache_interface.py:FullAttentionSpec.max_memory_usage_bytes",
+    "vllm/v1/kv_cache_interface.py:UniformTypeKVCacheSpecs",
+    "vllm/v1/core/kv_cache_utils.py:get_kv_cache_config_from_groups",
+    "vllm/model_executor/models/deepseek_v2.py:Indexer and MTP indexer construction",
+    "vllm/v1/attention/backends/mla/flashmla_sparse.py:get_supported_kernel_block_sizes"
+  ]
+}

@@ -33,6 +33,12 @@ def _sort_native_prefill_enabled():
 
 def dequantize_cold(packed, codebooks, scales, global_scale, n, k, dtype=torch.float16):
     """Decode one expert into an ephemeral 16-bit [N,K] matrix."""
+    from vllm.model_executor.layers.quantization.nvfp4_arvq_hybrid import _layout
+
+    words, entries = _layout(codebooks)
+    required = (n // 16) * (k // 64) * words + (entries == 384)
+    if n <= 0 or k <= 0 or n % 16 or k % 128 or packed.numel() < required:
+        raise ValueError("Invalid ARVQ prefill packed layout")
     global _LIB
     if _LIB is None:
         path = Path(
@@ -57,9 +63,20 @@ def dequantize_cold(packed, codebooks, scales, global_scale, n, k, dtype=torch.f
         _LIB.arvq_dequant_fp16.restype = ctypes.c_int
     if dtype not in (torch.float16, torch.bfloat16):
         raise ValueError("ARVQ prefill decode requires FP16 or BF16 output")
-    output = torch.empty((n, k), device=packed.device, dtype=dtype)
+
     pointer = lambda tensor: ctypes.c_void_p(tensor.data_ptr())
-    decoder = _LIB.arvq_dequant_fp16 if dtype == torch.float16 else _LIB.arvq_dequant
+    name = "arvq_dequant_fp16" if dtype == torch.float16 else "arvq_dequant"
+    if entries == 512:
+        name += "_8x8"
+    try:
+        decoder = getattr(_LIB, name)
+    except AttributeError as missing_symbol:
+        raise RuntimeError(
+            f"Missing {name}; rebuild arvq/build_prefill.sh for ARVQ 8+8"
+        ) from missing_symbol
+    decoder.argtypes = _LIB.arvq_dequant.argtypes
+    decoder.restype = ctypes.c_int
+    output = torch.empty((n, k), device=packed.device, dtype=dtype)
     error = decoder(
         pointer(packed),
         pointer(codebooks),
@@ -101,7 +118,10 @@ def grouped_cold_prefill(
         offset = 0 if name == "w13" else 6
         n, k = (n13, hidden) if offset == 0 else (hidden, n13 // 2)
         packed, codebooks, scales = tensors[offset : offset + 3]
-        words = (n // 16) * (k // 64) * 60
+        from vllm.model_executor.layers.quantization.nvfp4_arvq_hybrid import _layout
+
+        tile_words, _ = _layout(codebooks)
+        words = (n // 16) * (k // 64) * tile_words
         # Packed storage has one final guard; internal expert boundaries also
         # provide the readable guard required by the cross-word extraction.
         return dequantize_cold(

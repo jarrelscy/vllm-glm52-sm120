@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: Copyright contributors to the vLLM project
 #include <cuda_runtime.h>
 #include <cuda_fp16.h>
 #include <stdint.h>
@@ -51,19 +52,17 @@ extern "C" int hybrid_pack(const void* x, void* q, void* s, int K, int slots,
 }
 // Routes must be disjoint: cold_ids[slot]>=0 XOR hot_ids[slot]>=0.
 // A slot with bothnegative is defined as zero; with bothpositive cold wins.
-template <int RESIDUAL_BITS>
 __global__ void hybrid_kernel(const unsigned* cw, const unsigned* cb,
                               const unsigned char* cs, const unsigned* hw,
                               const unsigned* hs, const unsigned* x,
                               const unsigned* xs, const int* cold_ids,
                               const int* hot_ids, float* partial, int N, int G,
                               int S, int P) {
-  constexpr int LUT_SIZE = 256 + (1 << RESIDUAL_BITS);
-  __shared__ unsigned lut[LUT_SIZE];
+  __shared__ unsigned lut[512];
   int slot = blockIdx.z, cold_e = cold_ids[slot], hot_e = hot_ids[slot];
   bool cold = cold_e >= 0;
   if (cold) {
-    for (int i = threadIdx.x; i < LUT_SIZE; i += blockDim.x) lut[i] = cb[i];
+    for (int i = threadIdx.x; i < 512; i += blockDim.x) lut[i] = cb[i];
     __syncthreads();
   }
   int lane = threadIdx.x & 31, q = lane / 4, c = lane % 4,
@@ -79,19 +78,13 @@ __global__ void hybrid_kernel(const unsigned* cw, const unsigned* cb,
       unsigned a[4], r[4], sa;
       if (cold) {
         const unsigned* w =
-            cw + (((long long)cold_e * (N / 16) + tile) * G + g) *
-                     (4 * (8 + RESIDUAL_BITS));
+            cw + (((long long)cold_e * (N / 16) + tile) * G + g) * 64;
 #pragma unroll
         for (int j = 0; j < 4; j++) {
-          int bit = (j * 32 + lane) * (8 + RESIDUAL_BITS), word = bit / 32,
-              shift = bit % 32;
-          unsigned pair;
-          if constexpr (RESIDUAL_BITS == 8)
-            pair = w[word] >> shift;
-          else
-            pair = __funnelshift_r(w[word], w[word + 1], shift);
+          int bit = (j * 32 + lane) * 16, word = bit / 32, shift = bit % 32;
+          unsigned pair = w[word] >> shift;
           a[j] = lut[pair & 255];
-          r[j] = lut[256 + ((pair >> 8) & ((1 << RESIDUAL_BITS) - 1))];
+          r[j] = lut[256 + ((pair >> 8) & 255)];
         }
         int row = q + 8 * (c & 1);
         sa = cs[(((long long)cold_e * (N / 16) + tile) * (G / 2) + g / 2) * 16 +
@@ -139,7 +132,7 @@ __global__ void hybrid_reduce(const float* p, float* y, const int* cold_ids,
   y[i] = v * scale;
 }
 // C ABI (12pointers, float, 6ints, stream):
-// cold_w:u32 [Ec,N/16,K/64,60]+1guard; cold_cb:u32[384];
+// cold_w:u32 [Ec,N/16,K/64,64]; cold_cb:u32[512];
 // cold_scales:u8[Ec,N/16,K/128,16];
 // hot_w:u32[Eh,N/16,K/64,4,32]; hot_scales:u32[Eh,N,K/64];
 // hot_global:f32[Eh,hot_parts] (hot_parts=2 gate/up or1down);
@@ -147,25 +140,24 @@ __global__ void hybrid_reduce(const float* p, float* y, const int* cold_ids,
 // cold_ids/hot_ids:i32[slots]; partial:f32[slots,N,split]; out:f32[slots,N].
 // cold_global:f32; N,K,slots,split,P,hot_parts:int; CUDAstream:void*.
 // N%16=0,K%128=0,P=1or4,hot_parts=1or2, split>0.
-template <int RESIDUAL_BITS>
-int hybrid_launch_impl(const void* cold_w, const void* cold_cb,
-                       const void* cold_scales, const void* hot_w,
-                       const void* hot_scales, const void* hot_global,
-                       const void* x, const void* xs, const void* cold_ids,
-                       const void* hot_ids, void* partial, void* out,
-                       float cold_global, int N, int K, int slots, int split,
-                       int P, int hot_parts, void* stream) {
+extern "C" int hybrid_launch(const void* cold_w, const void* cold_cb,
+                             const void* cold_scales, const void* hot_w,
+                             const void* hot_scales, const void* hot_global,
+                             const void* x, const void* xs,
+                             const void* cold_ids, const void* hot_ids,
+                             void* partial, void* out, float cold_global, int N,
+                             int K, int slots, int split, int P, int hot_parts,
+                             void* stream) {
   if (N <= 0 || N % 16 || K <= 0 || K % 128 || slots <= 0 || split <= 0 ||
       (P != 1 && P != 4) || (hot_parts != 1 && hot_parts != 2))
     return (int)cudaErrorInvalidValue;
   cudaStream_t s = (cudaStream_t)stream;
-  hybrid_kernel<RESIDUAL_BITS>
-      <<<dim3((N + 63) / 64, split, slots), 128, 0, s>>>(
-          (const unsigned*)cold_w, (const unsigned*)cold_cb,
-          (const unsigned char*)cold_scales, (const unsigned*)hot_w,
-          (const unsigned*)hot_scales, (const unsigned*)x, (const unsigned*)xs,
-          (const int*)cold_ids, (const int*)hot_ids, (float*)partial, N, K / 64,
-          split, P);
+  hybrid_kernel<<<dim3((N + 63) / 64, split, slots), 128, 0, s>>>(
+      (const unsigned*)cold_w, (const unsigned*)cold_cb,
+      (const unsigned char*)cold_scales, (const unsigned*)hot_w,
+      (const unsigned*)hot_scales, (const unsigned*)x, (const unsigned*)xs,
+      (const int*)cold_ids, (const int*)hot_ids, (float*)partial, N, K / 64,
+      split, P);
   cudaError_t err = cudaGetLastError();
   if (err != cudaSuccess) return (int)err;
   hybrid_reduce<<<((long long)slots * N + 255) / 256, 256, 0, s>>>(
@@ -175,33 +167,28 @@ int hybrid_launch_impl(const void* cold_w, const void* cold_cb,
   return (int)cudaGetLastError();
 }
 
-extern "C" int hybrid_launch(const void* cold_w, const void* cold_cb,
-                             const void* cold_scales, const void* hot_w,
-                             const void* hot_scales, const void* hot_global,
-                             const void* x, const void* xs,
-                             const void* cold_ids, const void* hot_ids,
-                             void* partial, void* out, float cold_global, int N,
-                             int K, int slots, int split, int P, int hot_parts,
-                             void* stream) {
-  return hybrid_launch_impl<7>(cold_w, cold_cb, cold_scales, hot_w, hot_scales,
-                               hot_global, x, xs, cold_ids, hot_ids, partial,
-                               out, cold_global, N, K, slots, split, P,
-                               hot_parts, stream);
+// Benchmark-only preprocessing, excluded from inference timings.
+__global__ void expand_15_to_16(const unsigned* src, unsigned* dst,
+                                long long words, int full) {
+  long long i = (long long)blockIdx.x * blockDim.x + threadIdx.x;
+  if (i >= words) return;
+  long long tile = i / 64;
+  int off = i % 64;
+  unsigned result = 0;
+#pragma unroll
+  for (int j = 0; j < 2; j++) {
+    int bit = (off * 2 + j) * 15, word = bit / 32, shift = bit % 32;
+    const unsigned* w = src + tile * 60;
+    unsigned q = __funnelshift_r(w[word], w[word + 1], shift) & 32767;
+    if (full)
+      q |= (((unsigned)(i * 1664525u + 1013904223u) >> (j + 12)) & 1u) << 15;
+    result |= q << (j * 16);
+  }
+  dst[i] = result;
 }
-
-// 8+8 layout: packed u32[Ec,N/16,K/64,64], codebooks u32[512].
-// Aligned indices require no trailing guard word. All other arguments
-// unchanged.
-extern "C" int hybrid_launch_8x8(const void* cold_w, const void* cold_cb,
-                                 const void* cold_scales, const void* hot_w,
-                                 const void* hot_scales, const void* hot_global,
-                                 const void* x, const void* xs,
-                                 const void* cold_ids, const void* hot_ids,
-                                 void* partial, void* out, float cold_global,
-                                 int N, int K, int slots, int split, int P,
-                                 int hot_parts, void* stream) {
-  return hybrid_launch_impl<8>(cold_w, cold_cb, cold_scales, hot_w, hot_scales,
-                               hot_global, x, xs, cold_ids, hot_ids, partial,
-                               out, cold_global, N, K, slots, split, P,
-                               hot_parts, stream);
+extern "C" int expand_indices(const void* src, void* dst, long long words,
+                              int full, void* stream) {
+  expand_15_to_16<<<(words + 255) / 256, 256, 0, (cudaStream_t)stream>>>(
+      (const unsigned*)src, (unsigned*)dst, words, full);
+  return (int)cudaGetLastError();
 }

@@ -1,0 +1,62 @@
+[
+  {
+    "run": 0,
+    "steady_decode_tps": 442.6189045543127,
+    "gpu0_mean_sm_mhz": 1966.111111111111,
+    "gpu0_mean_temp_c": 62.46666666666667
+  },
+  {
+    "run": 1,
+    "steady_decode_tps": 440.04216789574383,
+    "gpu0_mean_sm_mhz": 1948.8260869565217,
+    "gpu0_mean_temp_c": 70.02173913043478
+  },
+  {
+    "run": 2,
+    "steady_decode_tps": 435.1584524005442,
+    "gpu0_mean_sm_mhz": 1914.195652173913,
+    "gpu0_mean_temp_c": 75.6304347826087
+  },
+  {
+    "run": 3,
+    "steady_decode_tps": 433.5581010896749,
+    "gpu0_mean_sm_mhz": 1885.2340425531916,
+    "gpu0_mean_temp_c": 80.40425531914893
+  },
+  {
+    "run": 4,
+    "steady_decode_tps": 428.09149330284555,
+    "gpu0_mean_sm_mhz": 1860.7659574468084,
+    "gpu0_mean_temp_c": 84.27659574468085
+  },
+  {
+    "run": 5,
+    "steady_decode_tps": 424.7816808510179,
+    "gpu0_mean_sm_mhz": 1838.468085106383,
+    "gpu0_mean_temp_c": 87.57446808510639
+  },
+  {
+    "run": 6,
+    "steady_decode_tps": 419.3990997102103,
+    "gpu0_mean_sm_mhz": 1800.6938775510205,
+    "gpu0_mean_temp_c": 89.63265306122449
+  },
+  {
+    "run": 7,
+    "steady_decode_tps": 414.2343878201023,
+    "gpu0_mean_sm_mhz": 1785.8163265306123,
+    "gpu0_mean_temp_c": 89.9795918367347
+  },
+  {
+    "run": 8,
+    "steady_decode_tps": 414.3791185091259,
+    "gpu0_mean_sm_mhz": 1784.0408163265306,
+    "gpu0_mean_temp_c": 89.9795918367347
+  },
+  {
+    "run": 9,
+    "steady_decode_tps": 410.02176635355397,
+    "gpu0_mean_sm_mhz": 1759.34,
+    "gpu0_mean_temp_c": 90.78
+  }
+]

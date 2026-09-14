@@ -14,23 +14,31 @@ __device__ __forceinline__ float fp4(unsigned code) {
   return code & 8 ? -value : value;
 }
 
-template <bool FP16>
+template <bool FP16, int RESIDUAL_BITS>
 __global__ void arvq_dequant_kernel(const unsigned* packed,
                                     const unsigned* codebooks,
                                     const unsigned char* scales, float global,
                                     void* output, int N, int K) {
-  __shared__ unsigned lut[384];
-  for (int i = threadIdx.x; i < 384; i += blockDim.x) lut[i] = codebooks[i];
+  constexpr int LUT_SIZE = 256 + (1 << RESIDUAL_BITS);
+  __shared__ unsigned lut[LUT_SIZE];
+  for (int i = threadIdx.x; i < LUT_SIZE; i += blockDim.x)
+    lut[i] = codebooks[i];
   __syncthreads();
   int64_t index = (int64_t)blockIdx.x * blockDim.x + threadIdx.x;
   if (index >= (int64_t)N * (K / 8)) return;
   int row = index / (K / 8), col = (index % (K / 8)) * 8, G = K / 64;
   int j = (row % 16) / 8 + 2 * ((col % 64) / 32);
   int lane = (row % 8) * 4 + (col % 32) / 8;
-  int bit = (j * 32 + lane) * 15;
-  const unsigned* tile = packed + ((int64_t)(row / 16) * G + col / 64) * 60;
-  unsigned pair = __funnelshift_r(tile[bit / 32], tile[bit / 32 + 1], bit % 32);
-  unsigned first = lut[pair & 255], second = lut[256 + ((pair >> 8) & 127)];
+  int bit = (j * 32 + lane) * (8 + RESIDUAL_BITS);
+  const unsigned* tile =
+      packed + ((int64_t)(row / 16) * G + col / 64) * (4 * (8 + RESIDUAL_BITS));
+  unsigned pair;
+  if constexpr (RESIDUAL_BITS == 8)
+    pair = tile[bit / 32] >> (bit % 32);
+  else
+    pair = __funnelshift_r(tile[bit / 32], tile[bit / 32 + 1], bit % 32);
+  unsigned first = lut[pair & 255],
+           second = lut[256 + ((pair >> 8) & ((1 << RESIDUAL_BITS) - 1))];
   unsigned scale =
       scales[((int64_t)(row / 16) * (K / 128) + col / 128) * 16 + row % 16];
   unsigned exponent = (scale >> 3) & 15, mantissa = scale & 7;
@@ -57,7 +65,7 @@ extern "C" int arvq_dequant(const void* packed, const void* codebooks,
                             const void* scales, float global, void* output,
                             int N, int K, void* stream) {
   if (N <= 0 || K <= 0 || N % 16 || K % 128) return (int)cudaErrorInvalidValue;
-  arvq_dequant_kernel<false>
+  arvq_dequant_kernel<false, 7>
       <<<((int64_t)N * (K / 8) + 255) / 256, 256, 0, (cudaStream_t)stream>>>(
           (const unsigned*)packed, (const unsigned*)codebooks,
           (const unsigned char*)scales, global, output, N, K);
@@ -69,7 +77,31 @@ extern "C" int arvq_dequant_fp16(const void* packed, const void* codebooks,
                                  const void* scales, float global, void* output,
                                  int N, int K, void* stream) {
   if (N <= 0 || K <= 0 || N % 16 || K % 128) return (int)cudaErrorInvalidValue;
-  arvq_dequant_kernel<true>
+  arvq_dequant_kernel<true, 7>
+      <<<((int64_t)N * (K / 8) + 255) / 256, 256, 0, (cudaStream_t)stream>>>(
+          (const unsigned*)packed, (const unsigned*)codebooks,
+          (const unsigned char*)scales, global, output, N, K);
+  return (int)cudaGetLastError();
+}
+
+// 8+8 variants: 64 words per tile, 512 codebook words, no guard needed.
+extern "C" int arvq_dequant_8x8(const void* packed, const void* codebooks,
+                                const void* scales, float global, void* output,
+                                int N, int K, void* stream) {
+  if (N <= 0 || K <= 0 || N % 16 || K % 128) return (int)cudaErrorInvalidValue;
+  arvq_dequant_kernel<false, 8>
+      <<<((int64_t)N * (K / 8) + 255) / 256, 256, 0, (cudaStream_t)stream>>>(
+          (const unsigned*)packed, (const unsigned*)codebooks,
+          (const unsigned char*)scales, global, output, N, K);
+  return (int)cudaGetLastError();
+}
+
+// Same ABI, with output f16[N,K] to match native activation precision.
+extern "C" int arvq_dequant_fp16_8x8(const void* packed, const void* codebooks,
+                                     const void* scales, float global,
+                                     void* output, int N, int K, void* stream) {
+  if (N <= 0 || K <= 0 || N % 16 || K % 128) return (int)cudaErrorInvalidValue;
+  arvq_dequant_kernel<true, 8>
       <<<((int64_t)N * (K / 8) + 255) / 256, 256, 0, (cudaStream_t)stream>>>(
           (const unsigned*)packed, (const unsigned*)codebooks,
           (const unsigned char*)scales, global, output, N, K);

@@ -97,7 +97,7 @@ An earlier dense-P4 no-MTP run measured **53.28 decode tokens/s**. No-MTP was no
 
 ## Measured prefill throughput
 
-**Experimental result; sorting is OFF in the serving profile.** Native route sorting improved prefill, but did not qualify for deployment under the no-regression requirement: pooled eight-stream decode averaged 419.1 tokens/s OFF versus 411.6 ON (−1.8%, six batches per arm). The short decode workload cannot enter the changed path, so causation is unproven; the measurements nevertheless do not establish non-regression. The previous serving image and settings remain in use.
+**Experimental result; sorting is OFF in the serving profile.** Native route sorting improved prefill, but did not qualify for deployment under the no-regression requirement: pooled eight-stream decode averaged 419.1 tokens/s OFF versus 411.6 ON (−1.8%, six batches per arm). A follow-up found this comparison was confounded by GPU clock drift and request alignment. With the original serving image unchanged, ten consecutive eight-stream batches fell from 442.6 to 410.0 tokens/s as GPU 0 warmed from about 62 to 91°C and its clock fell from 1970 to 1768 MHz under the 300 W power limit. The short decode workload cannot enter the sorting path; the pooled difference is not evidence of a sorting-induced slowdown. Sorting remains disabled pending a fair qualification. [Cause investigation](https://github.com/jarrelscy/vllm-glm52-sm120/tree/arvq-hybrid-sm120/examples/arvq/results/sorting_cause).
 
 Full-position/eight-slot profile, LMCache ON, same-boot prefill comparison:
 
@@ -187,6 +187,8 @@ For long eligible prefills, many tokens visit the same expert. The current cold 
 ## Format, optimization scope, and accuracy status
 
 Each eight-weight cold vector stores an 8-bit first index and a 7-bit residual index into two shared FP4 E2M1 codebooks of sizes 256 and 128. FP8 E4M3 scales per 128 weights give **1.9375 bits/weight** before the small shared dictionaries and global scale; complete cold tensors remain **below 2 bits/weight**. Hot experts remain **4.5-bit NVFP4**.
+
+The kernel branch also supports optional **8+8** checkpoints (`arvq.format: rvq256_256x8`), with 256 + 256 codebook entries and 2.0625 bpw before shared metadata. This published checkpoint remains **8+7**. At its current cold-expert count, 8+8 would add about 7.39 GiB across four GPUs (1.85 GiB each), displacing 144,896–145,152 KV tokens and leaving 929,024–929,280 shared tokens under the current memory budget, assuming other runtime overhead is unchanged. [Exact weight and KV-block accounting](https://github.com/jarrelscy/vllm-glm52-sm120/blob/arvq-hybrid-sm120/examples/arvq/results/arvq_8x8/KV_DISPLACEMENT.md). It cannot retain the full million-token window with otherwise identical settings.
 
 The native cold path uses two FP4 MMA instructions per K tile; hot NVFP4 uses one. Both retain **four residual activation planes**, combined with weights 1, 1/16, 1/256, and 1/4096. The paired dense kernel places two token positions into the eight MMA columns, retaining all four planes per token. Rotation is not used.
 

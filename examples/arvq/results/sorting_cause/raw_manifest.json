@@ -1,0 +1,12 @@
+[
+  {
+    "file": "arrival.json.gz",
+    "uncompressed_bytes": 10127206,
+    "uncompressed_sha256": "74f40c772809bfe9fbcfc1487463ee67b841dabe113f82f83041c1b80d93b462"
+  },
+  {
+    "file": "baseline_heatsoak.json.gz",
+    "uncompressed_bytes": 9784071,
+    "uncompressed_sha256": "77b74b65ebed6484a8734690617a4c5c517794b6650e36d2c3b5e57c8d93d5f1"
+  }
+]

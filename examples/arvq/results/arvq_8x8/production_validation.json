@@ -1,0 +1,78 @@
+[
+  {
+    "bits": 7,
+    "dtype": "torch.float16",
+    "dequant_exact_and_graph": true
+  },
+  {
+    "bits": 7,
+    "dtype": "torch.bfloat16",
+    "dequant_exact_and_graph": true
+  },
+  {
+    "bits": 7,
+    "tokens": 1,
+    "projection_oracle_l2": 1.5717482426680363e-07,
+    "graph_replay_changed_x": true,
+    "legacy_bitwise_equal": true
+  },
+  {
+    "bits": 7,
+    "tokens": 3,
+    "projection_oracle_l2": 2.1935539962214534e-07,
+    "graph_replay_changed_x": true,
+    "legacy_bitwise_equal": true
+  },
+  {
+    "bits": 7,
+    "tokens": 4,
+    "projection_oracle_l2": 1.1184923209839326e-07,
+    "graph_replay_changed_x": true,
+    "legacy_bitwise_equal": true
+  },
+  {
+    "bits": 7,
+    "tokens": 7,
+    "projection_oracle_l2": 1.5189380064839497e-07,
+    "graph_replay_changed_x": true,
+    "legacy_bitwise_equal": true
+  },
+  {
+    "bits": 8,
+    "dtype": "torch.float16",
+    "dequant_exact_and_graph": true
+  },
+  {
+    "bits": 8,
+    "dtype": "torch.bfloat16",
+    "dequant_exact_and_graph": true
+  },
+  {
+    "bits": 8,
+    "tokens": 1,
+    "projection_oracle_l2": 8.21394579020307e-08,
+    "graph_replay_changed_x": true,
+    "legacy_bitwise_equal": false
+  },
+  {
+    "bits": 8,
+    "tokens": 3,
+    "projection_oracle_l2": 1.6980040129510598e-07,
+    "graph_replay_changed_x": true,
+    "legacy_bitwise_equal": false
+  },
+  {
+    "bits": 8,
+    "tokens": 4,
+    "projection_oracle_l2": 1.4790752800308837e-07,
+    "graph_replay_changed_x": true,
+    "legacy_bitwise_equal": false
+  },
+  {
+    "bits": 8,
+    "tokens": 7,
+    "projection_oracle_l2": 1.6347473774658283e-07,
+    "graph_replay_changed_x": true,
+    "legacy_bitwise_equal": false
+  }
+]

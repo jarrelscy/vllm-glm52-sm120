@@ -1,5 +1,7 @@
 # Sorted prefill live qualification — NOT QUALIFIED
 
+**Follow-up:** the [cause investigation](../sorting_cause/NOTES.md) identified clock drift and a differently aligned request batch as confounds. An unchanged-code heat-soak test reproduced a 442.6 → 410.0 tokens/s decline. The original pooled difference below does not establish a sorting-induced regression; it records why the initial rollout was withheld.
+
 **Production rollout rejected.** Sorting improved measured prefill throughput, but the pooled eight-stream decode result was 1.80% lower with sorting ON. Decode takes an identical code path for this workload, so causation is unproven; that is insufficient evidence for the user’s strict no-regression requirement. All original and repeat samples are retained. No further rounds were run to seek a favorable result. The stable paired-compact image was restored with sorting disabled. Health returned 200, restart count was zero, and a 16-token completion passed. `final_restore.json` records the final configuration and smoke check.
 
 | Input tokens | OFF prefill tokens/s | ON prefill tokens/s | Change |

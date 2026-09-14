@@ -1,0 +1,122 @@
+[
+  {
+    "file": "live_decode_off.json",
+    "run": 0,
+    "tps": 409.8217081774323,
+    "distinct_full_output_sequences": 2,
+    "first_emission_spread_s": 1.7250898168422282,
+    "sample_count": 145,
+    "mean_distinct_last4_token_states": 4,
+    "fraction_all_streams_identical_last4": 0.0
+  },
+  {
+    "file": "live_decode_off.json",
+    "run": 1,
+    "tps": 411.5695807980153,
+    "distinct_full_output_sequences": 2,
+    "first_emission_spread_s": 1.7180210910737514,
+    "sample_count": 144,
+    "mean_distinct_last4_token_states": 4,
+    "fraction_all_streams_identical_last4": 0.0
+  },
+  {
+    "file": "live_decode_on.json",
+    "run": 0,
+    "tps": 408.66851290830584,
+    "distinct_full_output_sequences": 2,
+    "first_emission_spread_s": 1.72549764579162,
+    "sample_count": 143,
+    "mean_distinct_last4_token_states": 4,
+    "fraction_all_streams_identical_last4": 0.0
+  },
+  {
+    "file": "live_decode_on.json",
+    "run": 1,
+    "tps": 407.6970289271062,
+    "distinct_full_output_sequences": 2,
+    "first_emission_spread_s": 1.6986670708283782,
+    "sample_count": 146,
+    "mean_distinct_last4_token_states": 3,
+    "fraction_all_streams_identical_last4": 0.0
+  },
+  {
+    "file": "live_c8_abba_0_off.json",
+    "run": 0,
+    "tps": 431.32968462084585,
+    "distinct_full_output_sequences": 2,
+    "first_emission_spread_s": 1.555055281613022,
+    "sample_count": 138,
+    "mean_distinct_last4_token_states": 5,
+    "fraction_all_streams_identical_last4": 0.0
+  },
+  {
+    "file": "live_c8_abba_0_off.json",
+    "run": 1,
+    "tps": 425.237977138218,
+    "distinct_full_output_sequences": 2,
+    "first_emission_spread_s": 1.5885733258910477,
+    "sample_count": 140,
+    "mean_distinct_last4_token_states": 4,
+    "fraction_all_streams_identical_last4": 0.0
+  },
+  {
+    "file": "live_c8_abba_1_on.json",
+    "run": 0,
+    "tps": 416.05524587512406,
+    "distinct_full_output_sequences": 2,
+    "first_emission_spread_s": 1.6559903672896326,
+    "sample_count": 140,
+    "mean_distinct_last4_token_states": 4,
+    "fraction_all_streams_identical_last4": 0.0
+  },
+  {
+    "file": "live_c8_abba_1_on.json",
+    "run": 1,
+    "tps": 418.04010422581797,
+    "distinct_full_output_sequences": 2,
+    "first_emission_spread_s": 1.6687220535241067,
+    "sample_count": 142,
+    "mean_distinct_last4_token_states": 3,
+    "fraction_all_streams_identical_last4": 0.0
+  },
+  {
+    "file": "live_c8_abba_2_on.json",
+    "run": 0,
+    "tps": 409.52406828135065,
+    "distinct_full_output_sequences": 2,
+    "first_emission_spread_s": 1.7233426608145237,
+    "sample_count": 140,
+    "mean_distinct_last4_token_states": 4,
+    "fraction_all_streams_identical_last4": 0.0
+  },
+  {
+    "file": "live_c8_abba_2_on.json",
+    "run": 1,
+    "tps": 409.38667156450293,
+    "distinct_full_output_sequences": 2,
+    "first_emission_spread_s": 1.7273521036840975,
+    "sample_count": 146,
+    "mean_distinct_last4_token_states": 4,
+    "fraction_all_streams_identical_last4": 0.0
+  },
+  {
+    "file": "live_c8_abba_3_off.json",
+    "run": 0,
+    "tps": 411.5474258076167,
+    "distinct_full_output_sequences": 2,
+    "first_emission_spread_s": 1.7124125738628209,
+    "sample_count": 140,
+    "mean_distinct_last4_token_states": 4,
+    "fraction_all_streams_identical_last4": 0.0
+  },
+  {
+    "file": "live_c8_abba_3_off.json",
+    "run": 1,
+    "tps": 425.0839001236211,
+    "distinct_full_output_sequences": 1,
+    "first_emission_spread_s": 0.0004941136576235294,
+    "sample_count": 142,
+    "mean_distinct_last4_token_states": 1,
+    "fraction_all_streams_identical_last4": 1.0
+  }
+]

@@ -1,0 +1,995 @@
+{
+  "clock_alignment": "CSV first sample approximates batch origin; trim 0.3 s from both common-window edges to avoid startup/tail samples. No precision finer than sampling interval is implied.",
+  "rows": [
+    {
+      "source": "live_decode_off.json",
+      "run": 0,
+      "decode_tps": 409.8217081774323,
+      "first_emission_span_ms": 1725.0898168422282,
+      "distinct_output_sequences": 2,
+      "gpus": [
+        {
+          "index": 0,
+          "samples": 45,
+          "mean_sm_mhz": 1773.9333333333334,
+          "mean_power_w": 300.1731111111111,
+          "mean_temp_c": 91.93333333333334,
+          "max_temp_c": 92.0,
+          "mean_util_pct": 99.53333333333333
+        },
+        {
+          "index": 1,
+          "samples": 45,
+          "mean_sm_mhz": 1958.7333333333333,
+          "mean_power_w": 300.3862222222222,
+          "mean_temp_c": 86.64444444444445,
+          "max_temp_c": 87.0,
+          "mean_util_pct": 99.86666666666666
+        },
+        {
+          "index": 2,
+          "samples": 45,
+          "mean_sm_mhz": 1861.1777777777777,
+          "mean_power_w": 300.30266666666665,
+          "mean_temp_c": 90.93333333333334,
+          "max_temp_c": 91.0,
+          "mean_util_pct": 99.93333333333334
+        },
+        {
+          "index": 3,
+          "samples": 45,
+          "mean_sm_mhz": 1813.2222222222222,
+          "mean_power_w": 300.2506666666667,
+          "mean_temp_c": 90.0,
+          "max_temp_c": 90.0,
+          "mean_util_pct": 99.95555555555555
+        }
+      ]
+    },
+    {
+      "source": "live_decode_off.json",
+      "run": 1,
+      "decode_tps": 411.5695807980153,
+      "first_emission_span_ms": 1718.0210910737514,
+      "distinct_output_sequences": 2,
+      "gpus": [
+        {
+          "index": 0,
+          "samples": 46,
+          "mean_sm_mhz": 1777.195652173913,
+          "mean_power_w": 300.14173913043476,
+          "mean_temp_c": 92.0,
+          "max_temp_c": 92.0,
+          "mean_util_pct": 99.91304347826087
+        },
+        {
+          "index": 1,
+          "samples": 46,
+          "mean_sm_mhz": 1936.0217391304348,
+          "mean_power_w": 300.4310869565217,
+          "mean_temp_c": 88.0,
+          "max_temp_c": 88.0,
+          "mean_util_pct": 99.71739130434783
+        },
+        {
+          "index": 2,
+          "samples": 46,
+          "mean_sm_mhz": 1866.2391304347825,
+          "mean_power_w": 300.3421739130435,
+          "mean_temp_c": 90.1304347826087,
+          "max_temp_c": 91.0,
+          "mean_util_pct": 99.84782608695652
+        },
+        {
+          "index": 3,
+          "samples": 46,
+          "mean_sm_mhz": 1810.1304347826087,
+          "mean_power_w": 300.2639130434783,
+          "mean_temp_c": 89.32608695652173,
+          "max_temp_c": 90.0,
+          "mean_util_pct": 99.71739130434783
+        }
+      ]
+    },
+    {
+      "source": "live_decode_on.json",
+      "run": 0,
+      "decode_tps": 408.66851290830584,
+      "first_emission_span_ms": 1725.49764579162,
+      "distinct_output_sequences": 2,
+      "gpus": [
+        {
+          "index": 0,
+          "samples": 46,
+          "mean_sm_mhz": 1775.1304347826087,
+          "mean_power_w": 300.1408695652174,
+          "mean_temp_c": 91.28260869565217,
+          "max_temp_c": 92.0,
+          "mean_util_pct": 99.76086956521739
+        },
+        {
+          "index": 1,
+          "samples": 46,
+          "mean_sm_mhz": 1946.2391304347825,
+          "mean_power_w": 300.31391304347824,
+          "mean_temp_c": 86.82608695652173,
+          "max_temp_c": 87.0,
+          "mean_util_pct": 99.93478260869566
+        },
+        {
+          "index": 2,
+          "samples": 46,
+          "mean_sm_mhz": 1849.1739130434783,
+          "mean_power_w": 300.2919565217391,
+          "mean_temp_c": 91.0,
+          "max_temp_c": 91.0,
+          "mean_util_pct": 99.8695652173913
+        },
+        {
+          "index": 3,
+          "samples": 46,
+          "mean_sm_mhz": 1800.0,
+          "mean_power_w": 300.23065217391303,
+          "mean_temp_c": 90.0,
+          "max_temp_c": 90.0,
+          "mean_util_pct": 100.0
+        }
+      ]
+    },
+    {
+      "source": "live_decode_on.json",
+      "run": 1,
+      "decode_tps": 407.6970289271062,
+      "first_emission_span_ms": 1698.6670708283782,
+      "distinct_output_sequences": 2,
+      "gpus": [
+        {
+          "index": 0,
+          "samples": 47,
+          "mean_sm_mhz": 1742.2340425531916,
+          "mean_power_w": 294.9591489361702,
+          "mean_temp_c": 92.0,
+          "max_temp_c": 92.0,
+          "mean_util_pct": 99.65957446808511
+        },
+        {
+          "index": 1,
+          "samples": 47,
+          "mean_sm_mhz": 1963.1063829787233,
+          "mean_power_w": 300.35063829787237,
+          "mean_temp_c": 88.0,
+          "max_temp_c": 88.0,
+          "mean_util_pct": 99.8936170212766
+        },
+        {
+          "index": 2,
+          "samples": 47,
+          "mean_sm_mhz": 1888.0,
+          "mean_power_w": 300.2529787234043,
+          "mean_temp_c": 91.0,
+          "max_temp_c": 91.0,
+          "mean_util_pct": 99.82978723404256
+        },
+        {
+          "index": 3,
+          "samples": 47,
+          "mean_sm_mhz": 1829.5106382978724,
+          "mean_power_w": 300.2089361702128,
+          "mean_temp_c": 90.0,
+          "max_temp_c": 90.0,
+          "mean_util_pct": 99.95744680851064
+        }
+      ]
+    },
+    {
+      "source": "live_c8_abba_0_off.json",
+      "run": 0,
+      "decode_tps": 431.32968462084585,
+      "first_emission_span_ms": 1555.055281613022,
+      "distinct_output_sequences": 2,
+      "gpus": [
+        {
+          "index": 0,
+          "samples": 43,
+          "mean_sm_mhz": 1899.0,
+          "mean_power_w": 300.1460465116279,
+          "mean_temp_c": 77.69767441860465,
+          "max_temp_c": 80.0,
+          "mean_util_pct": 100.0
+        },
+        {
+          "index": 1,
+          "samples": 43,
+          "mean_sm_mhz": 2039.5581395348838,
+          "mean_power_w": 297.71488372093023,
+          "mean_temp_c": 67.16279069767442,
+          "max_temp_c": 70.0,
+          "mean_util_pct": 99.53488372093024
+        },
+        {
+          "index": 2,
+          "samples": 43,
+          "mean_sm_mhz": 1953.0697674418604,
+          "mean_power_w": 300.1874418604651,
+          "mean_temp_c": 75.83720930232558,
+          "max_temp_c": 79.0,
+          "mean_util_pct": 99.46511627906976
+        },
+        {
+          "index": 3,
+          "samples": 43,
+          "mean_sm_mhz": 1924.4883720930231,
+          "mean_power_w": 300.1853488372093,
+          "mean_temp_c": 73.69767441860465,
+          "max_temp_c": 76.0,
+          "mean_util_pct": 99.69767441860465
+        }
+      ]
+    },
+    {
+      "source": "live_c8_abba_0_off.json",
+      "run": 1,
+      "decode_tps": 425.237977138218,
+      "first_emission_span_ms": 1588.5733258910477,
+      "distinct_output_sequences": 2,
+      "gpus": [
+        {
+          "index": 0,
+          "samples": 44,
+          "mean_sm_mhz": 1868.4772727272727,
+          "mean_power_w": 300.12113636363637,
+          "mean_temp_c": 84.0909090909091,
+          "max_temp_c": 86.0,
+          "mean_util_pct": 99.61363636363636
+        },
+        {
+          "index": 1,
+          "samples": 44,
+          "mean_sm_mhz": 2041.840909090909,
+          "mean_power_w": 299.8959090909091,
+          "mean_temp_c": 73.5,
+          "max_temp_c": 75.0,
+          "mean_util_pct": 99.5
+        },
+        {
+          "index": 2,
+          "samples": 44,
+          "mean_sm_mhz": 1928.7045454545455,
+          "mean_power_w": 300.22409090909093,
+          "mean_temp_c": 81.97727272727273,
+          "max_temp_c": 84.0,
+          "mean_util_pct": 99.75
+        },
+        {
+          "index": 3,
+          "samples": 44,
+          "mean_sm_mhz": 1899.8636363636363,
+          "mean_power_w": 300.19795454545454,
+          "mean_temp_c": 79.77272727272727,
+          "max_temp_c": 82.0,
+          "mean_util_pct": 99.68181818181819
+        }
+      ]
+    },
+    {
+      "source": "live_c8_abba_1_on.json",
+      "run": 0,
+      "decode_tps": 416.05524587512406,
+      "first_emission_span_ms": 1655.9903672896326,
+      "distinct_output_sequences": 2,
+      "gpus": [
+        {
+          "index": 0,
+          "samples": 45,
+          "mean_sm_mhz": 1809.7777777777778,
+          "mean_power_w": 300.20666666666665,
+          "mean_temp_c": 88.5111111111111,
+          "max_temp_c": 90.0,
+          "mean_util_pct": 99.64444444444445
+        },
+        {
+          "index": 1,
+          "samples": 45,
+          "mean_sm_mhz": 2026.9777777777779,
+          "mean_power_w": 300.072,
+          "mean_temp_c": 77.8,
+          "max_temp_c": 79.0,
+          "mean_util_pct": 99.55555555555556
+        },
+        {
+          "index": 2,
+          "samples": 45,
+          "mean_sm_mhz": 1903.0666666666666,
+          "mean_power_w": 300.3462222222222,
+          "mean_temp_c": 86.33333333333333,
+          "max_temp_c": 88.0,
+          "mean_util_pct": 99.82222222222222
+        },
+        {
+          "index": 3,
+          "samples": 45,
+          "mean_sm_mhz": 1863.5111111111112,
+          "mean_power_w": 300.2982222222222,
+          "mean_temp_c": 83.95555555555555,
+          "max_temp_c": 85.0,
+          "mean_util_pct": 99.91111111111111
+        }
+      ]
+    },
+    {
+      "source": "live_c8_abba_1_on.json",
+      "run": 1,
+      "decode_tps": 418.04010422581797,
+      "first_emission_span_ms": 1668.7220535241067,
+      "distinct_output_sequences": 2,
+      "gpus": [
+        {
+          "index": 0,
+          "samples": 45,
+          "mean_sm_mhz": 1793.3111111111111,
+          "mean_power_w": 300.1517777777778,
+          "mean_temp_c": 90.95555555555555,
+          "max_temp_c": 91.0,
+          "mean_util_pct": 99.4888888888889
+        },
+        {
+          "index": 1,
+          "samples": 45,
+          "mean_sm_mhz": 2021.7555555555555,
+          "mean_power_w": 299.8622222222222,
+          "mean_temp_c": 80.84444444444445,
+          "max_temp_c": 82.0,
+          "mean_util_pct": 99.73333333333333
+        },
+        {
+          "index": 2,
+          "samples": 45,
+          "mean_sm_mhz": 1886.3777777777777,
+          "mean_power_w": 300.3617777777778,
+          "mean_temp_c": 89.66666666666667,
+          "max_temp_c": 91.0,
+          "mean_util_pct": 99.71111111111111
+        },
+        {
+          "index": 3,
+          "samples": 45,
+          "mean_sm_mhz": 1855.4888888888888,
+          "mean_power_w": 300.3353333333333,
+          "mean_temp_c": 87.11111111111111,
+          "max_temp_c": 88.0,
+          "mean_util_pct": 99.86666666666666
+        }
+      ]
+    },
+    {
+      "source": "live_c8_abba_2_on.json",
+      "run": 0,
+      "decode_tps": 409.52406828135065,
+      "first_emission_span_ms": 1723.3426608145237,
+      "distinct_output_sequences": 2,
+      "gpus": [
+        {
+          "index": 0,
+          "samples": 46,
+          "mean_sm_mhz": 1775.7173913043478,
+          "mean_power_w": 300.15478260869565,
+          "mean_temp_c": 91.0,
+          "max_temp_c": 91.0,
+          "mean_util_pct": 99.69565217391305
+        },
+        {
+          "index": 1,
+          "samples": 46,
+          "mean_sm_mhz": 1991.3260869565217,
+          "mean_power_w": 300.22978260869564,
+          "mean_temp_c": 83.21739130434783,
+          "max_temp_c": 84.0,
+          "mean_util_pct": 99.8913043478261
+        },
+        {
+          "index": 2,
+          "samples": 46,
+          "mean_sm_mhz": 1859.8478260869565,
+          "mean_power_w": 300.32173913043476,
+          "mean_temp_c": 90.0,
+          "max_temp_c": 90.0,
+          "mean_util_pct": 99.8695652173913
+        },
+        {
+          "index": 3,
+          "samples": 46,
+          "mean_sm_mhz": 1813.3478260869565,
+          "mean_power_w": 300.29934782608694,
+          "mean_temp_c": 89.04347826086956,
+          "max_temp_c": 90.0,
+          "mean_util_pct": 99.8913043478261
+        }
+      ]
+    },
+    {
+      "source": "live_c8_abba_2_on.json",
+      "run": 1,
+      "decode_tps": 409.38667156450293,
+      "first_emission_span_ms": 1727.3521036840975,
+      "distinct_output_sequences": 2,
+      "gpus": [
+        {
+          "index": 0,
+          "samples": 46,
+          "mean_sm_mhz": 1774.9565217391305,
+          "mean_power_w": 300.1347826086957,
+          "mean_temp_c": 91.0,
+          "max_temp_c": 91.0,
+          "mean_util_pct": 99.78260869565217
+        },
+        {
+          "index": 1,
+          "samples": 46,
+          "mean_sm_mhz": 1974.8260869565217,
+          "mean_power_w": 300.3532608695652,
+          "mean_temp_c": 85.17391304347827,
+          "max_temp_c": 86.0,
+          "mean_util_pct": 99.84782608695652
+        },
+        {
+          "index": 2,
+          "samples": 46,
+          "mean_sm_mhz": 1863.2391304347825,
+          "mean_power_w": 300.32652173913044,
+          "mean_temp_c": 90.0,
+          "max_temp_c": 90.0,
+          "mean_util_pct": 99.93478260869566
+        },
+        {
+          "index": 3,
+          "samples": 46,
+          "mean_sm_mhz": 1805.608695652174,
+          "mean_power_w": 300.31304347826085,
+          "mean_temp_c": 89.73913043478261,
+          "max_temp_c": 90.0,
+          "mean_util_pct": 99.8913043478261
+        }
+      ]
+    },
+    {
+      "source": "live_c8_abba_3_off.json",
+      "run": 0,
+      "decode_tps": 411.5474258076167,
+      "first_emission_span_ms": 1712.4125738628209,
+      "distinct_output_sequences": 2,
+      "gpus": [
+        {
+          "index": 0,
+          "samples": 45,
+          "mean_sm_mhz": 1780.911111111111,
+          "mean_power_w": 300.13444444444445,
+          "mean_temp_c": 91.24444444444444,
+          "max_temp_c": 92.0,
+          "mean_util_pct": 99.75555555555556
+        },
+        {
+          "index": 1,
+          "samples": 45,
+          "mean_sm_mhz": 1957.2666666666667,
+          "mean_power_w": 300.30955555555556,
+          "mean_temp_c": 86.42222222222222,
+          "max_temp_c": 87.0,
+          "mean_util_pct": 99.95555555555555
+        },
+        {
+          "index": 2,
+          "samples": 45,
+          "mean_sm_mhz": 1870.0666666666666,
+          "mean_power_w": 300.2642222222222,
+          "mean_temp_c": 90.0,
+          "max_temp_c": 90.0,
+          "mean_util_pct": 99.82222222222222
+        },
+        {
+          "index": 3,
+          "samples": 45,
+          "mean_sm_mhz": 1811.6,
+          "mean_power_w": 300.2077777777778,
+          "mean_temp_c": 89.53333333333333,
+          "max_temp_c": 90.0,
+          "mean_util_pct": 99.82222222222222
+        }
+      ]
+    },
+    {
+      "source": "live_c8_abba_3_off.json",
+      "run": 1,
+      "decode_tps": 425.0839001236211,
+      "first_emission_span_ms": 0.49411365762352943,
+      "distinct_output_sequences": 1,
+      "gpus": [
+        {
+          "index": 0,
+          "samples": 44,
+          "mean_sm_mhz": 1809.2954545454545,
+          "mean_power_w": 292.3354545454545,
+          "mean_temp_c": 92.0,
+          "max_temp_c": 92.0,
+          "mean_util_pct": 99.47727272727273
+        },
+        {
+          "index": 1,
+          "samples": 44,
+          "mean_sm_mhz": 1995.9318181818182,
+          "mean_power_w": 300.2572727272727,
+          "mean_temp_c": 87.81818181818181,
+          "max_temp_c": 88.0,
+          "mean_util_pct": 99.63636363636364
+        },
+        {
+          "index": 2,
+          "samples": 44,
+          "mean_sm_mhz": 1926.1363636363637,
+          "mean_power_w": 300.2925,
+          "mean_temp_c": 91.0,
+          "max_temp_c": 91.0,
+          "mean_util_pct": 99.5909090909091
+        },
+        {
+          "index": 3,
+          "samples": 44,
+          "mean_sm_mhz": 1876.590909090909,
+          "mean_power_w": 300.23227272727274,
+          "mean_temp_c": 90.0,
+          "max_temp_c": 90.0,
+          "mean_util_pct": 99.68181818181819
+        }
+      ]
+    },
+    {
+      "source": "baseline_heatsoak.json",
+      "run": 0,
+      "decode_tps": 442.6189045543127,
+      "first_emission_span_ms": 1572.287144139409,
+      "distinct_output_sequences": 2,
+      "gpus": [
+        {
+          "index": 0,
+          "samples": 42,
+          "mean_sm_mhz": 1970.3095238095239,
+          "mean_power_w": 299.95238095238096,
+          "mean_temp_c": 62.38095238095238,
+          "max_temp_c": 65.0,
+          "mean_util_pct": 99.76190476190476
+        },
+        {
+          "index": 1,
+          "samples": 42,
+          "mean_sm_mhz": 2040.8095238095239,
+          "mean_power_w": 287.68595238095236,
+          "mean_temp_c": 46.976190476190474,
+          "max_temp_c": 50.0,
+          "mean_util_pct": 99.76190476190476
+        },
+        {
+          "index": 2,
+          "samples": 42,
+          "mean_sm_mhz": 2031.642857142857,
+          "mean_power_w": 300.0959523809524,
+          "mean_temp_c": 58.11904761904762,
+          "max_temp_c": 61.0,
+          "mean_util_pct": 99.19047619047619
+        },
+        {
+          "index": 3,
+          "samples": 42,
+          "mean_sm_mhz": 1996.8333333333333,
+          "mean_power_w": 299.8183333333333,
+          "mean_temp_c": 56.95238095238095,
+          "max_temp_c": 60.0,
+          "mean_util_pct": 99.80952380952381
+        }
+      ]
+    },
+    {
+      "source": "baseline_heatsoak.json",
+      "run": 1,
+      "decode_tps": 440.04216789574383,
+      "first_emission_span_ms": 1591.9804112054408,
+      "distinct_output_sequences": 2,
+      "gpus": [
+        {
+          "index": 0,
+          "samples": 43,
+          "mean_sm_mhz": 1952.2558139534883,
+          "mean_power_w": 300.23186046511626,
+          "mean_temp_c": 70.0,
+          "max_temp_c": 72.0,
+          "mean_util_pct": 100.0
+        },
+        {
+          "index": 1,
+          "samples": 43,
+          "mean_sm_mhz": 2034.2325581395348,
+          "mean_power_w": 290.35325581395347,
+          "mean_temp_c": 54.651162790697676,
+          "max_temp_c": 57.0,
+          "mean_util_pct": 99.65116279069767
+        },
+        {
+          "index": 2,
+          "samples": 43,
+          "mean_sm_mhz": 2004.6744186046512,
+          "mean_power_w": 300.1332558139535,
+          "mean_temp_c": 65.65116279069767,
+          "max_temp_c": 68.0,
+          "mean_util_pct": 99.6046511627907
+        },
+        {
+          "index": 3,
+          "samples": 43,
+          "mean_sm_mhz": 1959.3488372093022,
+          "mean_power_w": 299.9304651162791,
+          "mean_temp_c": 64.6046511627907,
+          "max_temp_c": 67.0,
+          "mean_util_pct": 99.67441860465117
+        }
+      ]
+    },
+    {
+      "source": "baseline_heatsoak.json",
+      "run": 2,
+      "decode_tps": 435.1584524005442,
+      "first_emission_span_ms": 1544.1085062921047,
+      "distinct_output_sequences": 2,
+      "gpus": [
+        {
+          "index": 0,
+          "samples": 43,
+          "mean_sm_mhz": 1919.906976744186,
+          "mean_power_w": 300.07441860465116,
+          "mean_temp_c": 75.5813953488372,
+          "max_temp_c": 78.0,
+          "mean_util_pct": 99.95348837209302
+        },
+        {
+          "index": 1,
+          "samples": 43,
+          "mean_sm_mhz": 2042.9302325581396,
+          "mean_power_w": 292.6318604651163,
+          "mean_temp_c": 61.18604651162791,
+          "max_temp_c": 64.0,
+          "mean_util_pct": 99.5813953488372
+        },
+        {
+          "index": 2,
+          "samples": 43,
+          "mean_sm_mhz": 1985.9767441860465,
+          "mean_power_w": 300.10372093023256,
+          "mean_temp_c": 71.6046511627907,
+          "max_temp_c": 73.0,
+          "mean_util_pct": 99.6046511627907
+        },
+        {
+          "index": 3,
+          "samples": 43,
+          "mean_sm_mhz": 1951.0697674418604,
+          "mean_power_w": 300.1106976744186,
+          "mean_temp_c": 70.72093023255815,
+          "max_temp_c": 73.0,
+          "mean_util_pct": 99.51162790697674
+        }
+      ]
+    },
+    {
+      "source": "baseline_heatsoak.json",
+      "run": 3,
+      "decode_tps": 433.5581010896749,
+      "first_emission_span_ms": 1592.8106531500816,
+      "distinct_output_sequences": 2,
+      "gpus": [
+        {
+          "index": 0,
+          "samples": 44,
+          "mean_sm_mhz": 1891.25,
+          "mean_power_w": 300.12295454545455,
+          "mean_temp_c": 80.38636363636364,
+          "max_temp_c": 82.0,
+          "mean_util_pct": 100.0
+        },
+        {
+          "index": 1,
+          "samples": 44,
+          "mean_sm_mhz": 2052.6363636363635,
+          "mean_power_w": 295.13931818181817,
+          "mean_temp_c": 67.0909090909091,
+          "max_temp_c": 69.0,
+          "mean_util_pct": 99.63636363636364
+        },
+        {
+          "index": 2,
+          "samples": 44,
+          "mean_sm_mhz": 1965.4772727272727,
+          "mean_power_w": 300.2129545454545,
+          "mean_temp_c": 76.43181818181819,
+          "max_temp_c": 78.0,
+          "mean_util_pct": 99.63636363636364
+        },
+        {
+          "index": 3,
+          "samples": 44,
+          "mean_sm_mhz": 1928.0681818181818,
+          "mean_power_w": 300.1543181818182,
+          "mean_temp_c": 75.61363636363636,
+          "max_temp_c": 77.0,
+          "mean_util_pct": 99.75
+        }
+      ]
+    },
+    {
+      "source": "baseline_heatsoak.json",
+      "run": 4,
+      "decode_tps": 428.09149330284555,
+      "first_emission_span_ms": 1616.4860473945737,
+      "distinct_output_sequences": 2,
+      "gpus": [
+        {
+          "index": 0,
+          "samples": 44,
+          "mean_sm_mhz": 1866.7954545454545,
+          "mean_power_w": 300.13522727272726,
+          "mean_temp_c": 84.22727272727273,
+          "max_temp_c": 86.0,
+          "mean_util_pct": 99.93181818181819
+        },
+        {
+          "index": 1,
+          "samples": 44,
+          "mean_sm_mhz": 2045.6818181818182,
+          "mean_power_w": 298.0270454545455,
+          "mean_temp_c": 71.72727272727273,
+          "max_temp_c": 73.0,
+          "mean_util_pct": 99.43181818181819
+        },
+        {
+          "index": 2,
+          "samples": 44,
+          "mean_sm_mhz": 1938.1136363636363,
+          "mean_power_w": 300.2729545454545,
+          "mean_temp_c": 80.70454545454545,
+          "max_temp_c": 82.0,
+          "mean_util_pct": 99.5
+        },
+        {
+          "index": 3,
+          "samples": 44,
+          "mean_sm_mhz": 1901.6363636363637,
+          "mean_power_w": 300.2204545454546,
+          "mean_temp_c": 79.36363636363636,
+          "max_temp_c": 81.0,
+          "mean_util_pct": 99.77272727272727
+        }
+      ]
+    },
+    {
+      "source": "baseline_heatsoak.json",
+      "run": 5,
+      "decode_tps": 424.7816808510179,
+      "first_emission_span_ms": 1609.2786784283817,
+      "distinct_output_sequences": 2,
+      "gpus": [
+        {
+          "index": 0,
+          "samples": 44,
+          "mean_sm_mhz": 1844.6818181818182,
+          "mean_power_w": 300.1511363636364,
+          "mean_temp_c": 87.54545454545455,
+          "max_temp_c": 89.0,
+          "mean_util_pct": 99.5909090909091
+        },
+        {
+          "index": 1,
+          "samples": 44,
+          "mean_sm_mhz": 2056.840909090909,
+          "mean_power_w": 299.3752272727273,
+          "mean_temp_c": 75.56818181818181,
+          "max_temp_c": 77.0,
+          "mean_util_pct": 99.75
+        },
+        {
+          "index": 2,
+          "samples": 44,
+          "mean_sm_mhz": 1934.25,
+          "mean_power_w": 300.24454545454546,
+          "mean_temp_c": 84.20454545454545,
+          "max_temp_c": 86.0,
+          "mean_util_pct": 99.52272727272727
+        },
+        {
+          "index": 3,
+          "samples": 44,
+          "mean_sm_mhz": 1887.1136363636363,
+          "mean_power_w": 300.2613636363636,
+          "mean_temp_c": 82.68181818181819,
+          "max_temp_c": 84.0,
+          "mean_util_pct": 99.9090909090909
+        }
+      ]
+    },
+    {
+      "source": "baseline_heatsoak.json",
+      "run": 6,
+      "decode_tps": 419.3990997102103,
+      "first_emission_span_ms": 1684.2134408652782,
+      "distinct_output_sequences": 2,
+      "gpus": [
+        {
+          "index": 0,
+          "samples": 46,
+          "mean_sm_mhz": 1805.4782608695652,
+          "mean_power_w": 300.18608695652176,
+          "mean_temp_c": 89.6304347826087,
+          "max_temp_c": 90.0,
+          "mean_util_pct": 99.73913043478261
+        },
+        {
+          "index": 1,
+          "samples": 46,
+          "mean_sm_mhz": 2035.0,
+          "mean_power_w": 299.73326086956524,
+          "mean_temp_c": 78.45652173913044,
+          "max_temp_c": 79.0,
+          "mean_util_pct": 99.71739130434783
+        },
+        {
+          "index": 2,
+          "samples": 46,
+          "mean_sm_mhz": 1906.195652173913,
+          "mean_power_w": 300.34478260869565,
+          "mean_temp_c": 87.1304347826087,
+          "max_temp_c": 88.0,
+          "mean_util_pct": 99.78260869565217
+        },
+        {
+          "index": 3,
+          "samples": 46,
+          "mean_sm_mhz": 1867.195652173913,
+          "mean_power_w": 300.36021739130433,
+          "mean_temp_c": 84.95652173913044,
+          "max_temp_c": 86.0,
+          "mean_util_pct": 99.84782608695652
+        }
+      ]
+    },
+    {
+      "source": "baseline_heatsoak.json",
+      "run": 7,
+      "decode_tps": 414.2343878201023,
+      "first_emission_span_ms": 1689.1738376580179,
+      "distinct_output_sequences": 2,
+      "gpus": [
+        {
+          "index": 0,
+          "samples": 46,
+          "mean_sm_mhz": 1790.9565217391305,
+          "mean_power_w": 300.1389130434783,
+          "mean_temp_c": 90.0,
+          "max_temp_c": 90.0,
+          "mean_util_pct": 99.41304347826087
+        },
+        {
+          "index": 1,
+          "samples": 46,
+          "mean_sm_mhz": 2011.7826086956522,
+          "mean_power_w": 299.9936956521739,
+          "mean_temp_c": 80.56521739130434,
+          "max_temp_c": 81.0,
+          "mean_util_pct": 99.93478260869566
+        },
+        {
+          "index": 2,
+          "samples": 46,
+          "mean_sm_mhz": 1868.4130434782608,
+          "mean_power_w": 300.3008695652174,
+          "mean_temp_c": 89.56521739130434,
+          "max_temp_c": 90.0,
+          "mean_util_pct": 99.82608695652173
+        },
+        {
+          "index": 3,
+          "samples": 46,
+          "mean_sm_mhz": 1834.1521739130435,
+          "mean_power_w": 300.3382608695652,
+          "mean_temp_c": 87.02173913043478,
+          "max_temp_c": 88.0,
+          "mean_util_pct": 99.8913043478261
+        }
+      ]
+    },
+    {
+      "source": "baseline_heatsoak.json",
+      "run": 8,
+      "decode_tps": 414.3791185091259,
+      "first_emission_span_ms": 1695.0062466785312,
+      "distinct_output_sequences": 2,
+      "gpus": [
+        {
+          "index": 0,
+          "samples": 45,
+          "mean_sm_mhz": 1794.8222222222223,
+          "mean_power_w": 300.13533333333334,
+          "mean_temp_c": 90.0,
+          "max_temp_c": 90.0,
+          "mean_util_pct": 99.53333333333333
+        },
+        {
+          "index": 1,
+          "samples": 45,
+          "mean_sm_mhz": 1991.3333333333333,
+          "mean_power_w": 300.23266666666666,
+          "mean_temp_c": 82.53333333333333,
+          "max_temp_c": 83.0,
+          "mean_util_pct": 99.82222222222222
+        },
+        {
+          "index": 2,
+          "samples": 45,
+          "mean_sm_mhz": 1859.7777777777778,
+          "mean_power_w": 300.22755555555557,
+          "mean_temp_c": 90.0,
+          "max_temp_c": 90.0,
+          "mean_util_pct": 99.77777777777777
+        },
+        {
+          "index": 3,
+          "samples": 45,
+          "mean_sm_mhz": 1814.111111111111,
+          "mean_power_w": 300.25266666666664,
+          "mean_temp_c": 88.64444444444445,
+          "max_temp_c": 89.0,
+          "mean_util_pct": 100.0
+        }
+      ]
+    },
+    {
+      "source": "baseline_heatsoak.json",
+      "run": 9,
+      "decode_tps": 410.02176635355397,
+      "first_emission_span_ms": 1501.1391281150281,
+      "distinct_output_sequences": 3,
+      "gpus": [
+        {
+          "index": 0,
+          "samples": 46,
+          "mean_sm_mhz": 1767.891304347826,
+          "mean_power_w": 300.16913043478263,
+          "mean_temp_c": 90.78260869565217,
+          "max_temp_c": 91.0,
+          "mean_util_pct": 99.80434782608695
+        },
+        {
+          "index": 1,
+          "samples": 46,
+          "mean_sm_mhz": 1972.608695652174,
+          "mean_power_w": 300.3358695652174,
+          "mean_temp_c": 84.21739130434783,
+          "max_temp_c": 85.0,
+          "mean_util_pct": 99.84782608695652
+        },
+        {
+          "index": 2,
+          "samples": 46,
+          "mean_sm_mhz": 1857.2608695652175,
+          "mean_power_w": 300.25347826086954,
+          "mean_temp_c": 89.91304347826087,
+          "max_temp_c": 90.0,
+          "mean_util_pct": 99.80434782608695
+        },
+        {
+          "index": 3,
+          "samples": 46,
+          "mean_sm_mhz": 1799.5652173913043,
+          "mean_power_w": 300.23391304347825,
+          "mean_temp_c": 89.0,
+          "max_temp_c": 89.0,
+          "mean_util_pct": 99.91304347826087
+        }
+      ]
+    }
+  ]
+}

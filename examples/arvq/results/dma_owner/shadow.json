@@ -1,0 +1,235 @@
+{
+  "passed": true,
+  "logged_comparisons": 88,
+  "coverage": {
+    "model.layers.0.self_attn.indexer.k_cache": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "model.layers.1.self_attn.indexer.k_cache": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "model.layers.2.self_attn.indexer.k_cache": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "model.layers.6.self_attn.indexer.k_cache": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "model.layers.10.self_attn.indexer.k_cache": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "model.layers.14.self_attn.indexer.k_cache": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "model.layers.18.self_attn.indexer.k_cache": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "model.layers.22.self_attn.indexer.k_cache": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "model.layers.26.self_attn.indexer.k_cache": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "model.layers.30.self_attn.indexer.k_cache": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "model.layers.34.self_attn.indexer.k_cache": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "model.layers.38.self_attn.indexer.k_cache": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "model.layers.42.self_attn.indexer.k_cache": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "model.layers.46.self_attn.indexer.k_cache": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "model.layers.50.self_attn.indexer.k_cache": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "model.layers.54.self_attn.indexer.k_cache": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "model.layers.58.self_attn.indexer.k_cache": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "model.layers.62.self_attn.indexer.k_cache": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "model.layers.66.self_attn.indexer.k_cache": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "model.layers.70.self_attn.indexer.k_cache": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "model.layers.74.self_attn.indexer.k_cache": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "model.layers.78.self_attn.indexer.k_cache": [
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  "logged_rows": [
+    4096
+  ],
+  "logged_widths": [
+    6
+  ],
+  "scope": "All eligible shadow calls compare bits and return original IDs; logs deduplicate layer/width. Two8K and one128K cold requests plus512decode completed. No width7 live proof; no shadow speed claim.",
+  "lines": [
+    "(Worker_TP0_DCP0 pid=388) DCP_OWNER_SHADOW layer=model.layers.0.self_attn.indexer.k_cache rank=0 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP3_DCP3 pid=391) DCP_OWNER_SHADOW layer=model.layers.0.self_attn.indexer.k_cache rank=3 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP2_DCP2 pid=390) DCP_OWNER_SHADOW layer=model.layers.0.self_attn.indexer.k_cache rank=2 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP1_DCP1 pid=389) DCP_OWNER_SHADOW layer=model.layers.0.self_attn.indexer.k_cache rank=1 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP0_DCP0 pid=388) DCP_OWNER_SHADOW layer=model.layers.1.self_attn.indexer.k_cache rank=0 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP3_DCP3 pid=391) DCP_OWNER_SHADOW layer=model.layers.1.self_attn.indexer.k_cache rank=3 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP2_DCP2 pid=390) DCP_OWNER_SHADOW layer=model.layers.1.self_attn.indexer.k_cache rank=2 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP1_DCP1 pid=389) DCP_OWNER_SHADOW layer=model.layers.1.self_attn.indexer.k_cache rank=1 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP0_DCP0 pid=388) DCP_OWNER_SHADOW layer=model.layers.2.self_attn.indexer.k_cache rank=0 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP3_DCP3 pid=391) DCP_OWNER_SHADOW layer=model.layers.2.self_attn.indexer.k_cache rank=3 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP2_DCP2 pid=390) DCP_OWNER_SHADOW layer=model.layers.2.self_attn.indexer.k_cache rank=2 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP1_DCP1 pid=389) DCP_OWNER_SHADOW layer=model.layers.2.self_attn.indexer.k_cache rank=1 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP0_DCP0 pid=388) DCP_OWNER_SHADOW layer=model.layers.6.self_attn.indexer.k_cache rank=0 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP3_DCP3 pid=391) DCP_OWNER_SHADOW layer=model.layers.6.self_attn.indexer.k_cache rank=3 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP2_DCP2 pid=390) DCP_OWNER_SHADOW layer=model.layers.6.self_attn.indexer.k_cache rank=2 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP1_DCP1 pid=389) DCP_OWNER_SHADOW layer=model.layers.6.self_attn.indexer.k_cache rank=1 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP0_DCP0 pid=388) DCP_OWNER_SHADOW layer=model.layers.10.self_attn.indexer.k_cache rank=0 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP3_DCP3 pid=391) DCP_OWNER_SHADOW layer=model.layers.10.self_attn.indexer.k_cache rank=3 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP2_DCP2 pid=390) DCP_OWNER_SHADOW layer=model.layers.10.self_attn.indexer.k_cache rank=2 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP1_DCP1 pid=389) DCP_OWNER_SHADOW layer=model.layers.10.self_attn.indexer.k_cache rank=1 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP0_DCP0 pid=388) DCP_OWNER_SHADOW layer=model.layers.14.self_attn.indexer.k_cache rank=0 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP3_DCP3 pid=391) DCP_OWNER_SHADOW layer=model.layers.14.self_attn.indexer.k_cache rank=3 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP2_DCP2 pid=390) DCP_OWNER_SHADOW layer=model.layers.14.self_attn.indexer.k_cache rank=2 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP1_DCP1 pid=389) DCP_OWNER_SHADOW layer=model.layers.14.self_attn.indexer.k_cache rank=1 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP0_DCP0 pid=388) DCP_OWNER_SHADOW layer=model.layers.18.self_attn.indexer.k_cache rank=0 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP3_DCP3 pid=391) DCP_OWNER_SHADOW layer=model.layers.18.self_attn.indexer.k_cache rank=3 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP2_DCP2 pid=390) DCP_OWNER_SHADOW layer=model.layers.18.self_attn.indexer.k_cache rank=2 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP1_DCP1 pid=389) DCP_OWNER_SHADOW layer=model.layers.18.self_attn.indexer.k_cache rank=1 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP0_DCP0 pid=388) DCP_OWNER_SHADOW layer=model.layers.22.self_attn.indexer.k_cache rank=0 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP3_DCP3 pid=391) DCP_OWNER_SHADOW layer=model.layers.22.self_attn.indexer.k_cache rank=3 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP2_DCP2 pid=390) DCP_OWNER_SHADOW layer=model.layers.22.self_attn.indexer.k_cache rank=2 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP1_DCP1 pid=389) DCP_OWNER_SHADOW layer=model.layers.22.self_attn.indexer.k_cache rank=1 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP0_DCP0 pid=388) DCP_OWNER_SHADOW layer=model.layers.26.self_attn.indexer.k_cache rank=0 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP3_DCP3 pid=391) DCP_OWNER_SHADOW layer=model.layers.26.self_attn.indexer.k_cache rank=3 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP2_DCP2 pid=390) DCP_OWNER_SHADOW layer=model.layers.26.self_attn.indexer.k_cache rank=2 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP1_DCP1 pid=389) DCP_OWNER_SHADOW layer=model.layers.26.self_attn.indexer.k_cache rank=1 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP0_DCP0 pid=388) DCP_OWNER_SHADOW layer=model.layers.30.self_attn.indexer.k_cache rank=0 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP3_DCP3 pid=391) DCP_OWNER_SHADOW layer=model.layers.30.self_attn.indexer.k_cache rank=3 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP2_DCP2 pid=390) DCP_OWNER_SHADOW layer=model.layers.30.self_attn.indexer.k_cache rank=2 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP1_DCP1 pid=389) DCP_OWNER_SHADOW layer=model.layers.30.self_attn.indexer.k_cache rank=1 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP0_DCP0 pid=388) DCP_OWNER_SHADOW layer=model.layers.34.self_attn.indexer.k_cache rank=0 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP3_DCP3 pid=391) DCP_OWNER_SHADOW layer=model.layers.34.self_attn.indexer.k_cache rank=3 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP1_DCP1 pid=389) DCP_OWNER_SHADOW layer=model.layers.34.self_attn.indexer.k_cache rank=1 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP2_DCP2 pid=390) DCP_OWNER_SHADOW layer=model.layers.34.self_attn.indexer.k_cache rank=2 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP0_DCP0 pid=388) DCP_OWNER_SHADOW layer=model.layers.38.self_attn.indexer.k_cache rank=0 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP3_DCP3 pid=391) DCP_OWNER_SHADOW layer=model.layers.38.self_attn.indexer.k_cache rank=3 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP2_DCP2 pid=390) DCP_OWNER_SHADOW layer=model.layers.38.self_attn.indexer.k_cache rank=2 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP1_DCP1 pid=389) DCP_OWNER_SHADOW layer=model.layers.38.self_attn.indexer.k_cache rank=1 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP0_DCP0 pid=388) DCP_OWNER_SHADOW layer=model.layers.42.self_attn.indexer.k_cache rank=0 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP3_DCP3 pid=391) DCP_OWNER_SHADOW layer=model.layers.42.self_attn.indexer.k_cache rank=3 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP2_DCP2 pid=390) DCP_OWNER_SHADOW layer=model.layers.42.self_attn.indexer.k_cache rank=2 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP1_DCP1 pid=389) DCP_OWNER_SHADOW layer=model.layers.42.self_attn.indexer.k_cache rank=1 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP0_DCP0 pid=388) DCP_OWNER_SHADOW layer=model.layers.46.self_attn.indexer.k_cache rank=0 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP3_DCP3 pid=391) DCP_OWNER_SHADOW layer=model.layers.46.self_attn.indexer.k_cache rank=3 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP2_DCP2 pid=390) DCP_OWNER_SHADOW layer=model.layers.46.self_attn.indexer.k_cache rank=2 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP1_DCP1 pid=389) DCP_OWNER_SHADOW layer=model.layers.46.self_attn.indexer.k_cache rank=1 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP0_DCP0 pid=388) DCP_OWNER_SHADOW layer=model.layers.50.self_attn.indexer.k_cache rank=0 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP3_DCP3 pid=391) DCP_OWNER_SHADOW layer=model.layers.50.self_attn.indexer.k_cache rank=3 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP2_DCP2 pid=390) DCP_OWNER_SHADOW layer=model.layers.50.self_attn.indexer.k_cache rank=2 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP1_DCP1 pid=389) DCP_OWNER_SHADOW layer=model.layers.50.self_attn.indexer.k_cache rank=1 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP0_DCP0 pid=388) DCP_OWNER_SHADOW layer=model.layers.54.self_attn.indexer.k_cache rank=0 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP3_DCP3 pid=391) DCP_OWNER_SHADOW layer=model.layers.54.self_attn.indexer.k_cache rank=3 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP2_DCP2 pid=390) DCP_OWNER_SHADOW layer=model.layers.54.self_attn.indexer.k_cache rank=2 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP1_DCP1 pid=389) DCP_OWNER_SHADOW layer=model.layers.54.self_attn.indexer.k_cache rank=1 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP0_DCP0 pid=388) DCP_OWNER_SHADOW layer=model.layers.58.self_attn.indexer.k_cache rank=0 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP3_DCP3 pid=391) DCP_OWNER_SHADOW layer=model.layers.58.self_attn.indexer.k_cache rank=3 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP2_DCP2 pid=390) DCP_OWNER_SHADOW layer=model.layers.58.self_attn.indexer.k_cache rank=2 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP1_DCP1 pid=389) DCP_OWNER_SHADOW layer=model.layers.58.self_attn.indexer.k_cache rank=1 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP0_DCP0 pid=388) DCP_OWNER_SHADOW layer=model.layers.62.self_attn.indexer.k_cache rank=0 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP3_DCP3 pid=391) DCP_OWNER_SHADOW layer=model.layers.62.self_attn.indexer.k_cache rank=3 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP2_DCP2 pid=390) DCP_OWNER_SHADOW layer=model.layers.62.self_attn.indexer.k_cache rank=2 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP1_DCP1 pid=389) DCP_OWNER_SHADOW layer=model.layers.62.self_attn.indexer.k_cache rank=1 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP0_DCP0 pid=388) DCP_OWNER_SHADOW layer=model.layers.66.self_attn.indexer.k_cache rank=0 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP3_DCP3 pid=391) DCP_OWNER_SHADOW layer=model.layers.66.self_attn.indexer.k_cache rank=3 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP2_DCP2 pid=390) DCP_OWNER_SHADOW layer=model.layers.66.self_attn.indexer.k_cache rank=2 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP1_DCP1 pid=389) DCP_OWNER_SHADOW layer=model.layers.66.self_attn.indexer.k_cache rank=1 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP0_DCP0 pid=388) DCP_OWNER_SHADOW layer=model.layers.70.self_attn.indexer.k_cache rank=0 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP3_DCP3 pid=391) DCP_OWNER_SHADOW layer=model.layers.70.self_attn.indexer.k_cache rank=3 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP2_DCP2 pid=390) DCP_OWNER_SHADOW layer=model.layers.70.self_attn.indexer.k_cache rank=2 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP1_DCP1 pid=389) DCP_OWNER_SHADOW layer=model.layers.70.self_attn.indexer.k_cache rank=1 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP0_DCP0 pid=388) DCP_OWNER_SHADOW layer=model.layers.74.self_attn.indexer.k_cache rank=0 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP3_DCP3 pid=391) DCP_OWNER_SHADOW layer=model.layers.74.self_attn.indexer.k_cache rank=3 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP2_DCP2 pid=390) DCP_OWNER_SHADOW layer=model.layers.74.self_attn.indexer.k_cache rank=2 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP1_DCP1 pid=389) DCP_OWNER_SHADOW layer=model.layers.74.self_attn.indexer.k_cache rank=1 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP0_DCP0 pid=388) DCP_OWNER_SHADOW layer=model.layers.78.self_attn.indexer.k_cache rank=0 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP3_DCP3 pid=391) DCP_OWNER_SHADOW layer=model.layers.78.self_attn.indexer.k_cache rank=3 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP2_DCP2 pid=390) DCP_OWNER_SHADOW layer=model.layers.78.self_attn.indexer.k_cache rank=2 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True",
+    "(Worker_TP1_DCP1 pid=389) DCP_OWNER_SHADOW layer=model.layers.78.self_attn.indexer.k_cache rank=1 rows=4096 width=6 local_pass=True all_ranks_pass=True returned_original=True"
+  ]
+}

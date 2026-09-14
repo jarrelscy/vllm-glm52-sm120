@@ -1,0 +1,13 @@
+{
+  "diagnostics": [],
+  "timings": [],
+  "new_persistent_adapter_allocated_bytes": 0,
+  "scope": "Actual wrapper, two per-call CPU Gloo votes included; real TP DMA instance exposed through TP/DCP group fixture. Current compressed AG baseline. No model.",
+  "lifecycle": {
+    "same_stream": true,
+    "one_rank_changed_stream": true,
+    "one_rank_unavailable": true,
+    "one_rank_invalid_width": true,
+    "capture_no_vote": true
+  }
+}

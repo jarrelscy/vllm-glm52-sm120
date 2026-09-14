@@ -1,0 +1,84 @@
+[
+  {
+    "directory": "cold-format-lab/prefill_pair_experiment/fixed_mixed/22552ee3-a1ba-4e08-82ca-dc4eb3962439",
+    "drafts": 523.0,
+    "accepted": 1531.0,
+    "draft_tokens": 1569.0,
+    "acceptance": 0.975780752071383,
+    "keys": [
+      "case",
+      "phase",
+      "requests",
+      "metrics_before",
+      "metrics_after",
+      "metrics_delta",
+      "valid",
+      "errors",
+      "gpu_cache_hits",
+      "external_cache_hits",
+      "prefill_wall_s",
+      "cold_aggregate_prefill_wall_tps",
+      "mean_server_prefill_s",
+      "server_prefill_histogram_tps",
+      "per_request_decode_tps",
+      "steady_decode",
+      "speculative"
+    ]
+  },
+  {
+    "directory": "cold-format-lab/prefill_pair_experiment/fixed_c8/9b0aaff8-91af-487c-8355-f739ebf10a99",
+    "drafts": 1041.0,
+    "accepted": 3068.0,
+    "draft_tokens": 3123.0,
+    "acceptance": 0.9823887287864234,
+    "keys": null
+  },
+  {
+    "directory": "/home/jarrelscy/homeassistant/cold-format-lab/prefill_pair_experiment/fixed_c8/531899b6-a805-4abd-881a-407aac759188",
+    "drafts": 1039.0,
+    "accepted": 3066.0,
+    "draft_tokens": 3117.0,
+    "acceptance": 0.983638113570741,
+    "keys": null
+  },
+  {
+    "directory": "/home/jarrelscy/homeassistant/cold-format-lab/prefill_pair_experiment/fixed_c8/3d31bb51-1134-44d2-96ea-978ff131195f",
+    "drafts": 1040.0,
+    "accepted": 3067.0,
+    "draft_tokens": 3120.0,
+    "acceptance": 0.9830128205128205,
+    "keys": null
+  },
+  {
+    "directory": "/home/jarrelscy/homeassistant/cold-format-lab/prefill_pair_experiment/fixed_mixed/a9deda09-6785-45cc-9d84-0c46c062b8de",
+    "drafts": 520.0,
+    "accepted": 1534.0,
+    "draft_tokens": 1560.0,
+    "acceptance": 0.9833333333333333,
+    "keys": null
+  },
+  {
+    "directory": "/home/jarrelscy/homeassistant/cold-format-lab/prefill_pair_experiment/fixed_mixed/8d173e30-de0d-4254-b38f-eb6dbb3c8c42",
+    "drafts": 520.0,
+    "accepted": 1534.0,
+    "draft_tokens": 1560.0,
+    "acceptance": 0.9833333333333333,
+    "keys": null
+  },
+  {
+    "directory": "/home/jarrelscy/homeassistant/cold-format-lab/prefill_pair_experiment/fixed_c8/8b861ac9-0ce1-4d0b-8ae1-3fce50e454ef",
+    "drafts": 1039.0,
+    "accepted": 3066.0,
+    "draft_tokens": 3117.0,
+    "acceptance": 0.983638113570741,
+    "keys": null
+  },
+  {
+    "directory": "/home/jarrelscy/homeassistant/cold-format-lab/prefill_pair_experiment/fixed_mixed/1ca7cf43-7739-457d-b778-bb9a238d0a03",
+    "drafts": 520.0,
+    "accepted": 1533.0,
+    "draft_tokens": 1560.0,
+    "acceptance": 0.9826923076923076,
+    "keys": null
+  }
+]

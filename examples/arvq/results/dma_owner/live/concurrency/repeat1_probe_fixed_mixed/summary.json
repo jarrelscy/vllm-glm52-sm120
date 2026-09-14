@@ -1,0 +1,75 @@
+[
+  {
+    "case": "order_0_1_2_3",
+    "comparisons": [
+      {
+        "original": 0,
+        "equal": true,
+        "first_divergence": null,
+        "expected_first": [
+          13,
+          63957,
+          12427,
+          4625
+        ],
+        "actual_first": [
+          13,
+          63957,
+          12427,
+          4625
+        ]
+      },
+      {
+        "original": 1,
+        "equal": true,
+        "first_divergence": null,
+        "expected_first": [
+          12427,
+          4625,
+          50804,
+          323
+        ],
+        "actual_first": [
+          12427,
+          4625,
+          50804,
+          323
+        ]
+      },
+      {
+        "original": 2,
+        "equal": true,
+        "first_divergence": null,
+        "expected_first": [
+          30386,
+          13,
+          63957,
+          12427
+        ],
+        "actual_first": [
+          30386,
+          13,
+          63957,
+          12427
+        ]
+      },
+      {
+        "original": 3,
+        "equal": true,
+        "first_divergence": null,
+        "expected_first": [
+          63957,
+          12427,
+          4625,
+          50804
+        ],
+        "actual_first": [
+          63957,
+          12427,
+          4625,
+          50804
+        ]
+      }
+    ]
+  }
+]

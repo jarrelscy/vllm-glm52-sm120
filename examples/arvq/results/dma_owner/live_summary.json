@@ -1,0 +1,161 @@
+{
+  "metric_definition": {
+    "prefill": "uncached prompt tokens / request prefill wall (TTFT); server histogram metric is separate",
+    "C1_decode": "post-first-emission token count / time from first emission to final emission",
+    "concurrent_decode": "sum actual tokens emitted in common interval when all streams active / duration; not sum of per-stream rates"
+  },
+  "prefill": [
+    {
+      "file": "live/cold8k_1_cold.json",
+      "valid": true,
+      "wall_tps": 1254.3872429999938,
+      "server_histogram_tps": 1259.4988761456882,
+      "gpu_cache_hits": 0.0,
+      "external_cache_hits": 0.0
+    },
+    {
+      "file": "live/cold8k_2_cold.json",
+      "valid": true,
+      "wall_tps": 2050.10842010698,
+      "server_histogram_tps": 2054.1202613342043,
+      "gpu_cache_hits": 0.0,
+      "external_cache_hits": 0.0
+    },
+    {
+      "file": "live/cold128k_cold.json",
+      "valid": true,
+      "wall_tps": 1911.3584994547696,
+      "server_histogram_tps": 1913.1368574933178,
+      "gpu_cache_hits": 0.0,
+      "external_cache_hits": 0.0
+    }
+  ],
+  "decode": [
+    {
+      "run": "probe_fixed_c8",
+      "file": "live/concurrency/probe_fixed_c8/order_0_1_2_3_0_1_2_3_external.json",
+      "streams": 8,
+      "steady": {
+        "valid": true,
+        "start_offset_s": 0.21530629508197308,
+        "end_offset_s": 10.327878108248115,
+        "duration_s": 10.112571813166142,
+        "tokens_per_stream": [
+          506,
+          507,
+          503,
+          508,
+          502,
+          504,
+          507,
+          508
+        ],
+        "aggregate_decode_tps": 399.99715944994136
+      },
+      "all_reference_ids_equal": true
+    },
+    {
+      "run": "probe_fixed_mixed",
+      "file": "live/concurrency/probe_fixed_mixed/order_0_1_2_3_external.json",
+      "streams": 4,
+      "steady": {
+        "valid": true,
+        "start_offset_s": 0.44181168638169765,
+        "end_offset_s": 6.866686791181564,
+        "duration_s": 6.424875104799867,
+        "tokens_per_stream": [
+          506,
+          508,
+          507,
+          510
+        ],
+        "aggregate_decode_tps": 316.11509435921795
+      },
+      "all_reference_ids_equal": true
+    },
+    {
+      "run": "repeat0_probe_fixed_c8",
+      "file": "live/concurrency/repeat0_probe_fixed_c8/order_0_1_2_3_0_1_2_3_external.json",
+      "streams": 8,
+      "steady": {
+        "valid": true,
+        "start_offset_s": 0.23194624669849873,
+        "end_offset_s": 9.765505098737776,
+        "duration_s": 9.533558852039278,
+        "tokens_per_stream": [
+          502,
+          504,
+          503,
+          508,
+          502,
+          504,
+          503,
+          511
+        ],
+        "aggregate_decode_tps": 423.4515213735178
+      },
+      "all_reference_ids_equal": true
+    },
+    {
+      "run": "repeat0_probe_fixed_mixed",
+      "file": "live/concurrency/repeat0_probe_fixed_mixed/order_0_1_2_3_external.json",
+      "streams": 4,
+      "steady": {
+        "valid": true,
+        "start_offset_s": 0.15903601609170437,
+        "end_offset_s": 6.46314047742635,
+        "duration_s": 6.304104461334646,
+        "tokens_per_stream": [
+          506,
+          508,
+          507,
+          511
+        ],
+        "aggregate_decode_tps": 322.329684170526
+      },
+      "all_reference_ids_equal": true
+    },
+    {
+      "run": "repeat1_probe_fixed_c8",
+      "file": "live/concurrency/repeat1_probe_fixed_c8/order_0_1_2_3_0_1_2_3_external.json",
+      "streams": 8,
+      "steady": {
+        "valid": true,
+        "start_offset_s": 0.21991340816020966,
+        "end_offset_s": 10.168545416556299,
+        "duration_s": 9.948632008396089,
+        "tokens_per_stream": [
+          502,
+          508,
+          507,
+          506,
+          506,
+          508,
+          507,
+          511
+        ],
+        "aggregate_decode_tps": 407.59372711522616
+      },
+      "all_reference_ids_equal": true
+    },
+    {
+      "run": "repeat1_probe_fixed_mixed",
+      "file": "live/concurrency/repeat1_probe_fixed_mixed/order_0_1_2_3_external.json",
+      "streams": 4,
+      "steady": {
+        "valid": true,
+        "start_offset_s": 0.16731109749525785,
+        "end_offset_s": 6.565212028101087,
+        "duration_s": 6.397900930605829,
+        "tokens_per_stream": [
+          502,
+          508,
+          503,
+          507
+        ],
+        "aggregate_decode_tps": 315.72855252210394
+      },
+      "all_reference_ids_equal": true
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "cases": [
+    {
+      "case": "cold8k_1",
+      "valid": true,
+      "file": "cold8k_1_cold.json"
+    },
+    {
+      "case": "cold8k_2",
+      "valid": true,
+      "file": "cold8k_2_cold.json"
+    },
+    {
+      "case": "cold128k",
+      "valid": true,
+      "file": "cold128k_cold.json"
+    },
+    {
+      "case": "decode8k_c1",
+      "valid": true,
+      "file": "decode8k_c1_warm.json"
+    }
+  ],
+  "container_id": "a5d0f3e49f3ff2bc399e9526c3f0ad74dde3ecdedba6d7e246291008db188aae",
+  "method": "Fresh actual UUID prefixes, exact baseline body/length. Two8K and one128K cold prefill. C1decode reuses current-boot second8K prefix. No external traffic allowed by counter checks."
+}

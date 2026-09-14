@@ -1,0 +1,434 @@
+[
+  {
+    "rows": 496,
+    "context": 131072,
+    "case": "balanced",
+    "baseline_ms": 0.667099840939045,
+    "owner_ms": 0.7394067943096161,
+    "speedup": 0.9022095091267263,
+    "peak_delta": -24150016
+  },
+  {
+    "rows": 496,
+    "context": 131072,
+    "case": "ties",
+    "baseline_ms": 0.6752396002411842,
+    "owner_ms": 0.7092785090208054,
+    "speedup": 0.9520091073581046,
+    "peak_delta": -24150016
+  },
+  {
+    "rows": 496,
+    "context": 131072,
+    "case": "nonfinite",
+    "baseline_ms": 0.6019202992320061,
+    "owner_ms": 0.5267905071377754,
+    "speedup": 1.1426179687679554,
+    "peak_delta": -24150016
+  },
+  {
+    "rows": 496,
+    "context": 131072,
+    "case": "empty",
+    "baseline_ms": 0.6387187168002129,
+    "owner_ms": 0.6046807393431664,
+    "speedup": 1.0562908246325495,
+    "peak_delta": -24150016
+  },
+  {
+    "rows": 512,
+    "context": 131072,
+    "case": "balanced",
+    "baseline_ms": 0.613669864833355,
+    "owner_ms": 0.524391420185566,
+    "speedup": 1.1702515358016272,
+    "peak_delta": -24117248
+  },
+  {
+    "rows": 512,
+    "context": 131072,
+    "case": "ties",
+    "baseline_ms": 0.6300304085016251,
+    "owner_ms": 0.5336012691259384,
+    "speedup": 1.1807138493760363,
+    "peak_delta": -24117248
+  },
+  {
+    "rows": 512,
+    "context": 131072,
+    "case": "nonfinite",
+    "baseline_ms": 0.6109196692705154,
+    "owner_ms": 0.5239611491560936,
+    "speedup": 1.1659636792813353,
+    "peak_delta": -24117248
+  },
+  {
+    "rows": 512,
+    "context": 131072,
+    "case": "empty",
+    "baseline_ms": 0.647219829261303,
+    "owner_ms": 0.5408609285950661,
+    "speedup": 1.196647409792594,
+    "peak_delta": -24117248
+  },
+  {
+    "rows": 768,
+    "context": 131072,
+    "case": "balanced",
+    "baseline_ms": 0.8954955264925957,
+    "owner_ms": 0.5862899124622345,
+    "speedup": 1.5273937133453213,
+    "peak_delta": -36175872
+  },
+  {
+    "rows": 768,
+    "context": 131072,
+    "case": "ties",
+    "baseline_ms": 0.9311949834227562,
+    "owner_ms": 0.6065601482987404,
+    "speedup": 1.535206336971759,
+    "peak_delta": -36175872
+  },
+  {
+    "rows": 768,
+    "context": 131072,
+    "case": "nonfinite",
+    "baseline_ms": 0.9025456383824348,
+    "owner_ms": 0.609230250120163,
+    "speedup": 1.4814524364218933,
+    "peak_delta": -36175872
+  },
+  {
+    "rows": 768,
+    "context": 131072,
+    "case": "empty",
+    "baseline_ms": 0.9290957823395729,
+    "owner_ms": 0.616149976849556,
+    "speedup": 1.5079052458788427,
+    "peak_delta": -36175872
+  },
+  {
+    "rows": 1023,
+    "context": 131072,
+    "case": "balanced",
+    "baseline_ms": 1.1720908805727959,
+    "owner_ms": 0.7761865854263306,
+    "speedup": 1.5100633051124037,
+    "peak_delta": -48185344
+  },
+  {
+    "rows": 1023,
+    "context": 131072,
+    "case": "ties",
+    "baseline_ms": 1.2008193880319595,
+    "owner_ms": 0.6971480324864388,
+    "speedup": 1.722474040053062,
+    "peak_delta": -48185344
+  },
+  {
+    "rows": 1023,
+    "context": 131072,
+    "case": "nonfinite",
+    "baseline_ms": 1.1726198717951775,
+    "owner_ms": 0.6829490885138512,
+    "speedup": 1.7169945630162373,
+    "peak_delta": -48185344
+  },
+  {
+    "rows": 1023,
+    "context": 131072,
+    "case": "empty",
+    "baseline_ms": 1.2053893879055977,
+    "owner_ms": 0.7047196850180626,
+    "speedup": 1.7104522741899888,
+    "peak_delta": -48185344
+  },
+  {
+    "rows": 4032,
+    "context": 131072,
+    "case": "balanced",
+    "baseline_ms": 4.374378360807896,
+    "owner_ms": 1.8687089905142784,
+    "speedup": 2.3408558438005076,
+    "peak_delta": -190971904
+  },
+  {
+    "rows": 4032,
+    "context": 131072,
+    "case": "ties",
+    "baseline_ms": 4.492196254432201,
+    "owner_ms": 1.885867677628994,
+    "speedup": 2.3820315219994717,
+    "peak_delta": -190971904
+  },
+  {
+    "rows": 4032,
+    "context": 131072,
+    "case": "nonfinite",
+    "baseline_ms": 4.384517669677734,
+    "owner_ms": 1.893598586320877,
+    "speedup": 2.3154419850917454,
+    "peak_delta": -190971904
+  },
+  {
+    "rows": 4032,
+    "context": 131072,
+    "case": "empty",
+    "baseline_ms": 4.431886598467827,
+    "owner_ms": 1.9023176282644272,
+    "speedup": 2.329730079046391,
+    "peak_delta": -190971904
+  },
+  {
+    "rows": 4096,
+    "context": 131072,
+    "case": "balanced",
+    "baseline_ms": 4.475405439734459,
+    "owner_ms": 1.9131377339363098,
+    "speedup": 2.3393012224615135,
+    "peak_delta": -192937984
+  },
+  {
+    "rows": 4096,
+    "context": 131072,
+    "case": "ties",
+    "baseline_ms": 4.562355577945709,
+    "owner_ms": 2.154574729502201,
+    "speedup": 2.117520230546753,
+    "peak_delta": -192937984
+  },
+  {
+    "rows": 4096,
+    "context": 131072,
+    "case": "nonfinite",
+    "baseline_ms": 4.487225785851479,
+    "owner_ms": 1.9000880420207977,
+    "speedup": 2.3615883509688245,
+    "peak_delta": -192937984
+  },
+  {
+    "rows": 4096,
+    "context": 131072,
+    "case": "empty",
+    "baseline_ms": 4.481456242501736,
+    "owner_ms": 1.907598227262497,
+    "speedup": 2.349266306948114,
+    "peak_delta": -192937984
+  },
+  {
+    "rows": 496,
+    "context": 524288,
+    "case": "balanced",
+    "baseline_ms": 0.6896974518895149,
+    "owner_ms": 0.5738306790590286,
+    "speedup": 1.2019180518902988,
+    "peak_delta": -27426816
+  },
+  {
+    "rows": 496,
+    "context": 524288,
+    "case": "ties",
+    "baseline_ms": 0.7186280563473701,
+    "owner_ms": 0.5365414544939995,
+    "speedup": 1.339370984903846,
+    "peak_delta": -27426816
+  },
+  {
+    "rows": 496,
+    "context": 524288,
+    "case": "nonfinite",
+    "baseline_ms": 0.6940988823771477,
+    "owner_ms": 0.5271108821034431,
+    "speedup": 1.3167986204483897,
+    "peak_delta": -27426816
+  },
+  {
+    "rows": 496,
+    "context": 524288,
+    "case": "empty",
+    "baseline_ms": 0.6999075412750244,
+    "owner_ms": 0.5471296608448029,
+    "speedup": 1.2792352368437179,
+    "peak_delta": -27426816
+  },
+  {
+    "rows": 512,
+    "context": 524288,
+    "case": "balanced",
+    "baseline_ms": 0.7107378914952278,
+    "owner_ms": 0.5504107102751732,
+    "speedup": 1.29128644887724,
+    "peak_delta": -28311552
+  },
+  {
+    "rows": 512,
+    "context": 524288,
+    "case": "ties",
+    "baseline_ms": 0.7207682356238365,
+    "owner_ms": 0.555010512471199,
+    "speedup": 1.2986569072621648,
+    "peak_delta": -28311552
+  },
+  {
+    "rows": 512,
+    "context": 524288,
+    "case": "nonfinite",
+    "baseline_ms": 0.7104873657226562,
+    "owner_ms": 0.5657505244016647,
+    "speedup": 1.2558315636986188,
+    "peak_delta": -28311552
+  },
+  {
+    "rows": 512,
+    "context": 524288,
+    "case": "empty",
+    "baseline_ms": 0.7291678339242935,
+    "owner_ms": 0.5611404776573181,
+    "speedup": 1.2994390227710284,
+    "peak_delta": -28311552
+  },
+  {
+    "rows": 768,
+    "context": 524288,
+    "case": "balanced",
+    "baseline_ms": 1.0334225371479988,
+    "owner_ms": 0.6502997130155563,
+    "speedup": 1.589148075055782,
+    "peak_delta": -42467328
+  },
+  {
+    "rows": 768,
+    "context": 524288,
+    "case": "ties",
+    "baseline_ms": 1.0646414011716843,
+    "owner_ms": 0.6494391709566116,
+    "speedup": 1.6393242797527712,
+    "peak_delta": -42467328
+  },
+  {
+    "rows": 768,
+    "context": 524288,
+    "case": "nonfinite",
+    "baseline_ms": 1.0345019400119781,
+    "owner_ms": 0.6517907604575157,
+    "speedup": 1.5871687706739253,
+    "peak_delta": -42467328
+  },
+  {
+    "rows": 768,
+    "context": 524288,
+    "case": "empty",
+    "baseline_ms": 1.0623820126056671,
+    "owner_ms": 0.6751278415322304,
+    "speedup": 1.5736012459426165,
+    "peak_delta": -42467328
+  },
+  {
+    "rows": 1023,
+    "context": 524288,
+    "case": "balanced",
+    "baseline_ms": 1.3395482674241066,
+    "owner_ms": 0.7317680865526199,
+    "speedup": 1.830563934175862,
+    "peak_delta": -56565760
+  },
+  {
+    "rows": 1023,
+    "context": 524288,
+    "case": "ties",
+    "baseline_ms": 1.3745082542300224,
+    "owner_ms": 0.734398141503334,
+    "speedup": 1.871611836348557,
+    "peak_delta": -56565760
+  },
+  {
+    "rows": 1023,
+    "context": 524288,
+    "case": "nonfinite",
+    "baseline_ms": 1.338418573141098,
+    "owner_ms": 0.7065180689096451,
+    "speedup": 1.8943868982808212,
+    "peak_delta": -56565760
+  },
+  {
+    "rows": 1023,
+    "context": 524288,
+    "case": "empty",
+    "baseline_ms": 1.364266499876976,
+    "owner_ms": 0.7440373301506042,
+    "speedup": 1.8335995313579605,
+    "peak_delta": -56565760
+  },
+  {
+    "rows": 4032,
+    "context": 524288,
+    "case": "balanced",
+    "baseline_ms": 5.090596154332161,
+    "owner_ms": 2.1154042333364487,
+    "speedup": 2.40644131939889,
+    "peak_delta": -222953472
+  },
+  {
+    "rows": 4032,
+    "context": 524288,
+    "case": "ties",
+    "baseline_ms": 5.250952206552029,
+    "owner_ms": 2.1229349076747894,
+    "speedup": 2.4734400416936464,
+    "peak_delta": -222953472
+  },
+  {
+    "rows": 4032,
+    "context": 524288,
+    "case": "nonfinite",
+    "baseline_ms": 5.105785094201565,
+    "owner_ms": 2.153743989765644,
+    "speedup": 2.3706555275203076,
+    "peak_delta": -222953472
+  },
+  {
+    "rows": 4032,
+    "context": 524288,
+    "case": "empty",
+    "baseline_ms": 5.051805637776852,
+    "owner_ms": 1.9617080688476562,
+    "speedup": 2.5752076560221195,
+    "peak_delta": -222953472
+  },
+  {
+    "rows": 4096,
+    "context": 524288,
+    "case": "balanced",
+    "baseline_ms": 5.167094059288502,
+    "owner_ms": 2.176223322749138,
+    "speedup": 2.3743399885821983,
+    "peak_delta": -226492416
+  },
+  {
+    "rows": 4096,
+    "context": 524288,
+    "case": "ties",
+    "baseline_ms": 5.307312123477459,
+    "owner_ms": 2.265022136271,
+    "speedup": 2.343161260320002,
+    "peak_delta": -226492416
+  },
+  {
+    "rows": 4096,
+    "context": 524288,
+    "case": "nonfinite",
+    "baseline_ms": 5.263322964310646,
+    "owner_ms": 2.2136839106678963,
+    "speedup": 2.3776307624346584,
+    "peak_delta": -226492416
+  },
+  {
+    "rows": 4096,
+    "context": 524288,
+    "case": "empty",
+    "baseline_ms": 5.128095857799053,
+    "owner_ms": 2.007966861128807,
+    "speedup": 2.553874746177943,
+    "peak_delta": -226492416
+  }
+]

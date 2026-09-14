@@ -1,0 +1,142 @@
+{
+  "utc": "2026-09-14T20:02:41.233065+00:00",
+  "container_id": "a5d0f3e49f3ff2bc399e9526c3f0ad74dde3ecdedba6d7e246291008db188aae",
+  "image": "glm53-arvq-sm120:lossless-prefill-candidate",
+  "image_id": "sha256:9ca66aa2707a2c30999f3234a406e7e64c9db02c5c5d8c5f04b6fcc8537b0f42",
+  "restart_count": 0,
+  "env": {
+    "VLLM_GLM_DCP_RS_VIEW": "1",
+    "VLLM_GLM_DCP_RS_STAGED": "1",
+    "LMCACHE_LOOKUP_SERVER_WORKER_IDS": "0,1,2,3",
+    "VLLM_ARVQ_SHARED_HOT_ACTIVATION": "1",
+    "VLLM_ARVQ_GROUPED_PREFILL": "1",
+    "VLLM_ARVQ_FUSED_ACTIVATION_PACK": "1",
+    "VLLM_ARVQ_FUSED_ROUTE_SUM": "1",
+    "VLLM_SPARSE_INDEXER_MAX_LOGITS_MB": "256",
+    "VLLM_GLM_COMM_COALESCE": "0",
+    "VLLM_GLM_DCP_AG_RAW_TOPK": "1",
+    "NCCL_MAX_NCHANNELS": "4",
+    "PARALLEL": "tp4-1m-mtp",
+    "VLLM_GLM_DCP_QUERY_SPLIT": "0",
+    "VLLM_ARVQ_COMPACT_PREFILL": "1",
+    "VLLM_EXPERIMENT_DCP_BYTEPACK_OWNER": "1",
+    "VLLM_ARVQ_FUSED_COLD_ACTIVATION": "1",
+    "VLLM_GLM_Q_BEFORE_ABSORB": "1",
+    "VLLM_GLM_MM_MASK_REUSE": "1",
+    "ENABLE_LMCACHE": "1",
+    "VLLM_ARVQ_WIDE_HOT_PREFILL": "1",
+    "VLLM_ARVQ_CHUNK_TOKENS": "128",
+    "NCCL_VERSION": "2.27.3-1",
+    "NCCL_BUFFSIZE": "1048576",
+    "VLLM_GLM_RAW_KV_GATHER": "1",
+    "VLLM_ARVQ_PAIRED_HOT_PREFILL": "1",
+    "MAXLEN": "1048576",
+    "VLLM_EXPERIMENT_DCP_BYTEPACK_OWNER_SHADOW": "0",
+    "VLLM_GLM_DCP_QUERY_SPLIT_MIN_ROWS": "1024",
+    "NCCL_ALGO": "RING,TREE",
+    "MODEL_DIR": "/data/models/jarrelscy/GLM-5.3-Vision-NVFP4-ARVQ-hybrid-initial-8x8",
+    "SERVED_NAME": "glm-5.3",
+    "VLLM_EXPERIMENT_DCP_BYTEPACK": "1",
+    "VLLM_GLM_SKIP_EMPTY_FILL": "1",
+    "UTIL": "0.94",
+    "NCCL_P2P_LEVEL": "SYS",
+    "VLLM_GLM_EMBED_GRAPH": "1",
+    "VLLM_GLM_IDX_FUSED_LOCALIZE": "1",
+    "VLLM_EXPERIMENT_DCP_BYTEPACK_SHADOW": "0",
+    "VLLM_ARVQ_FUSED_COLD_GATHER": "1",
+    "VLLM_GLM_PCIE_FUSED_AR_RMS": "1",
+    "MAX_NUM_SEQS": "8",
+    "VLLM_GLM_COMM_OVERLAP": "1"
+  },
+  "mount_hashes": {
+    "/opt/vllm/vllm/envs.py": {
+      "source": "/home/jarrelscy/homeassistant/cold-format-lab/portable_prefill_experiment/envs.py",
+      "sha256": "82776ebaa226ca0ce5f94e93a0ca212dc58af38e6ddde16942291479803b2a79"
+    },
+    "/opt/vllm/vllm/model_executor/layers/sparse_attn_indexer.py": {
+      "source": "/home/jarrelscy/homeassistant/cold-format-lab/portable_prefill_experiment/sparse_attn_indexer.py",
+      "sha256": "2d50a3bdbae7d9be263c2285b51b91aee15696d9e98ae3c98295499644276a96"
+    },
+    "/opt/vllm/vllm/v1/attention/ops/dcp_owner_original.py": {
+      "source": "/home/jarrelscy/homeassistant/cold-format-lab/dcp_bytepack_owner_experiment/dma/live_single_vote/dcp_owner_original.py",
+      "sha256": "93bd61ea4789d8f9e2c584558f57d7f64db84020a969ad8a4f35bdd6b15bfb67"
+    },
+    "/opt/vllm/vllm/v1/attention/ops/dcp_bytepack.py": {
+      "source": "/home/jarrelscy/homeassistant/cold-format-lab/dcp_bytepack_owner_experiment/dma/live_single_vote/dcp_bytepack.py",
+      "sha256": "6d180d758e990a3ce74a4d529480a75c24267cc19234f4f52ddf1a9ea91bc1ad"
+    },
+    "/opt/vllm/vllm/v1/attention/ops/dcp_owner_borrowed.py": {
+      "source": "/home/jarrelscy/homeassistant/cold-format-lab/dcp_bytepack_owner_experiment/dma/live_single_vote/dcp_owner_borrowed.py",
+      "sha256": "8d99c2981ad6a89c1b1b0b0888c49eb59c8ff5a805496c951c3250288cc41690"
+    }
+  },
+  "generation_requests_issued": 0,
+  "models": {
+    "object": "list",
+    "data": [
+      {
+        "id": "glm-5.3",
+        "object": "model",
+        "created": 1789416336,
+        "owned_by": "vllm",
+        "root": "/data/models/jarrelscy/GLM-5.3-Vision-NVFP4-ARVQ-hybrid-initial-8x8",
+        "parent": null,
+        "max_model_len": 1048576,
+        "permission": [
+          {
+            "id": "modelperm-aaa349d9f2a3ca45",
+            "object": "model_permission",
+            "created": 1789416336,
+            "allow_create_engine": false,
+            "allow_sampling": true,
+            "allow_logprobs": true,
+            "allow_search_indices": false,
+            "allow_view": true,
+            "allow_fine_tuning": false,
+            "organization": "*",
+            "group": null,
+            "is_blocking": false
+          }
+        ]
+      },
+      {
+        "id": "local",
+        "object": "model",
+        "created": 1789416336,
+        "owned_by": "vllm",
+        "root": "/data/models/jarrelscy/GLM-5.3-Vision-NVFP4-ARVQ-hybrid-initial-8x8",
+        "parent": null,
+        "max_model_len": 1048576,
+        "permission": [
+          {
+            "id": "modelperm-93c98c42ca18b64b",
+            "object": "model_permission",
+            "created": 1789416336,
+            "allow_create_engine": false,
+            "allow_sampling": true,
+            "allow_logprobs": true,
+            "allow_search_indices": false,
+            "allow_view": true,
+            "allow_fine_tuning": false,
+            "organization": "*",
+            "group": null,
+            "is_blocking": false
+          }
+        ]
+      }
+    ]
+  },
+  "memory_log_lines": [
+    "(Worker_TP0_DCP0 pid=389) INFO 09-14 20:04:39 [model_runner.py:324] Model loading took 70.65 GiB and 94.074333 seconds",
+    "(Worker_TP3_DCP3 pid=392) INFO 09-14 20:04:39 [model_runner.py:324] Model loading took 70.65 GiB and 94.080892 seconds",
+    "(Worker_TP1_DCP1 pid=390) INFO 09-14 20:04:39 [model_runner.py:324] Model loading took 70.65 GiB and 94.084416 seconds",
+    "(Worker_TP2_DCP2 pid=391) INFO 09-14 20:04:39 [model_runner.py:324] Model loading took 70.65 GiB and 94.084687 seconds",
+    "(Worker_TP0_DCP0 pid=389) INFO 09-14 20:04:53 [gpu_worker.py:538] Available KV cache memory: 16.36 GiB",
+    "(EngineCore pid=312) INFO 09-14 20:04:53 [kv_cache_utils.py:2166] GPU KV cache size: 1,283,584 tokens",
+    "(Worker_TP3_DCP3 pid=392) INFO 09-14 20:05:19 [model_runner.py:1025] Graph capturing finished in 13 secs, took 1.02 GiB",
+    "(Worker_TP2_DCP2 pid=391) INFO 09-14 20:05:19 [model_runner.py:1025] Graph capturing finished in 13 secs, took 1.02 GiB",
+    "(Worker_TP1_DCP1 pid=390) INFO 09-14 20:05:19 [model_runner.py:1025] Graph capturing finished in 13 secs, took 1.02 GiB",
+    "(Worker_TP0_DCP0 pid=389) INFO 09-14 20:05:19 [model_runner.py:1025] Graph capturing finished in 13 secs, took 1.02 GiB"
+  ],
+  "health": 200
+}

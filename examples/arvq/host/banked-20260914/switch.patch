@@ -1,0 +1,39 @@
+--- a/switch.sh
++++ b/switch.sh
+@@ -315,8 +315,9 @@
+ if [ "$1" = "glm5.3-hybrid-1m" ]; then
+   ARVQ_COMPOSE="$SCRIPT_DIR/docker-compose.glm53-arvq.yaml"
+   ARVQ_MODEL="/data/models/jarrelscy/GLM-5.3-Vision-NVFP4-ARVQ-hybrid-initial-8x8"
+-  if [ ! -f "$ARVQ_COMPOSE" ] || [ ! -f /home/jarrelscy/glm52/vllm-arvq-serving/Dockerfile.arvq ]; then
+-    echo "ERROR: ARVQ compose override or vllm-arvq-serving build source is missing." >&2
++  ARVQ_IMAGE="glm53-arvq-sm120:banked-20260914"
++  if [ ! -f "$ARVQ_COMPOSE" ] || ! docker image inspect "$ARVQ_IMAGE" >/dev/null 2>&1; then
++    echo "ERROR: Banked ARVQ compose override or image $ARVQ_IMAGE is missing." >&2
+     exit 1
+   fi
+   if ! _shards_complete "$ARVQ_MODEL"; then
+@@ -324,9 +325,8 @@
+     exit 1
+   fi
+   /home/jarrelscy/.venv/bin/python "$SCRIPT_DIR/cold-format-lab/initial_8x8_experiment/preflight.py" --checkpoint "$ARVQ_MODEL"
+-  /home/jarrelscy/.venv/bin/python /home/jarrelscy/glm52/vllm-arvq-serving/examples/arvq/host/prepare_compact_workspace_overlay.py \
+-    /home/jarrelscy/glm52/vllm-vision-build/vllm/model_executor/layers/sparse_attn_indexer.py \
+-    "$SCRIPT_DIR/.runtime/glm53-arvq/sparse_attn_indexer.py"
++  # The banked image owns the exact serving overlays; do not regenerate them
++  # from a worktree that may contain a later experiment.
+   export COMPOSE_FILE="$SCRIPT_DIR/docker-compose.yaml:$ARVQ_COMPOSE"
+   docker compose --profile glm5.3-hybrid-1m config --quiet
+ fi
+@@ -444,7 +444,11 @@
+   COMPOSE_PROFILE="glm5.3-flash-nvfp4"
+   export GLM_NVFP4_UTIL=0.78
+ fi
+-docker compose --profile "$COMPOSE_PROFILE" up -d --build
++if [ "$COMPOSE_PROFILE" = "glm5.3-hybrid-1m" ]; then
++  docker compose --profile "$COMPOSE_PROFILE" up -d --no-build
++else
++  docker compose --profile "$COMPOSE_PROFILE" up -d --build
++fi
+ 
+ # First start of a b12x profile also JIT-compiles CuTe kernels for sm_120a, and
+ # the large GGUF/split models (glm5.2*) load hundreds of GB — either can take

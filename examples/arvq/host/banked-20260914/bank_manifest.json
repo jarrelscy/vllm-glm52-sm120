@@ -1,0 +1,14 @@
+{
+  "image": "glm53-arvq-sm120:banked-20260914",
+  "image_id": "sha256:19b756a65bad3625de2241cb514c2f0ac5c57c22c286c3be550c08de66fb48d6",
+  "commands_match": true,
+  "measured_environment_preserved": true,
+  "code_mounts_frozen": true,
+  "data_mounts_match": true,
+  "code_commit": "fa7e6019b",
+  "model_dir": "/data/models/jarrelscy/GLM-5.3-Vision-NVFP4-ARVQ-hybrid-initial-8x8",
+  "maxlen": "1048576",
+  "max_num_seqs": "8",
+  "mtp_parallel": "tp4-1m-mtp",
+  "lmcache": "1"
+}

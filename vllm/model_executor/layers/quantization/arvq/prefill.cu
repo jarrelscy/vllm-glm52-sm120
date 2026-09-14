@@ -116,3 +116,24 @@ extern "C" int arvq_dequant_fp16_8x8(const void* packed, const void* codebooks,
           (const unsigned char*)scales, global, output, N, K);
   return (int)cudaGetLastError();
 }
+
+__global__ void scatter_float4(const float4* src, const int64_t* routes,
+                               float4* dst, int h4) {
+  int row = blockIdx.x;
+  int col = blockIdx.y * 256 + threadIdx.x;
+  if (col < h4) {
+    int64_t target = routes[row];
+    float4 bits = src[(int64_t)row * h4 + col];
+    dst[target * h4 + col] = bits;
+  }
+}
+extern "C" int arvq_route_scatter(const void* src, const void* routes,
+                                  void* dst, int rows, int hidden,
+                                  void* stream) {
+  if (!src || !routes || !dst || rows < 1 || hidden < 1 || hidden % 4)
+    return (int)cudaErrorInvalidValue;
+  scatter_float4<<<dim3(rows, (hidden + 1023) / 1024), 256, 0,
+                   (cudaStream_t)stream>>>(
+      (const float4*)src, (const int64_t*)routes, (float4*)dst, hidden / 4);
+  return (int)cudaGetLastError();
+}

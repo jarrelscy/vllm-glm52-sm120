@@ -1,0 +1,74 @@
+[
+  {
+    "tokens": 2048,
+    "case": "mixed",
+    "bits": true,
+    "peak": 0,
+    "medians": [
+      9.664952289313078,
+      9.138221852481365
+    ],
+    "paired_ratio": 1.0599160978150035,
+    "wins": 8
+  },
+  {
+    "tokens": 2048,
+    "case": "allhot",
+    "bits": true,
+    "peak": 0,
+    "medians": [
+      8.872904349118471,
+      8.823872543871403
+    ],
+    "paired_ratio": 1.0010299662808548,
+    "wins": 5
+  },
+  {
+    "tokens": 2048,
+    "case": "allcold",
+    "bits": true,
+    "peak": 0,
+    "medians": [
+      9.175646584481001,
+      8.681432344019413
+    ],
+    "paired_ratio": 1.0560638359809507,
+    "wins": 8
+  },
+  {
+    "tokens": 4096,
+    "case": "mixed",
+    "bits": true,
+    "peak": 0,
+    "medians": [
+      13.02235433831811,
+      12.642070651054382
+    ],
+    "paired_ratio": 1.0317544667950145,
+    "wins": 8
+  },
+  {
+    "tokens": 4096,
+    "case": "allhot",
+    "bits": true,
+    "peak": 0,
+    "medians": [
+      18.419567961245775,
+      18.262371886521578
+    ],
+    "paired_ratio": 0.9993883306228453,
+    "wins": 4
+  },
+  {
+    "tokens": 4096,
+    "case": "allcold",
+    "bits": true,
+    "peak": 0,
+    "medians": [
+      9.488044772297144,
+      8.945667650550604
+    ],
+    "paired_ratio": 1.0633207008827084,
+    "wins": 8
+  }
+]

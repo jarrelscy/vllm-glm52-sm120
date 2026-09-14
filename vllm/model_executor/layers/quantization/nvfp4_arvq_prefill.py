@@ -251,6 +251,11 @@ def grouped_cold_prefill(
             hidden,
         )
 
+    from vllm.model_executor.layers.quantization import (
+        nvfp4_arvq_cold_scatter as cold_scatter,
+    )
+
+    scatter_cold = cold_scatter.prepare(x, sorted_slots, routed)
     start = 0
     for expert, count in enumerate(counts_cpu):
         stop = start + count
@@ -308,7 +313,10 @@ def grouped_cold_prefill(
             w2 = decode("w2", expert)
             out = torch.mm(act, w2.T, out_dtype=torch.float32)
             # Unique route destinations: no atomic accumulation or ordering race.
-            routed[route_slots] = out
+            if scatter_cold is None:
+                routed[route_slots] = out
+            else:
+                scatter_cold(out, route_slots)
             del act, w2, out
         start = stop
 

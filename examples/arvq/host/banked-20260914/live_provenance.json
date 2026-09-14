@@ -1,0 +1,23 @@
+{
+  "container_id": "e9a19e17c87e4b4c2a4c60cf38ff8108ff9cf553eba7b7a77374c7c2394401f4",
+  "started_at": "2026-09-14T21:28:05.425466233Z",
+  "image_id": "sha256:19b756a65bad3625de2241cb514c2f0ac5c57c22c286c3be550c08de66fb48d6",
+  "env": {
+    "MODEL_DIR": "/data/models/jarrelscy/GLM-5.3-Vision-NVFP4-ARVQ-hybrid-initial-8x8",
+    "SERVED_NAME": "glm-5.3",
+    "MAXLEN": "1048576",
+    "MAX_NUM_SEQS": "8",
+    "PARALLEL": "tp4-1m-mtp",
+    "ENABLE_LMCACHE": "1",
+    "VLLM_C8_SAMPLER_DEBUG_DIR": "",
+    "VLLM_EXPERIMENT_C1_INDEXER_BUDGET": "0"
+  },
+  "memory": [
+    "(Worker_TP1_DCP1 pid=317) INFO 09-14 21:30:03 [model_runner.py:324] Model loading took 70.65 GiB and 93.078772 seconds",
+    "(Worker_TP2_DCP2 pid=318) INFO 09-14 21:30:03 [model_runner.py:324] Model loading took 70.65 GiB and 93.081737 seconds",
+    "(Worker_TP0_DCP0 pid=316) INFO 09-14 21:30:03 [model_runner.py:324] Model loading took 70.65 GiB and 93.082340 seconds",
+    "(Worker_TP3_DCP3 pid=319) INFO 09-14 21:30:03 [model_runner.py:324] Model loading took 70.65 GiB and 93.089644 seconds",
+    "(Worker_TP0_DCP0 pid=316) INFO 09-14 21:30:18 [gpu_worker.py:538] Available KV cache memory: 16.36 GiB",
+    "(EngineCore pid=239) INFO 09-14 21:30:18 [kv_cache_utils.py:2166] GPU KV cache size: 1,283,584 tokens"
+  ]
+}

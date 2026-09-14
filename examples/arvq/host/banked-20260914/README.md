@@ -25,3 +25,9 @@ or tie-selection prototype is enabled. See results/direct_output for evidence.
 
 Optimization is paused at the user's request. Preserve the staged prototypes
 and both checkpoints; do not delete interim weights or silently adopt PV.
+
+The exact switch command completed successfully. The banked image retained
+1,283,584 KV tokens and passed text/vision request smoke checks; the image
+request identified the red fixture. Both checks used a 64-token output cap
+and ended at that cap, so they establish functionality, not instruction-following
+or general model quality. Raw results and live provenance are included.

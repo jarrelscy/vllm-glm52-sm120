@@ -1,0 +1,103 @@
+{
+  "container_id": "e9a19e17c87e4b4c2a4c60cf38ff8108ff9cf553eba7b7a77374c7c2394401f4",
+  "image_id": "sha256:19b756a65bad3625de2241cb514c2f0ac5c57c22c286c3be550c08de66fb48d6",
+  "image": "glm53-arvq-sm120:banked-20260914",
+  "health": {
+    "status": 200
+  },
+  "models": {
+    "object": "list",
+    "data": [
+      {
+        "id": "glm-5.3",
+        "object": "model",
+        "created": 1789421507,
+        "owned_by": "vllm",
+        "root": "/data/models/jarrelscy/GLM-5.3-Vision-NVFP4-ARVQ-hybrid-initial-8x8",
+        "parent": null,
+        "max_model_len": 1048576,
+        "permission": [
+          {
+            "id": "modelperm-8ce90d700c5ac9e6",
+            "object": "model_permission",
+            "created": 1789421507,
+            "allow_create_engine": false,
+            "allow_sampling": true,
+            "allow_logprobs": true,
+            "allow_search_indices": false,
+            "allow_view": true,
+            "allow_fine_tuning": false,
+            "organization": "*",
+            "group": null,
+            "is_blocking": false
+          }
+        ]
+      },
+      {
+        "id": "local",
+        "object": "model",
+        "created": 1789421507,
+        "owned_by": "vllm",
+        "root": "/data/models/jarrelscy/GLM-5.3-Vision-NVFP4-ARVQ-hybrid-initial-8x8",
+        "parent": null,
+        "max_model_len": 1048576,
+        "permission": [
+          {
+            "id": "modelperm-b517cfc28cb001be",
+            "object": "model_permission",
+            "created": 1789421507,
+            "allow_create_engine": false,
+            "allow_sampling": true,
+            "allow_logprobs": true,
+            "allow_search_indices": false,
+            "allow_view": true,
+            "allow_fine_tuning": false,
+            "organization": "*",
+            "group": null,
+            "is_blocking": false
+          }
+        ]
+      }
+    ]
+  },
+  "scope": "Functional banked-launch smoke, not a throughput benchmark",
+  "text": {
+    "usage": {
+      "prompt_tokens": 16,
+      "total_tokens": 80,
+      "completion_tokens": 64,
+      "prompt_tokens_details": null
+    },
+    "message": {
+      "role": "assistant",
+      "content": "The user has sent a very simple instruction: \"Reply with OK.\"\n\nThis is a straightforward request. The user wants me to reply with just \"OK\". There's no ambiguity here, no complex task, no need for extensive reasoning. The instruction is clear and simple.\n\nI should just reply with \"OK\" as requested",
+      "refusal": null,
+      "annotations": null,
+      "audio": null,
+      "function_call": null,
+      "reasoning": null
+    },
+    "finish_reason": "length"
+  },
+  "vision": {
+    "usage": {
+      "prompt_tokens": 122,
+      "total_tokens": 186,
+      "completion_tokens": 64,
+      "prompt_tokens_details": null
+    },
+    "message": {
+      "role": "assistant",
+      "content": "The user wants me to identify the main color in the image. Looking at the image, I can see that it is dominated by a solid, uniform red color. There are no other colors, patterns, or objects present in the image. The entire frame is filled with this single color.\n\nTherefore, the main color in",
+      "refusal": null,
+      "annotations": null,
+      "audio": null,
+      "function_call": null,
+      "reasoning": null
+    },
+    "finish_reason": "length"
+  },
+  "final_health": {
+    "status": 200
+  }
+}

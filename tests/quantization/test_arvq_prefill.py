@@ -193,13 +193,18 @@ def test_sorted_diagnostic_marker(monkeypatch):
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="requires SM120 GPU")
 @pytest.mark.parametrize("dtype", [torch.float16, torch.bfloat16])
 @pytest.mark.parametrize("bits,entries,words", [(15, 384, 60), (16, 512, 64)])
-def test_dequant_matches_independent_natural_codes(dtype, bits, entries, words):
+@pytest.mark.parametrize("codebook_case", ["random", "all_fp4_pairs"])
+def test_dequant_matches_independent_natural_codes(
+    dtype, bits, entries, words, codebook_case
+):
     if torch.cuda.get_device_capability()[0] != 12:
         pytest.skip("requires SM120 GPU")
     torch.manual_seed(9)
     n, k = 32, 128
     position = torch.arange(n * k // 8).reshape(n, k // 8)
     a, b = position * 17 % 256, position * 31 % (128 if bits == 15 else 256)
+    if codebook_case == "all_fp4_pairs":
+        a, b = position % 16, (position // 16) % 16
     natural = (a | (b << 8)).reshape(n // 16, 16, k // 64, 8)
     fragments = torch.stack(
         [
@@ -222,10 +227,14 @@ def test_dequant_matches_independent_natural_codes(dtype, bits, entries, words):
         (native[:, :words].reshape(-1).int(), torch.zeros(1, dtype=torch.int32))
     )
     cb = torch.randint(-(1 << 31), (1 << 31) - 1, (entries,), dtype=torch.int32)
+    if codebook_case == "all_fp4_pairs":
+        # Repeat each scalar FP4 code in all eight positions. The natural
+        # indices cover every signed pair, including -0 + -0 and cancellation.
+        cb = ((torch.arange(entries) % 16) * 0x11111111).int()
     scales = torch.tensor([0, 1, 8, 0x38, 0x7E], dtype=torch.uint8).repeat(7)[:n]
     scales = scales.reshape(n // 16, 1, 16)
     levels = torch.tensor(
-        [0, 0.5, 1, 1.5, 2, 3, 4, 6, 0, -0.5, -1, -1.5, -2, -3, -4, -6]
+        [0, 0.5, 1, 1.5, 2, 3, 4, 6, -0.0, -0.5, -1, -1.5, -2, -3, -4, -6]
     )
     values = levels[(cb.long()[:, None] >> (4 * torch.arange(8))) & 15]
     expected = (values[a] + values[256 + b]).reshape(n, k)
@@ -233,12 +242,14 @@ def test_dequant_matches_independent_natural_codes(dtype, bits, entries, words):
     expected *= 0.0137
     args = tuple(t.cuda() for t in (packed, cb, scales))
     actual = prefill.dequantize_cold(*args, 0.0137, n, k, dtype=dtype)
-    torch.testing.assert_close(actual.cpu(), expected.to(dtype), atol=0, rtol=0)
+    assert torch.equal(
+        actual.cpu().view(torch.int16), expected.to(dtype).view(torch.int16)
+    )
     graph = torch.cuda.CUDAGraph()
     with torch.cuda.graph(graph):
         captured = prefill.dequantize_cold(*args, 0.0137, n, k, dtype=dtype)
     graph.replay()
-    torch.testing.assert_close(captured, actual, atol=0, rtol=0)
+    assert torch.equal(captured.view(torch.int16), actual.view(torch.int16))
 
 
 @pytest.mark.parametrize("entries", [384, 512])

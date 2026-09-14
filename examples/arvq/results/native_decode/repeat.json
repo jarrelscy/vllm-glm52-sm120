@@ -1,0 +1,114 @@
+{
+  "source": {
+    "source": "/home/jarrelscy/homeassistant/cold-format-lab/cold_gather_experiment/decode_gather.cu",
+    "source_sha256": "d9191580b03d16057a7f78ecdad71aa5499290844738cf7668dc0ba6fedb8c1d",
+    "candidate_sha256": "634ef477903492b1f3784e37225d15d240ecf677ff205c8fce11d9fb229f71c4",
+    "transformation": "Only two scalar value loops replaced and CUDA FP4 header added; reverse transformation restores source bytes exactly."
+  },
+  "checkpoint": "/lab/arvq_8x8_experiment/initial_fit_layer3",
+  "tp_rank": 3,
+  "scope": "Complete real8+8 grouped/compact layer3 including CPU synchronization, fused cold gather/route sum and register-eight-pair hot on both arms; no TP collective. Both arms retain qualified cold activation and shared8 hot; only native FP4 weight conversion differs.",
+  "sort": "0",
+  "results": [
+    {
+      "tokens": 4096,
+      "case": "allhot",
+      "bitwise_int16_equal": true,
+      "median_ms": [
+        18.64855643361807,
+        18.521214369684458
+      ],
+      "samples_ms": [
+        [
+          17.132810316979885,
+          17.08444207906723,
+          17.16465037316084,
+          18.58954317867756,
+          18.755667842924595,
+          18.727959133684635,
+          18.70756968855858,
+          18.8783947378397
+        ],
+        [
+          17.072361893951893,
+          17.05224346369505,
+          17.678487114608288,
+          18.28560046851635,
+          18.835656344890594,
+          18.8559852540493,
+          18.756828270852566,
+          18.807876855134964
+        ]
+      ],
+      "speedup": 1.006875470549169,
+      "memory": [
+        {
+          "incremental_peak_allocated_bytes": 898843648,
+          "incremental_peak_reserved_bytes": 893386752,
+          "total_peak_allocated_bytes": 1749993984,
+          "total_peak_reserved_bytes": 1807745024
+        },
+        {
+          "incremental_peak_allocated_bytes": 898843648,
+          "incremental_peak_reserved_bytes": 893386752,
+          "total_peak_allocated_bytes": 1749993984,
+          "total_peak_reserved_bytes": 1807745024
+        }
+      ],
+      "additional_peak_allocated_bytes": 0,
+      "serving_free_mib_supplied": null,
+      "headroom_assessment": "not qualified: actual loaded-server headroom not supplied",
+      "routed_bytes": 805306368
+    },
+    {
+      "tokens": 4096,
+      "case": "mixed",
+      "bitwise_int16_equal": true,
+      "median_ms": [
+        14.216612093150616,
+        13.065447565168142
+      ],
+      "samples_ms": [
+        [
+          13.8526177033782,
+          13.784738257527351,
+          13.78725841641426,
+          14.054091647267342,
+          14.37913253903389,
+          14.648807235062122,
+          14.695926569402218,
+          14.677434228360653
+        ],
+        [
+          12.770185247063637,
+          12.761776335537434,
+          12.783916667103767,
+          12.808093801140785,
+          13.3228013291955,
+          13.360690325498581,
+          13.515295460820198,
+          13.502396643161774
+        ]
+      ],
+      "speedup": 1.0881075464304355,
+      "memory": [
+        {
+          "incremental_peak_allocated_bytes": 899177984,
+          "incremental_peak_reserved_bytes": 931135488,
+          "total_peak_allocated_bytes": 1758850048,
+          "total_peak_reserved_bytes": 1828716544
+        },
+        {
+          "incremental_peak_allocated_bytes": 899177984,
+          "incremental_peak_reserved_bytes": 931135488,
+          "total_peak_allocated_bytes": 1758850048,
+          "total_peak_reserved_bytes": 1828716544
+        }
+      ],
+      "additional_peak_allocated_bytes": 0,
+      "serving_free_mib_supplied": null,
+      "headroom_assessment": "not qualified: actual loaded-server headroom not supplied",
+      "routed_bytes": 805306368
+    }
+  ]
+}

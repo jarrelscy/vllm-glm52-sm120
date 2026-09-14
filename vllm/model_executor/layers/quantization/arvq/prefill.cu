@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: Copyright contributors to the vLLM project
 #include <cuda_bf16.h>
 #include <cuda_fp16.h>
+#include <cuda_fp4.h>
 #include <cuda_runtime.h>
 #include <stdint.h>
 
@@ -48,13 +49,21 @@ __global__ void arvq_dequant_kernel(const unsigned* packed,
           : (1.f + mantissa * .125f) * __uint_as_float((exponent + 120) << 23);
   uint16_t values[8];
 #pragma unroll
-  for (int i = 0; i < 8; i++) {
-    float value = fp4((first >> (4 * i)) & 15) + fp4((second >> (4 * i)) & 15);
-    float scaled = value * block_scale * global;
-    if constexpr (FP16)
-      values[i] = __half_as_ushort(__float2half_rn(scaled));
-    else
-      values[i] = __bfloat16_as_ushort(__float2bfloat16_rn(scaled));
+  for (int i = 0; i < 4; i++) {
+    __half2 a = static_cast<__half2>(__nv_cvt_fp4x2_to_halfraw2(
+        (__nv_fp4x2_storage_t)(first >> (8 * i)), __NV_E2M1));
+    __half2 b = static_cast<__half2>(__nv_cvt_fp4x2_to_halfraw2(
+        (__nv_fp4x2_storage_t)(second >> (8 * i)), __NV_E2M1));
+    float2 value = __half22float2(__hadd2(a, b));
+    float scaled_x = value.x * block_scale * global;
+    float scaled_y = value.y * block_scale * global;
+    if constexpr (FP16) {
+      values[2 * i] = __half_as_ushort(__float2half_rn(scaled_x));
+      values[2 * i + 1] = __half_as_ushort(__float2half_rn(scaled_y));
+    } else {
+      values[2 * i] = __bfloat16_as_ushort(__float2bfloat16_rn(scaled_x));
+      values[2 * i + 1] = __bfloat16_as_ushort(__float2bfloat16_rn(scaled_y));
+    }
   }
   reinterpret_cast<uint4*>(output)[index] = *reinterpret_cast<uint4*>(values);
 }

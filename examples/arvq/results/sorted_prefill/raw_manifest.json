@@ -1,0 +1,32 @@
+{
+  "live_c8_abba_0_off.json": {
+    "sha256": "9babb1568da97238bd8666d504e4bc185ab3667cb30c74ea956d94354fa870cd",
+    "bytes": 1958481,
+    "archive": "live_c8_abba_0_off.json.gz"
+  },
+  "live_c8_abba_1_on.json": {
+    "sha256": "7e30cd2cc0bd4f4f87b6fded3472a8f16fbb16f78b0539fd7fe87d83cc03b8db",
+    "bytes": 1958505,
+    "archive": "live_c8_abba_1_on.json.gz"
+  },
+  "live_c8_abba_2_on.json": {
+    "sha256": "e97dd0f36bbb2f83e9f95cc9c4b33e44df4981e993996c33f2a5551cbba75006",
+    "bytes": 1958526,
+    "archive": "live_c8_abba_2_on.json.gz"
+  },
+  "live_c8_abba_3_off.json": {
+    "sha256": "6ad25a65be0f00ac196b3b5da0602f1f7dadf65f6536f0727cf91782019a346a",
+    "bytes": 1958548,
+    "archive": "live_c8_abba_3_off.json.gz"
+  },
+  "live_decode_off.json": {
+    "sha256": "735ae0338c310fadf6e9ceb02d9b616f4a1a88882dc6ab6f49409213caf8a2c7",
+    "bytes": 4887750,
+    "archive": "live_decode_off.json.gz"
+  },
+  "live_decode_on.json": {
+    "sha256": "f1aec47535b8f19c802fa6c9e6d42dad18472f5d826e88042381230580f90c62",
+    "bytes": 4888183,
+    "archive": "live_decode_on.json.gz"
+  }
+}

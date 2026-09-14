@@ -133,6 +133,56 @@ def test_compact_diagnostic_marker(monkeypatch):
     assert not prefill._compact_prefill_enabled()
 
 
+@pytest.mark.parametrize("tokens", [32, 64, 131])
+def test_sorted_routes_preserve_scatter_and_split(monkeypatch, tokens):
+    monkeypatch.setenv("VLLM_ARVQ_COMPACT_PREFILL", "1")
+    calls = []
+
+    def projection(rows, cold, hot, tensors, alpha, n, split, parts):
+        calls.append((rows.shape[0], split, parts, hot.clone()))
+        if parts == 2:
+            return rows[:, :1].repeat(1, n)
+        return (rows[:, :1].float() + hot[:, None]).repeat(1, n)
+
+    args = (
+        torch.arange(tokens).reshape(-1, 1).repeat(1, 16).half() / 100,
+        torch.arange(1, 9).float().repeat(tokens, 1),
+        torch.arange(tokens * 8).reshape(tokens, 8) % 7,
+        torch.stack((torch.full((7,), -1), torch.arange(7))).int(),
+        [torch.empty(1, 2, 1)] * 12,
+        [1.0, 1.0],
+    )
+    monkeypatch.setenv("VLLM_ARVQ_SORT_NATIVE_PREFILL", "0")
+    original = prefill.grouped_cold_prefill(*args, projection=projection)
+    original_calls = calls[:]
+    calls.clear()
+    monkeypatch.setenv("VLLM_ARVQ_SORT_NATIVE_PREFILL", "1")
+    sorted_result = prefill.grouped_cold_prefill(*args, projection=projection)
+    assert torch.equal(original.view(torch.int16), sorted_result.view(torch.int16))
+    assert [c[:3] for c in calls] == [c[:3] for c in original_calls]
+    if tokens >= 64:
+        assert bool((calls[0][3][1:] >= calls[0][3][:-1]).all())
+    else:
+        assert torch.equal(calls[0][3], original_calls[0][3])
+
+
+def test_sorted_diagnostic_marker(monkeypatch):
+    monkeypatch.setenv("VLLM_ARVQ_SORT_NATIVE_PREFILL", "toggle")
+    monkeypatch.setattr(prefill.Path, "exists", lambda path: False)
+    assert not prefill._sort_native_prefill_enabled()
+    monkeypatch.setattr(prefill.Path, "exists", lambda path: True)
+    assert prefill._sort_native_prefill_enabled()
+
+    def unexpected(path):
+        raise AssertionError("Normal modes must not inspect marker files")
+
+    monkeypatch.setattr(prefill.Path, "exists", unexpected)
+    monkeypatch.setenv("VLLM_ARVQ_SORT_NATIVE_PREFILL", "1")
+    assert prefill._sort_native_prefill_enabled()
+    monkeypatch.delenv("VLLM_ARVQ_SORT_NATIVE_PREFILL")
+    assert not prefill._sort_native_prefill_enabled()
+
+
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="requires SM120 GPU")
 @pytest.mark.parametrize("dtype", [torch.float16, torch.bfloat16])
 def test_dequant_matches_independent_natural_codes(dtype):

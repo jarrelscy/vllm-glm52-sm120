@@ -1,0 +1,112 @@
+[
+  {
+    "kernel": "void cutlass::Kernel2<cutlass_80_wmma_tensorop_s161616gemm_bf16_32x32_64x1_tn_align8>(cutlass_80_wmma_tensorop_s161616gemm_bf16_32x32_64x1_tn_align8::Params)",
+    "grid": [
+      8,
+      11,
+      24
+    ],
+    "sum_ms": 30.428865000000044,
+    "calls": 1326
+  },
+  {
+    "kernel": "void cutlass::Kernel2<cutlass_80_wmma_tensorop_bf16_s161616gemm_bf16_16x16_128x2_tn_align8>(cutlass_80_wmma_tensorop_bf16_s161616gemm_bf16_16x16_128x2_tn_align8::Params)",
+    "grid": [
+      8,
+      32,
+      1
+    ],
+    "sum_ms": 25.194686000000008,
+    "calls": 1683
+  },
+  {
+    "kernel": "void cutlass::Kernel2<cutlass_80_wmma_tensorop_bf16_s161616gemm_bf16_32x32_64x2_tn_align8>(cutlass_80_wmma_tensorop_bf16_s161616gemm_bf16_32x32_64x2_tn_align8::Params)",
+    "grid": [
+      8,
+      4,
+      32
+    ],
+    "sum_ms": 14.197923999999993,
+    "calls": 1275
+  },
+  {
+    "kernel": "void cutlass::Kernel2<cutlass_80_wmma_tensorop_bf16_s161616gemm_bf16_16x16_128x2_tn_align8>(cutlass_80_wmma_tensorop_bf16_s161616gemm_bf16_16x16_128x2_tn_align8::Params)",
+    "grid": [
+      8,
+      48,
+      1
+    ],
+    "sum_ms": 10.800266000000015,
+    "calls": 1326
+  },
+  {
+    "kernel": "void cutlass::Kernel2<cutlass_80_wmma_tensorop_bf16_s161616gemm_bf16_32x32_128x2_tn_align8>(cutlass_80_wmma_tensorop_bf16_s161616gemm_bf16_32x32_128x2_tn_align8::Params)",
+    "grid": [
+      8,
+      1,
+      16
+    ],
+    "sum_ms": 7.039505999999981,
+    "calls": 1326
+  },
+  {
+    "kernel": "void cutlass::Kernel2<cutlass_80_wmma_tensorop_bf16_s161616gemm_bf16_32x32_64x1_nn_align8>(cutlass_80_wmma_tensorop_bf16_s161616gemm_bf16_32x32_64x1_nn_align8::Params)",
+    "grid": [
+      8,
+      2,
+      16
+    ],
+    "sum_ms": 6.311485000000054,
+    "calls": 1326
+  },
+  {
+    "kernel": "void router_gemm_kernel_float_output<__nv_bfloat16, 128, 8, 4, 256, 6144>(float*, __nv_bfloat16 const*, __nv_bfloat16 const*)",
+    "grid": [
+      256,
+      1,
+      1
+    ],
+    "sum_ms": 6.1828130000000385,
+    "calls": 1275
+  },
+  {
+    "kernel": "void cutlass::Kernel2<cutlass_80_tensorop_bf16_s16816gemm_relu_bf16_256x64_32x4_tn_align8>(cutlass_80_tensorop_bf16_s16816gemm_relu_bf16_256x64_32x4_tn_align8::Params)",
+    "grid": [
+      8,
+      3,
+      7
+    ],
+    "sum_ms": 2.6613200000000004,
+    "calls": 51
+  },
+  {
+    "kernel": "void cutlass::Kernel2<cutlass_80_wmma_tensorop_bf16_s161616gemm_bf16_32x32_128x2_tn_align8>(cutlass_80_wmma_tensorop_bf16_s161616gemm_bf16_32x32_128x2_tn_align8::Params)",
+    "grid": [
+      4,
+      2,
+      32
+    ],
+    "sum_ms": 1.4387999999999992,
+    "calls": 357
+  },
+  {
+    "kernel": "void deep_gemm::sm120_fp8_paged_mqa_logits<1u, 32u, 128u, 64u, true, false, 2u, 3u, 128u, 128u, 256u, float>(unsigned int, unsigned int, unsigned int, unsigned int const*, float*, unsigned int const*, unsigned int const*, unsigned int const*, CUtensorMap_st, CUtensorMap_st, CUtensorMap_st, CUtensorMap_st)",
+    "grid": [
+      188,
+      1,
+      1
+    ],
+    "sum_ms": 1.0882550000000004,
+    "calls": 357
+  },
+  {
+    "kernel": "void deep_gemm::sched::smxx_paged_mqa_logits_metadata<32u, 128u, 188u, false>(unsigned int, unsigned int, bool, unsigned int, unsigned int const*, unsigned int const*, unsigned int*)",
+    "grid": [
+      1,
+      1,
+      1
+    ],
+    "sum_ms": 0.04790399999999999,
+    "calls": 17
+  }
+]

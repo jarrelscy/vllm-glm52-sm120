@@ -14,6 +14,8 @@ import sys
 import threading
 import time
 
+from steady_metrics import steady_decode_summary
+
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 import bench_serving as b  # noqa: E402
 
@@ -59,6 +61,7 @@ def batch_summary(rows):
     total = sum(r["completion_tokens"] for r in rows)
     return {
         "concurrency": len(rows),
+        "steady_decode": steady_decode_summary(rows),
         "completed_output_tokens": total,
         "wall_span_s": end - start,
         "aggregate_output_tps": total / (end - start),

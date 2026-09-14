@@ -1,0 +1,210 @@
+[
+  {
+    "concurrency": 1,
+    "run": 0,
+    "stream": 0,
+    "same_prompt": true,
+    "same_output": true,
+    "common_prefix_tokens": 512
+  },
+  {
+    "concurrency": 1,
+    "run": 1,
+    "stream": 0,
+    "same_prompt": true,
+    "same_output": true,
+    "common_prefix_tokens": 512
+  },
+  {
+    "concurrency": 4,
+    "run": 0,
+    "stream": 0,
+    "same_prompt": true,
+    "same_output": true,
+    "common_prefix_tokens": 512
+  },
+  {
+    "concurrency": 4,
+    "run": 0,
+    "stream": 1,
+    "same_prompt": true,
+    "same_output": false,
+    "common_prefix_tokens": 0
+  },
+  {
+    "concurrency": 4,
+    "run": 0,
+    "stream": 2,
+    "same_prompt": true,
+    "same_output": false,
+    "common_prefix_tokens": 0
+  },
+  {
+    "concurrency": 4,
+    "run": 0,
+    "stream": 3,
+    "same_prompt": true,
+    "same_output": true,
+    "common_prefix_tokens": 512
+  },
+  {
+    "concurrency": 4,
+    "run": 1,
+    "stream": 0,
+    "same_prompt": true,
+    "same_output": false,
+    "common_prefix_tokens": 0
+  },
+  {
+    "concurrency": 4,
+    "run": 1,
+    "stream": 1,
+    "same_prompt": true,
+    "same_output": true,
+    "common_prefix_tokens": 512
+  },
+  {
+    "concurrency": 4,
+    "run": 1,
+    "stream": 2,
+    "same_prompt": true,
+    "same_output": false,
+    "common_prefix_tokens": 0
+  },
+  {
+    "concurrency": 4,
+    "run": 1,
+    "stream": 3,
+    "same_prompt": true,
+    "same_output": false,
+    "common_prefix_tokens": 0
+  },
+  {
+    "concurrency": 8,
+    "run": 0,
+    "stream": 0,
+    "same_prompt": true,
+    "same_output": false,
+    "common_prefix_tokens": 0
+  },
+  {
+    "concurrency": 8,
+    "run": 0,
+    "stream": 1,
+    "same_prompt": true,
+    "same_output": true,
+    "common_prefix_tokens": 512
+  },
+  {
+    "concurrency": 8,
+    "run": 0,
+    "stream": 2,
+    "same_prompt": true,
+    "same_output": true,
+    "common_prefix_tokens": 512
+  },
+  {
+    "concurrency": 8,
+    "run": 0,
+    "stream": 3,
+    "same_prompt": true,
+    "same_output": false,
+    "common_prefix_tokens": 0
+  },
+  {
+    "concurrency": 8,
+    "run": 0,
+    "stream": 4,
+    "same_prompt": true,
+    "same_output": true,
+    "common_prefix_tokens": 512
+  },
+  {
+    "concurrency": 8,
+    "run": 0,
+    "stream": 5,
+    "same_prompt": true,
+    "same_output": true,
+    "common_prefix_tokens": 512
+  },
+  {
+    "concurrency": 8,
+    "run": 0,
+    "stream": 6,
+    "same_prompt": true,
+    "same_output": true,
+    "common_prefix_tokens": 512
+  },
+  {
+    "concurrency": 8,
+    "run": 0,
+    "stream": 7,
+    "same_prompt": true,
+    "same_output": true,
+    "common_prefix_tokens": 512
+  },
+  {
+    "concurrency": 8,
+    "run": 1,
+    "stream": 0,
+    "same_prompt": true,
+    "same_output": true,
+    "common_prefix_tokens": 512
+  },
+  {
+    "concurrency": 8,
+    "run": 1,
+    "stream": 1,
+    "same_prompt": true,
+    "same_output": false,
+    "common_prefix_tokens": 0
+  },
+  {
+    "concurrency": 8,
+    "run": 1,
+    "stream": 2,
+    "same_prompt": true,
+    "same_output": false,
+    "common_prefix_tokens": 0
+  },
+  {
+    "concurrency": 8,
+    "run": 1,
+    "stream": 3,
+    "same_prompt": true,
+    "same_output": true,
+    "common_prefix_tokens": 512
+  },
+  {
+    "concurrency": 8,
+    "run": 1,
+    "stream": 4,
+    "same_prompt": true,
+    "same_output": true,
+    "common_prefix_tokens": 512
+  },
+  {
+    "concurrency": 8,
+    "run": 1,
+    "stream": 5,
+    "same_prompt": true,
+    "same_output": true,
+    "common_prefix_tokens": 512
+  },
+  {
+    "concurrency": 8,
+    "run": 1,
+    "stream": 6,
+    "same_prompt": true,
+    "same_output": false,
+    "common_prefix_tokens": 0
+  },
+  {
+    "concurrency": 8,
+    "run": 1,
+    "stream": 7,
+    "same_prompt": true,
+    "same_output": true,
+    "common_prefix_tokens": 512
+  }
+]

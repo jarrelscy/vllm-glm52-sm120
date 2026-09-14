@@ -19,6 +19,9 @@ import regex as re
 
 FILLER = "The quick brown fox jumps over the lazy dog. "
 PREFIXES = (
+    "vllm:request_prefill_time_seconds_",
+    "vllm:prefix_cache_",
+    "vllm:external_prefix_cache_",
     "vllm:spec_decode_",
     "vllm:generation_tokens",
     "vllm:request_decode_time_seconds_",

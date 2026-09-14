@@ -1,0 +1,129 @@
+{
+  "definition": "Window (latest first token emission, earliest last token emission]. Count actual streamed token IDs whose emission falls in window; divide by window duration. All streams active; TTFT and initial emissions excluded. SSE receipt timestamps rather than GPU iteration timestamps.",
+  "runs": [
+    {
+      "concurrency": 1,
+      "run": 0,
+      "steady_start_offset_s": 0.23228639923036098,
+      "steady_end_offset_s": 3.758842042181641,
+      "steady_duration_s": 3.52655564295128,
+      "output_tokens_per_stream": [
+        511
+      ],
+      "aggregate_decode_tps": 144.9005918909471,
+      "per_request_decode_tps": [
+        144.9005918909471
+      ]
+    },
+    {
+      "concurrency": 1,
+      "run": 1,
+      "steady_start_offset_s": 0.2348601040430367,
+      "steady_end_offset_s": 3.7621680228039622,
+      "steady_duration_s": 3.5273079187609255,
+      "output_tokens_per_stream": [
+        511
+      ],
+      "aggregate_decode_tps": 144.86968866032663,
+      "per_request_decode_tps": [
+        144.86968866032663
+      ]
+    },
+    {
+      "concurrency": 4,
+      "run": 0,
+      "steady_start_offset_s": 0.9891656311228871,
+      "steady_end_offset_s": 7.264498374890536,
+      "steady_duration_s": 6.275332743767649,
+      "output_tokens_per_stream": [
+        500,
+        504,
+        503,
+        504
+      ],
+      "aggregate_decode_tps": 320.46109459251,
+      "per_request_decode_tps": [
+        80.13011906620835,
+        80.12834668262525,
+        72.7357358718452,
+        74.90693566174656
+      ]
+    },
+    {
+      "concurrency": 4,
+      "run": 1,
+      "steady_start_offset_s": 1.0014544450677931,
+      "steady_end_offset_s": 7.301636736374348,
+      "steady_duration_s": 6.300182291306555,
+      "output_tokens_per_stream": [
+        500,
+        504,
+        500,
+        503
+      ],
+      "aggregate_decode_tps": 318.5622109330714,
+      "per_request_decode_tps": [
+        77.13326693467805,
+        77.13307646663222,
+        79.825413515676,
+        72.3715304535188
+      ]
+    },
+    {
+      "concurrency": 8,
+      "run": 0,
+      "steady_start_offset_s": 1.995314664207399,
+      "steady_end_offset_s": 11.754044755361974,
+      "steady_duration_s": 9.758730091154575,
+      "output_tokens_per_stream": [
+        500,
+        504,
+        504,
+        504,
+        504,
+        500,
+        503,
+        500
+      ],
+      "aggregate_decode_tps": 411.8363724028875,
+      "per_request_decode_tps": [
+        51.537583258199646,
+        47.156530798447434,
+        47.157793780247566,
+        51.535939232317105,
+        51.53649807893209,
+        51.537161250173874,
+        44.4446700868491,
+        47.15466325209353
+      ]
+    },
+    {
+      "concurrency": 8,
+      "run": 1,
+      "steady_start_offset_s": 1.9918173104524612,
+      "steady_end_offset_s": 11.68588987365365,
+      "steady_duration_s": 9.694072563201189,
+      "output_tokens_per_stream": [
+        500,
+        500,
+        500,
+        500,
+        504,
+        500,
+        503,
+        504
+      ],
+      "aggregate_decode_tps": 413.75799220090454,
+      "per_request_decode_tps": [
+        51.87838834041222,
+        51.87402784332345,
+        51.877232198093374,
+        51.87712802494425,
+        45.40124647850496,
+        51.87488083703181,
+        44.66281733541734,
+        51.87788847133047
+      ]
+    }
+  ]
+}

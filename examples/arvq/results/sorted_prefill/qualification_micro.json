@@ -1,0 +1,235 @@
+{
+  "implementation": "production compact versus stable expert-sorted compact",
+  "layer": 3,
+  "tp_rank": 3,
+  "scope": "actual full mixed layer; wall clock includes routing sort/count CPUcopy, gather/scatter, all kernels and combine; excludes TPallreduce",
+  "independent_mixed_oracle_relative_l2": 0.00015240100037772208,
+  "results": [
+    {
+      "scenario": "mixed",
+      "tokens": 2048,
+      "selected_cold_experts": 195,
+      "selected_cold_slots": 12438,
+      "routed_output_bytes": 402653184,
+      "relative_l2_vs_grouped": 0.0,
+      "bitwise_equal": true,
+      "grouped_baseline_ms": 18.136465456336737,
+      "compact_ms": 16.65824092924595,
+      "speedup": 1.0887383327789162,
+      "grouped_baseline_samples_ms": [
+        18.136465456336737,
+        17.97272590920329,
+        17.95770740136504,
+        18.00610590726137,
+        18.165314570069313,
+        18.410101998597383
+      ],
+      "compact_samples_ms": [
+        16.65824092924595,
+        16.6137320920825,
+        16.59333100542426,
+        16.598952002823353,
+        16.785379964858294,
+        16.835658811032772
+      ]
+    },
+    {
+      "scenario": "mixed",
+      "tokens": 4096,
+      "selected_cold_experts": 195,
+      "selected_cold_slots": 25081,
+      "routed_output_bytes": 805306368,
+      "relative_l2_vs_grouped": 0.0,
+      "bitwise_equal": true,
+      "grouped_baseline_ms": 30.395503155887127,
+      "compact_ms": 26.296827010810375,
+      "speedup": 1.15586200355624,
+      "grouped_baseline_samples_ms": [
+        27.73244073614478,
+        30.24517372250557,
+        30.395503155887127,
+        30.306193977594376,
+        30.485001858323812,
+        30.698060058057308
+      ],
+      "compact_samples_ms": [
+        25.105599779635668,
+        25.77666286379099,
+        26.296827010810375,
+        26.287677232176065,
+        26.497304905205965,
+        26.529344264417887
+      ]
+    },
+    {
+      "scenario": "all_hot",
+      "tokens": 2048,
+      "selected_cold_experts": 0,
+      "selected_cold_slots": 0,
+      "routed_output_bytes": 402653184,
+      "relative_l2_vs_grouped": 0.0,
+      "bitwise_equal": true,
+      "grouped_baseline_ms": 31.12587472423911,
+      "compact_ms": 30.164575204253197,
+      "speedup": 1.031868491880846,
+      "grouped_baseline_samples_ms": [
+        31.109975185245275,
+        31.188915017992258,
+        31.232643872499466,
+        31.107475981116295,
+        31.116934958845377,
+        31.12587472423911
+      ],
+      "compact_samples_ms": [
+        30.133855994790792,
+        30.14899604022503,
+        30.13959527015686,
+        30.182415153831244,
+        30.164575204253197,
+        30.193534679710865
+      ]
+    },
+    {
+      "scenario": "all_hot",
+      "tokens": 4096,
+      "selected_cold_experts": 0,
+      "selected_cold_slots": 0,
+      "routed_output_bytes": 805306368,
+      "relative_l2_vs_grouped": 0.0,
+      "bitwise_equal": true,
+      "grouped_baseline_ms": 62.28831922635436,
+      "compact_ms": 59.99068496748805,
+      "speedup": 1.0382998503869645,
+      "grouped_baseline_samples_ms": [
+        62.22020136192441,
+        62.24180990830064,
+        62.22746009007096,
+        62.28831922635436,
+        62.40020878612995,
+        62.31962935999036
+      ],
+      "compact_samples_ms": [
+        59.981473721563816,
+        59.99068496748805,
+        59.983363840729,
+        60.05558418110013,
+        59.97532419860363,
+        60.04633428528905
+      ]
+    },
+    {
+      "scenario": "all_cold",
+      "tokens": 2048,
+      "selected_cold_experts": 8,
+      "selected_cold_slots": 16384,
+      "routed_output_bytes": 402653184,
+      "relative_l2_vs_grouped": 0.0,
+      "bitwise_equal": true,
+      "grouped_baseline_ms": 3.477912861853838,
+      "compact_ms": 3.4804027527570724,
+      "speedup": 0.9992845969044065,
+      "grouped_baseline_samples_ms": [
+        3.50212212651968,
+        3.477912861853838,
+        3.4777317196130753,
+        3.506151959300041,
+        3.473603166639805,
+        3.4683430567383766
+      ],
+      "compact_samples_ms": [
+        3.5100928507745266,
+        3.4924717620015144,
+        3.4804027527570724,
+        3.4799021668732166,
+        3.4691630862653255,
+        3.466092050075531
+      ]
+    },
+    {
+      "scenario": "all_cold",
+      "tokens": 4096,
+      "selected_cold_experts": 8,
+      "selected_cold_slots": 32768,
+      "routed_output_bytes": 805306368,
+      "relative_l2_vs_grouped": 0.0,
+      "bitwise_equal": true,
+      "grouped_baseline_ms": 6.227253004908562,
+      "compact_ms": 6.230942904949188,
+      "speedup": 0.9994078103271182,
+      "grouped_baseline_samples_ms": [
+        6.262732669711113,
+        6.22230302542448,
+        6.222293712198734,
+        6.21699308976531,
+        6.227253004908562,
+        6.236772984266281
+      ],
+      "compact_samples_ms": [
+        6.251012906432152,
+        6.230942904949188,
+        6.219952832907438,
+        6.218302994966507,
+        6.228133104741573,
+        6.235092878341675
+      ]
+    },
+    {
+      "scenario": "tiny_hot",
+      "tokens": 2048,
+      "selected_cold_experts": 8,
+      "selected_cold_slots": 16128,
+      "routed_output_bytes": 402653184,
+      "relative_l2_vs_grouped": 0.0,
+      "bitwise_equal": true,
+      "grouped_baseline_ms": 3.9336467161774635,
+      "compact_ms": 3.9378181099891663,
+      "speedup": 0.9989406839789982,
+      "grouped_baseline_samples_ms": [
+        3.9336467161774635,
+        3.93455708399415,
+        3.931228071451187,
+        3.9366884157061577,
+        3.9326674304902554,
+        3.92241682857275
+      ],
+      "compact_samples_ms": [
+        3.9420779794454575,
+        3.9395177736878395,
+        3.9294669404625893,
+        3.9378181099891663,
+        3.9250878617167473,
+        3.927217796444893
+      ]
+    },
+    {
+      "scenario": "tiny_hot",
+      "tokens": 4096,
+      "selected_cold_experts": 8,
+      "selected_cold_slots": 32512,
+      "routed_output_bytes": 805306368,
+      "relative_l2_vs_grouped": 0.0,
+      "bitwise_equal": true,
+      "grouped_baseline_ms": 6.71607768163085,
+      "compact_ms": 6.716217380017042,
+      "speedup": 0.9999791998414751,
+      "grouped_baseline_samples_ms": [
+        6.717247888445854,
+        6.707967724651098,
+        6.683147978037596,
+        6.701688282191753,
+        6.71607768163085,
+        6.7264665849506855
+      ],
+      "compact_samples_ms": [
+        6.716217380017042,
+        6.708978209644556,
+        6.687517743557692,
+        6.687438115477562,
+        6.719066761434078,
+        6.729268003255129
+      ]
+    }
+  ],
+  "timings_valid": true,
+  "measurement_context": "Exclusive GPU1; server fully stopped, explicit grant from serving agent; clean repeat only."
+}

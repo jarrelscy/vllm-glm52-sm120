@@ -23,6 +23,14 @@ def _compact_prefill_enabled():
     )
 
 
+def _sort_native_prefill_enabled():
+    """Diagnostic marker must stay fixed for the entire TP request."""
+    mode = os.environ.get("VLLM_ARVQ_SORT_NATIVE_PREFILL", "0")
+    return mode == "1" or (
+        mode == "toggle" and Path("/dev/shm/vllm_arvq_sort_native_prefill_on").exists()
+    )
+
+
 def dequantize_cold(packed, codebooks, scales, global_scale, n, k, dtype=torch.float16):
     """Decode one expert into an ephemeral 16-bit [N,K] matrix."""
     global _LIB
@@ -142,6 +150,13 @@ def grouped_cold_prefill(
         else:
             batches = [(native_slots, normal_split)]
         for route_indices, split in batches:
+            if route_indices.numel() >= 512 and _sort_native_prefill_enabled():
+                # Each route is independent; preserve the original split
+                # segmentation and scatter destinations while reusing weights.
+                cold_key = native_cold[route_indices].long()
+                hot_key = hot_ids[route_indices].long()
+                key = torch.where(cold_key >= 0, cold_key, 256 + hot_key)
+                route_indices = route_indices[torch.argsort(key, stable=True)]
             for begin in range(0, route_indices.numel(), chunk_tokens * top_k):
                 route_slots = route_indices[begin : begin + chunk_tokens * top_k]
                 xr = x[route_slots // top_k].half()

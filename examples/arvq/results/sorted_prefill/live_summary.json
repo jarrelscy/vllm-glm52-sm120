@@ -1,0 +1,94 @@
+{
+  "qualification": "NOT QUALIFIED; production rollout rejected",
+  "reason": "C8 pooled mean ON1.80%lower; unchanged code path makes causation unproven but strict empirical non-regression gate not satisfied. No further tests to seek favorable result.",
+  "prefill": [
+    {
+      "input_tokens": 1024,
+      "off_prefill_s": 1.7235178495757282,
+      "on_prefill_s": 1.7254755606409162,
+      "off_tps": 594.1336785412893,
+      "on_tps": 593.4595791201135,
+      "throughput_change_pct": -0.11345921726418906
+    },
+    {
+      "input_tokens": 2048,
+      "off_prefill_s": 2.341542500187643,
+      "on_prefill_s": 2.2058225503424183,
+      "off_tps": 874.637124816603,
+      "on_tps": 928.4518374708251,
+      "throughput_change_pct": 6.1528045319944935
+    },
+    {
+      "input_tokens": 4096,
+      "off_prefill_s": 4.299108931212686,
+      "on_prefill_s": 4.001346228644252,
+      "off_tps": 952.7555745940605,
+      "on_tps": 1023.6554814172677,
+      "throughput_change_pct": 7.44156305287591
+    },
+    {
+      "input_tokens": 8192,
+      "off_prefill_s": 8.633679945254698,
+      "on_prefill_s": 8.071691887686029,
+      "off_tps": 948.8422146691391,
+      "on_tps": 1014.9049435964608,
+      "throughput_change_pct": 6.9624567610914845
+    }
+  ],
+  "initial_decode": [
+    {
+      "concurrency": 1,
+      "off_tps": 144.84432793884798,
+      "on_tps": 144.87494982927927,
+      "change_pct": 0.021141242371758295
+    },
+    {
+      "concurrency": 4,
+      "off_tps": 316.11341454730575,
+      "on_tps": 323.83418598420053,
+      "change_pct": 2.442405504350842
+    },
+    {
+      "concurrency": 8,
+      "off_tps": 410.6956444877238,
+      "on_tps": 408.182770917706,
+      "change_pct": -0.6118578572100963
+    }
+  ],
+  "c8_all_original_and_repeat": {
+    "off": {
+      "samples": 6,
+      "mean_tps": 419.09837944429154,
+      "min_tps": 409.8217081774323,
+      "max_tps": 431.32968462084585,
+      "durations_s": [
+        9.777422523126006,
+        9.784493771847337,
+        9.336245900951326,
+        9.422958943992853,
+        9.76558167533949,
+        9.56752302031964
+      ]
+    },
+    "on": {
+      "samples": 6,
+      "mean_tps": 411.56193863036793,
+      "min_tps": 407.6970289271062,
+      "max_tps": 418.04010422581797,
+      "durations_s": [
+        9.824588567949831,
+        9.847999163903296,
+        9.630932525731623,
+        9.623478607274592,
+        9.794296137057245,
+        9.81712468713522
+      ]
+    }
+  },
+  "output_match_initial": {
+    "identical": 16,
+    "total": 26
+  },
+  "shared_kv_capacity": 1074176,
+  "baseline_shared_kv_capacity": 1073920
+}

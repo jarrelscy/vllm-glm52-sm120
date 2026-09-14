@@ -79,45 +79,40 @@ Set `PARALLEL=tp4-1m` before launching to disable MTP. Paired dense dispatch is 
 
 ## Measured decode throughput
 
-Current full-position/eight-slot profile, **LMCache ON**:
+Current full-position/eight-slot profile, **LMCache ON**, excluding initial emissions and TTFT:
 
-| Simultaneous streams | Total output tokens/s |
+| Simultaneous streams | Aggregate decode tokens/s |
 | --- | ---: |
-| 1 | **136.2** |
-| 4 | **277.3** |
-| 8 | **344.9** |
+| 1 | **144.9** |
+| 4 | **319.5** |
+| 8 | **412.8** |
 
-Single-stream decode excluding initial latency measured **144.9 tokens/s**. The full-position four-slot reference with LMCache OFF measured 136.3/280.2 total tokens/s at one/four streams. The eight-slot configuration preserved those rates within about 1%; this comparison also changes LMCache and memory reservation, so it does not isolate the request-slot limit. All drafts were accepted on these short benchmark inputs. [Current configuration and raw results](https://github.com/jarrelscy/vllm-glm52-sm120/blob/67684eeac/examples/arvq/results/context_concurrency/NOTES.md).
+For each batch, the measurement window starts after the latest first emission among streams and ends at the earliest final emission. Actual streamed token IDs received in that common interval are counted and divided by its duration. This excludes initial emissions, TTFT, and the tail after concurrency falls. It uses client receipt timestamps, not GPU iteration timing, and does not sum whole-request rates. These are the existing baseline runs recomputed with this definition, not a newly measured speedup. [Window boundaries, token counts, and methodology](https://github.com/jarrelscy/vllm-glm52-sm120/tree/arvq-hybrid-sm120/examples/arvq/results/current_profile).
 
-Earlier paired-kernel comparison at 950k context, four slots, and LMCache OFF:
+Each stream used a 136-token repetitive prompt and generated 512 tokens, with one warmup and two measured batches per concurrency. **Every draft was accepted: four emitted tokens per speculative step.** These are high-acceptance synthetic-workload numbers, not a production acceptance forecast. [Configuration and original raw runs](https://github.com/jarrelscy/vllm-glm52-sm120/blob/67684eeac/examples/arvq/results/context_concurrency/NOTES.md).
 
-| Simultaneous streams | Previous total output tokens/s | Optimized total output tokens/s |
-| --- | ---: | ---: |
-| 1 | 133.4 | **136.1** |
-| 2 | 192.7 | **200.5** |
-| 4 | 264.2 | **274.1** |
-
-**Earlier single-stream decode excluding initial latency: 144.8 tokens/s.** Total throughput above includes request startup/first-token latency and divides completed output tokens by the full batch wall time; it does not sum per-request rates.
-
-Each stream used a 136-token repetitive prompt and generated 512 tokens, with one warmup and two measured batches per concurrency. **Every draft was accepted: four emitted tokens per speculative step.** These are high-acceptance synthetic-workload numbers, not a production acceptance forecast. Previous/current decode comparisons span server boots; some output sequences differed, so they do not establish identical model behavior or general accuracy preservation.
+Historical tables reported 136.2/277.3/344.9 total output tokens/s for this same one/four/eight-stream configuration. Those values include initial request latency and the partial-concurrency tail; they are not comparable to the decode-only figures above.
 
 An earlier dense-P4 no-MTP run measured **53.28 decode tokens/s**. No-MTP was not rerun for this latest paired/compact profile; do not treat that historical measurement as a new result.
 
 ## Measured prefill throughput
 
-Cold-cache requests, one generated output token, from the earlier 950k/four-slot/LMCache-OFF speed round:
+**Experimental result; sorting is OFF in the serving profile.** Native route sorting improved prefill, but did not qualify for deployment under the no-regression requirement: pooled eight-stream decode averaged 419.1 tokens/s OFF versus 411.6 ON (−1.8%, six batches per arm). The short decode workload cannot enter the changed path, so causation is unproven; the measurements nevertheless do not establish non-regression. The previous serving image and settings remain in use.
 
-| Input tokens | Latest request latency | Effective input tokens/s |
-| --- | ---: | ---: |
-| 1,024 | **1.905 s** | **537** |
-| 4,096 | **4.165 s** | **984** |
-| 8,192 | **8.571 s** | **956** |
+Full-position/eight-slot profile, LMCache ON, same-boot prefill comparison:
 
-Effective input throughput is input tokens divided by HTTP request wall time, including the first output token; it is not a pure GPU-prefill timing. Each length used one warmup per mode and three alternating measured pairs with identical input token IDs and a unique cache salt. The 8192-token case repeats the saved 4096-token input twice; these are bounded synthetic inputs.
+| Input tokens | Sorting OFF: input tokens/s | Sorting ON: input tokens/s | Change |
+| --- | ---: | ---: | ---: |
+| 1,024 | 594.1 | 593.5 | −0.1% (noise; below dispatch threshold) |
+| 2,048 | 874.6 | 928.5 | +6.2% |
+| 4,096 | 952.8 | 1,023.7 | +7.4% |
+| 8,192 | 948.8 | 1,014.9 | +7.0% |
 
-Before grouped prefill and compaction, the 4096/8192-token requests took **7.192/15.595 seconds**. Latest latency is **4.165/8.571 seconds**, approximately **1.73×/1.82× faster across rounds**. Compaction alone was isolated in the final same-boot A/B: **4.688 → 4.165 seconds** and **9.724 → 8.571 seconds**, or **12.6–13.5% more input throughput**. The 1024-token control remains below the 2048-token grouped-prefill threshold and was unchanged within that A/B.
+Input tokens are divided by the isolated `vllm:request_prefill_time_seconds_sum` increment: scheduled time to first token, excluding queue time. This is a server request-stage measurement, not summed GPU kernel time. Each request generated one token; each length used one warmup per mode and four measured pairs, alternating pair order. Every request had exactly one prefill histogram observation and zero GPU-prefix or external LMCache cache hits. A fresh actual UUID prefix plus cache salt prevents reuse; paired requests therefore share the prompt body and length but differ in prefix tokens. These are bounded synthetic inputs.
 
-[Raw results, methodology, output comparisons, and the fresh decode profile](https://github.com/jarrelscy/vllm-glm52-sm120/blob/460457d2a/examples/arvq/results/prefill/PAIRED_COMPACT_NOTES.md) are available alongside the [speed inventory](https://github.com/jarrelscy/vllm-glm52-sm120/blob/460457d2a/examples/arvq/SPEED_INVENTORY.md).
+Sorting changes the execution order of independent remaining native routes to reuse expert weights, then scatters results into their original slots before the existing ordered reduction. Eight complete layer microbenchmark cases were bitwise identical. It preserves the existing P4 activation planes, projection splits, weights, and arithmetic. [Raw microbenchmarks and live qualification](https://github.com/jarrelscy/vllm-glm52-sm120/tree/arvq-hybrid-sm120/examples/arvq/results/sorted_prefill).
+
+Earlier 950k/four-slot/LMCache-OFF measurements reported 984/956 effective input tokens/s at 4096/8192 tokens using full HTTP request time. Those historical rates use a different configuration and denominator; they are not this round's baseline. [Historical results](https://github.com/jarrelscy/vllm-glm52-sm120/blob/460457d2a/examples/arvq/results/prefill/PAIRED_COMPACT_NOTES.md).
 
 ## LMCache persistence
 

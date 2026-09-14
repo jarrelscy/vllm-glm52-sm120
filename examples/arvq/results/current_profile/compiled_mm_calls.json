@@ -1,0 +1,378 @@
+[
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_0",
+    "call": "extern_kernels.mm(buf1, reinterpret_tensor(arg10_1, (6144, 160), (1, 6144), 0), out=buf3)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_0",
+    "call": "extern_kernels.mm(buf1, reinterpret_tensor(arg3_1, (6144, 2624), (1, 6144), 0), out=buf2)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_0",
+    "call": "extern_kernels.mm(buf8, reinterpret_tensor(arg5_1, (2048, 4096), (1, 2048), 0), out=buf21)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_0",
+    "call": "extern_kernels.mm(buf8, reinterpret_tensor(arg9_1, (2048, 4096), (1, 2048), 0), out=buf9)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_1",
+    "call": "extern_kernels.mm(buf13, reinterpret_tensor(arg11_1, (6144, 2624), (1, 6144), 0), out=buf14)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_1",
+    "call": "extern_kernels.mm(buf13, reinterpret_tensor(arg18_1, (6144, 160), (1, 6144), 0), out=buf15)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_1",
+    "call": "extern_kernels.mm(buf20, reinterpret_tensor(arg13_1, (2048, 4096), (1, 2048), 0), out=buf33)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_1",
+    "call": "extern_kernels.mm(buf20, reinterpret_tensor(arg17_1, (2048, 4096), (1, 2048), 0), out=buf21)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_1",
+    "call": "extern_kernels.mm(buf5, reinterpret_tensor(arg8_1, (6144, 6144), (1, 6144), 0), out=buf6)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_1",
+    "call": "extern_kernels.mm(buf7, reinterpret_tensor(arg9_1, (3072, 6144), (1, 3072), 0), out=buf8)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_10",
+    "call": "extern_kernels.mm(buf16, reinterpret_tensor(arg10_1, (6144, 2624), (1, 6144), 0), out=buf17)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_10",
+    "call": "extern_kernels.mm(buf16, reinterpret_tensor(arg17_1, (6144, 160), (1, 6144), 0), out=buf18)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_10",
+    "call": "extern_kernels.mm(buf23, reinterpret_tensor(arg12_1, (2048, 4096), (1, 2048), 0), out=buf36)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_10",
+    "call": "extern_kernels.mm(buf23, reinterpret_tensor(arg16_1, (2048, 4096), (1, 2048), 0), out=buf24)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_14",
+    "call": "extern_kernels.mm(buf16, reinterpret_tensor(arg10_1, (6144, 2624), (1, 6144), 0), out=buf17)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_14",
+    "call": "extern_kernels.mm(buf16, reinterpret_tensor(arg17_1, (6144, 160), (1, 6144), 0), out=buf18)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_14",
+    "call": "extern_kernels.mm(buf23, reinterpret_tensor(arg12_1, (2048, 4096), (1, 2048), 0), out=buf36)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_14",
+    "call": "extern_kernels.mm(buf23, reinterpret_tensor(arg16_1, (2048, 4096), (1, 2048), 0), out=buf24)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_18",
+    "call": "extern_kernels.mm(buf16, reinterpret_tensor(arg10_1, (6144, 2624), (1, 6144), 0), out=buf17)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_18",
+    "call": "extern_kernels.mm(buf16, reinterpret_tensor(arg17_1, (6144, 160), (1, 6144), 0), out=buf18)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_18",
+    "call": "extern_kernels.mm(buf23, reinterpret_tensor(arg12_1, (2048, 4096), (1, 2048), 0), out=buf36)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_18",
+    "call": "extern_kernels.mm(buf23, reinterpret_tensor(arg16_1, (2048, 4096), (1, 2048), 0), out=buf24)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_2",
+    "call": "extern_kernels.mm(buf13, reinterpret_tensor(arg11_1, (6144, 2624), (1, 6144), 0), out=buf14)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_2",
+    "call": "extern_kernels.mm(buf13, reinterpret_tensor(arg18_1, (6144, 160), (1, 6144), 0), out=buf15)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_2",
+    "call": "extern_kernels.mm(buf20, reinterpret_tensor(arg13_1, (2048, 4096), (1, 2048), 0), out=buf33)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_2",
+    "call": "extern_kernels.mm(buf20, reinterpret_tensor(arg17_1, (2048, 4096), (1, 2048), 0), out=buf21)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_2",
+    "call": "extern_kernels.mm(buf5, reinterpret_tensor(arg8_1, (6144, 6144), (1, 6144), 0), out=buf6)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_2",
+    "call": "extern_kernels.mm(buf7, reinterpret_tensor(arg9_1, (3072, 6144), (1, 3072), 0), out=buf8)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_22",
+    "call": "extern_kernels.mm(buf16, reinterpret_tensor(arg10_1, (6144, 2624), (1, 6144), 0), out=buf17)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_22",
+    "call": "extern_kernels.mm(buf16, reinterpret_tensor(arg17_1, (6144, 160), (1, 6144), 0), out=buf18)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_22",
+    "call": "extern_kernels.mm(buf23, reinterpret_tensor(arg12_1, (2048, 4096), (1, 2048), 0), out=buf36)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_22",
+    "call": "extern_kernels.mm(buf23, reinterpret_tensor(arg16_1, (2048, 4096), (1, 2048), 0), out=buf24)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_26",
+    "call": "extern_kernels.mm(buf16, reinterpret_tensor(arg10_1, (6144, 2624), (1, 6144), 0), out=buf17)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_26",
+    "call": "extern_kernels.mm(buf16, reinterpret_tensor(arg17_1, (6144, 160), (1, 6144), 0), out=buf18)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_26",
+    "call": "extern_kernels.mm(buf23, reinterpret_tensor(arg12_1, (2048, 4096), (1, 2048), 0), out=buf36)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_26",
+    "call": "extern_kernels.mm(buf23, reinterpret_tensor(arg16_1, (2048, 4096), (1, 2048), 0), out=buf24)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_3",
+    "call": "extern_kernels.mm(buf13, reinterpret_tensor(arg11_1, (6144, 2624), (1, 6144), 0), out=buf14)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_3",
+    "call": "extern_kernels.mm(buf19, reinterpret_tensor(arg13_1, (2048, 4096), (1, 2048), 0), out=buf20)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_3",
+    "call": "extern_kernels.mm(buf5, reinterpret_tensor(arg8_1, (6144, 6144), (1, 6144), 0), out=buf6)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_3",
+    "call": "extern_kernels.mm(buf7, reinterpret_tensor(arg9_1, (3072, 6144), (1, 3072), 0), out=buf8)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_30",
+    "call": "extern_kernels.mm(buf16, reinterpret_tensor(arg10_1, (6144, 2624), (1, 6144), 0), out=buf17)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_30",
+    "call": "extern_kernels.mm(buf16, reinterpret_tensor(arg17_1, (6144, 160), (1, 6144), 0), out=buf18)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_30",
+    "call": "extern_kernels.mm(buf23, reinterpret_tensor(arg12_1, (2048, 4096), (1, 2048), 0), out=buf36)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_30",
+    "call": "extern_kernels.mm(buf23, reinterpret_tensor(arg16_1, (2048, 4096), (1, 2048), 0), out=buf24)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_34",
+    "call": "extern_kernels.mm(buf16, reinterpret_tensor(arg10_1, (6144, 2624), (1, 6144), 0), out=buf17)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_34",
+    "call": "extern_kernels.mm(buf16, reinterpret_tensor(arg17_1, (6144, 160), (1, 6144), 0), out=buf18)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_34",
+    "call": "extern_kernels.mm(buf23, reinterpret_tensor(arg12_1, (2048, 4096), (1, 2048), 0), out=buf36)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_34",
+    "call": "extern_kernels.mm(buf23, reinterpret_tensor(arg16_1, (2048, 4096), (1, 2048), 0), out=buf24)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_38",
+    "call": "extern_kernels.mm(buf16, reinterpret_tensor(arg10_1, (6144, 2624), (1, 6144), 0), out=buf17)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_38",
+    "call": "extern_kernels.mm(buf16, reinterpret_tensor(arg17_1, (6144, 160), (1, 6144), 0), out=buf18)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_38",
+    "call": "extern_kernels.mm(buf23, reinterpret_tensor(arg12_1, (2048, 4096), (1, 2048), 0), out=buf36)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_38",
+    "call": "extern_kernels.mm(buf23, reinterpret_tensor(arg16_1, (2048, 4096), (1, 2048), 0), out=buf24)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_4",
+    "call": "extern_kernels.mm(buf16, reinterpret_tensor(arg10_1, (6144, 2624), (1, 6144), 0), out=buf17)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_4",
+    "call": "extern_kernels.mm(buf22, reinterpret_tensor(arg12_1, (2048, 4096), (1, 2048), 0), out=buf23)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_42",
+    "call": "extern_kernels.mm(buf16, reinterpret_tensor(arg10_1, (6144, 2624), (1, 6144), 0), out=buf17)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_42",
+    "call": "extern_kernels.mm(buf16, reinterpret_tensor(arg17_1, (6144, 160), (1, 6144), 0), out=buf18)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_42",
+    "call": "extern_kernels.mm(buf23, reinterpret_tensor(arg12_1, (2048, 4096), (1, 2048), 0), out=buf36)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_42",
+    "call": "extern_kernels.mm(buf23, reinterpret_tensor(arg16_1, (2048, 4096), (1, 2048), 0), out=buf24)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_46",
+    "call": "extern_kernels.mm(buf16, reinterpret_tensor(arg10_1, (6144, 2624), (1, 6144), 0), out=buf17)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_46",
+    "call": "extern_kernels.mm(buf16, reinterpret_tensor(arg17_1, (6144, 160), (1, 6144), 0), out=buf18)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_46",
+    "call": "extern_kernels.mm(buf23, reinterpret_tensor(arg12_1, (2048, 4096), (1, 2048), 0), out=buf36)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_46",
+    "call": "extern_kernels.mm(buf23, reinterpret_tensor(arg16_1, (2048, 4096), (1, 2048), 0), out=buf24)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_50",
+    "call": "extern_kernels.mm(buf16, reinterpret_tensor(arg10_1, (6144, 2624), (1, 6144), 0), out=buf17)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_50",
+    "call": "extern_kernels.mm(buf16, reinterpret_tensor(arg17_1, (6144, 160), (1, 6144), 0), out=buf18)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_50",
+    "call": "extern_kernels.mm(buf23, reinterpret_tensor(arg12_1, (2048, 4096), (1, 2048), 0), out=buf36)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_50",
+    "call": "extern_kernels.mm(buf23, reinterpret_tensor(arg16_1, (2048, 4096), (1, 2048), 0), out=buf24)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_54",
+    "call": "extern_kernels.mm(buf16, reinterpret_tensor(arg10_1, (6144, 2624), (1, 6144), 0), out=buf17)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_54",
+    "call": "extern_kernels.mm(buf16, reinterpret_tensor(arg17_1, (6144, 160), (1, 6144), 0), out=buf18)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_54",
+    "call": "extern_kernels.mm(buf23, reinterpret_tensor(arg12_1, (2048, 4096), (1, 2048), 0), out=buf36)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_54",
+    "call": "extern_kernels.mm(buf23, reinterpret_tensor(arg16_1, (2048, 4096), (1, 2048), 0), out=buf24)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_58",
+    "call": "extern_kernels.mm(buf16, reinterpret_tensor(arg10_1, (6144, 2624), (1, 6144), 0), out=buf17)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_58",
+    "call": "extern_kernels.mm(buf16, reinterpret_tensor(arg17_1, (6144, 160), (1, 6144), 0), out=buf18)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_58",
+    "call": "extern_kernels.mm(buf23, reinterpret_tensor(arg12_1, (2048, 4096), (1, 2048), 0), out=buf36)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_58",
+    "call": "extern_kernels.mm(buf23, reinterpret_tensor(arg16_1, (2048, 4096), (1, 2048), 0), out=buf24)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_6",
+    "call": "extern_kernels.mm(buf16, reinterpret_tensor(arg10_1, (6144, 2624), (1, 6144), 0), out=buf17)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_6",
+    "call": "extern_kernels.mm(buf16, reinterpret_tensor(arg17_1, (6144, 160), (1, 6144), 0), out=buf18)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_6",
+    "call": "extern_kernels.mm(buf23, reinterpret_tensor(arg12_1, (2048, 4096), (1, 2048), 0), out=buf36)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_6",
+    "call": "extern_kernels.mm(buf23, reinterpret_tensor(arg16_1, (2048, 4096), (1, 2048), 0), out=buf24)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_62",
+    "call": "extern_kernels.mm(buf16, reinterpret_tensor(arg10_1, (6144, 2624), (1, 6144), 0), out=buf17)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_62",
+    "call": "extern_kernels.mm(buf16, reinterpret_tensor(arg17_1, (6144, 160), (1, 6144), 0), out=buf18)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_62",
+    "call": "extern_kernels.mm(buf23, reinterpret_tensor(arg12_1, (2048, 4096), (1, 2048), 0), out=buf36)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_62",
+    "call": "extern_kernels.mm(buf23, reinterpret_tensor(arg16_1, (2048, 4096), (1, 2048), 0), out=buf24)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_66",
+    "call": "extern_kernels.mm(buf16, reinterpret_tensor(arg10_1, (6144, 2624), (1, 6144), 0), out=buf17)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_66",
+    "call": "extern_kernels.mm(buf16, reinterpret_tensor(arg17_1, (6144, 160), (1, 6144), 0), out=buf18)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_66",
+    "call": "extern_kernels.mm(buf23, reinterpret_tensor(arg12_1, (2048, 4096), (1, 2048), 0), out=buf36)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_66",
+    "call": "extern_kernels.mm(buf23, reinterpret_tensor(arg16_1, (2048, 4096), (1, 2048), 0), out=buf24)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_70",
+    "call": "extern_kernels.mm(buf16, reinterpret_tensor(arg10_1, (6144, 2624), (1, 6144), 0), out=buf17)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_70",
+    "call": "extern_kernels.mm(buf16, reinterpret_tensor(arg17_1, (6144, 160), (1, 6144), 0), out=buf18)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_70",
+    "call": "extern_kernels.mm(buf23, reinterpret_tensor(arg12_1, (2048, 4096), (1, 2048), 0), out=buf36)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_70",
+    "call": "extern_kernels.mm(buf23, reinterpret_tensor(arg16_1, (2048, 4096), (1, 2048), 0), out=buf24)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_74",
+    "call": "extern_kernels.mm(buf16, reinterpret_tensor(arg10_1, (6144, 2624), (1, 6144), 0), out=buf17)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_74",
+    "call": "extern_kernels.mm(buf16, reinterpret_tensor(arg17_1, (6144, 160), (1, 6144), 0), out=buf18)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_74",
+    "call": "extern_kernels.mm(buf23, reinterpret_tensor(arg12_1, (2048, 4096), (1, 2048), 0), out=buf36)"
+  },
+  {
+    "artifact": "artifact_compile_range_1_4096_subgraph_74",
+    "call": "extern_kernels.mm(buf23, reinterpret_tensor(arg16_1, (2048, 4096), (1, 2048), 0), out=buf24)"
+  }
+]

@@ -276,6 +276,7 @@ if TYPE_CHECKING:
     VLLM_GLM_DCP_RS_STAGED: bool = False
     VLLM_GLM_DCP_RS_VIEW: bool = False
     VLLM_GLM_DCP_AG_RAW_TOPK: bool = False
+    VLLM_GLM_RAW_KV_GATHER: bool = False
     VLLM_GLM_SKIP_EMPTY_FILL: bool = False
     VLLM_SHARED_EXPERTS_STREAM_TOKEN_THRESHOLD: int = 256
     VLLM_MULTI_STREAM_GEMM_TOKEN_THRESHOLD: int = 1024
@@ -1194,8 +1195,7 @@ environment_variables: dict[str, Callable[[], Any]] = {
     # fp32 accumulation, which is numerically equivalent to (and measured
     # closer to fp64 than) the fp32 SIMT path for bf16 checkpoints.
     "VLLM_SM120_ROUTER_GEMM": lambda: (
-        os.environ.get("VLLM_SM120_ROUTER_GEMM", "0").strip().lower()
-        in ("1", "true")
+        os.environ.get("VLLM_SM120_ROUTER_GEMM", "0").strip().lower() in ("1", "true")
     ),
     # List of quantization kernels that should be disabled, used for testing
     # and performance comparisons. Currently only affects MPLinearKernel
@@ -1922,9 +1922,7 @@ environment_variables: dict[str, Callable[[], Any]] = {
     # flight. Purely a scheduling change: the collectives, kernels and their
     # inputs are identical, so results are bit-exact vs the serial order.
     # Default OFF; the env-off path is untouched.
-    "VLLM_GLM_COMM_OVERLAP": lambda: bool(
-        int(os.getenv("VLLM_GLM_COMM_OVERLAP", "0"))
-    ),
+    "VLLM_GLM_COMM_OVERLAP": lambda: bool(int(os.getenv("VLLM_GLM_COMM_OVERLAP", "0"))),
     # DCP decode epilogue: replace the per-layer AG(lse) + ReduceScatter(out)
     # pair with a single packed All-to-All whose combine kernel reproduces the
     # AG+RS numerics bit-exactly (per-rank LSE correction rounded to the output
@@ -1962,9 +1960,7 @@ environment_variables: dict[str, Callable[[], Any]] = {
     # Replays the exact same kernels on the same persistent buffers, so
     # outputs are bit-identical to the eager path. Requires
     # VLLM_GLM_MM_MASK_REUSE=1 (persistent mask address). Default OFF.
-    "VLLM_GLM_EMBED_GRAPH": lambda: bool(
-        int(os.getenv("VLLM_GLM_EMBED_GRAPH", "0"))
-    ),
+    "VLLM_GLM_EMBED_GRAPH": lambda: bool(int(os.getenv("VLLM_GLM_EMBED_GRAPH", "0"))),
     # Round-5 copy elimination: in the DCP attention epilogue
     # (cp_lse_ag_out_rs), have the LSE-correction Triton kernel store its
     # corrected output DIRECTLY into a rank-major [H, B, D] staging buffer
@@ -1988,8 +1984,11 @@ environment_variables: dict[str, Callable[[], Any]] = {
     # must not ship where that proof fails). Requires the plain pynccl
     # ReduceScatter path (no NCCL symm-mem); falls back to the copying path
     # otherwise. Default OFF.
-    "VLLM_GLM_DCP_RS_VIEW": lambda: bool(
-        int(os.getenv("VLLM_GLM_DCP_RS_VIEW", "0"))
+    "VLLM_GLM_DCP_RS_VIEW": lambda: bool(int(os.getenv("VLLM_GLM_DCP_RS_VIEW", "0"))),
+    # Bounded SM120 DCP4 C1 prefill: gather byte-identical MLA cache records.
+    # Runtime collective-order qualification must pass. Default OFF.
+    "VLLM_GLM_RAW_KV_GATHER": lambda: bool(
+        int(os.getenv("VLLM_GLM_RAW_KV_GATHER", "0"))
     ),
     # Round-5 copy elimination: the DCP indexer top-k merge kernel
     # (StableTopKFromGatheredCandidates) reads the candidates all-gather

@@ -761,145 +761,157 @@ class MLAAttention(nn.Module, AttentionLayerBase):
             mqa_q = q[:num_mqa_tokens]
             mqa_output_slice = output[:num_mqa_tokens]
 
-            if q_before_absorb_eligible(self, mqa_q, fp8_attention):
-                mqa_q, precomputed_indices = q_before_absorb(
-                    mqa_q, self.W_UK_T, self.impl, attn_metadata
+            raw_kv_out = None
+            if envs.VLLM_GLM_RAW_KV_GATHER and mqa_q.shape[0] == 4096:
+                from vllm.v1.attention.ops.raw_kv_gather import try_raw_kv_gather
+
+                raw_kv_out = try_raw_kv_gather(
+                    self, mqa_q, kv_cache, attn_metadata, fp8_attention
                 )
+            if raw_kv_out is not None:
+                attn_out = raw_kv_out
             else:
-                mqa_q_nope, mqa_q_pe = mqa_q.split(
-                    [self.qk_nope_head_dim, self.qk_rope_head_dim], dim=-1
-                )
-
-                # Convert from (B, N, P) to (N, B, P)
-                mqa_q_nope = mqa_q_nope.transpose(0, 1)
-
-                if self.q_pad_num_heads is not None:
-                    B, N, L = mqa_q_pe.shape
-                    mqa_pe_padded = mqa_q_pe.new_empty((B, self.q_pad_num_heads, L))
-                    mqa_pe_padded.resize_((B, N, L))
-                    mqa_pe_padded.copy_(mqa_q_pe)
-                    mqa_q_pe = mqa_pe_padded
-
-                if self.is_aiter_triton_fp4_bmm_enabled:
-                    from aiter.ops.triton.batched_gemm_a16wfp4 import (
-                        batched_gemm_a16wfp4,
-                    )
-
-                    mqa_ql_nope = batched_gemm_a16wfp4(
-                        mqa_q_nope,
-                        self.W_K,
-                        self.W_K_scale,
-                        transpose_bm=True,
-                        prequant=True,
-                        y_scale=self._q_scale if fp8_attention else None,
-                    )
-                elif self.is_aiter_triton_fp8_bmm_enabled:
-                    # Multiply+Transpose (N, B, P)x(N, P, L)->(N, B, L)->(B, N, L)
-                    mqa_ql_nope = rocm_aiter_ops.triton_fp8_bmm(
-                        mqa_q_nope,
-                        self.W_K,
-                        self.W_K_scale,
-                        group_size=128,
-                        transpose_bm=True,
+                if q_before_absorb_eligible(self, mqa_q, fp8_attention):
+                    mqa_q, precomputed_indices = q_before_absorb(
+                        mqa_q, self.W_UK_T, self.impl, attn_metadata
                     )
                 else:
-                    # Pads the head_dim if necessary (for the underlying kernel)
-                    N, B, P = mqa_q_nope.shape
-                    _, _, L = self.W_UK_T.shape
+                    mqa_q_nope, mqa_q_pe = mqa_q.split(
+                        [self.qk_nope_head_dim, self.qk_rope_head_dim], dim=-1
+                    )
+
+                    # Convert from (B, N, P) to (N, B, P)
+                    mqa_q_nope = mqa_q_nope.transpose(0, 1)
 
                     if self.q_pad_num_heads is not None:
-                        mqa_ql_nope = mqa_q_nope.new_empty((self.q_pad_num_heads, B, L))
-                        mqa_ql_nope.resize_((N, B, L))
+                        B, N, L = mqa_q_pe.shape
+                        mqa_pe_padded = mqa_q_pe.new_empty((B, self.q_pad_num_heads, L))
+                        mqa_pe_padded.resize_((B, N, L))
+                        mqa_pe_padded.copy_(mqa_q_pe)
+                        mqa_q_pe = mqa_pe_padded
+
+                    if self.is_aiter_triton_fp4_bmm_enabled:
+                        from aiter.ops.triton.batched_gemm_a16wfp4 import (
+                            batched_gemm_a16wfp4,
+                        )
+
+                        mqa_ql_nope = batched_gemm_a16wfp4(
+                            mqa_q_nope,
+                            self.W_K,
+                            self.W_K_scale,
+                            transpose_bm=True,
+                            prequant=True,
+                            y_scale=self._q_scale if fp8_attention else None,
+                        )
+                    elif self.is_aiter_triton_fp8_bmm_enabled:
+                        # Multiply+Transpose (N, B, P)x(N, P, L)->(N, B, L)->(B, N, L)
+                        mqa_ql_nope = rocm_aiter_ops.triton_fp8_bmm(
+                            mqa_q_nope,
+                            self.W_K,
+                            self.W_K_scale,
+                            group_size=128,
+                            transpose_bm=True,
+                        )
                     else:
-                        mqa_ql_nope = mqa_q_nope.new_empty((N, B, L))
+                        # Pads the head_dim if necessary (for the underlying kernel)
+                        N, B, P = mqa_q_nope.shape
+                        _, _, L = self.W_UK_T.shape
 
-                    # Multiply (N, B, P) x (N, P, L) -> (N, B, L)
-                    torch.bmm(mqa_q_nope, self.W_UK_T, out=mqa_ql_nope)
+                        if self.q_pad_num_heads is not None:
+                            mqa_ql_nope = mqa_q_nope.new_empty(
+                                (self.q_pad_num_heads, B, L)
+                            )
+                            mqa_ql_nope.resize_((N, B, L))
+                        else:
+                            mqa_ql_nope = mqa_q_nope.new_empty((N, B, L))
 
-                    # Convert from (N, B, L) to (B, N, L)
-                    mqa_ql_nope = mqa_ql_nope.transpose(0, 1)
+                        # Multiply (N, B, P) x (N, P, L) -> (N, B, L)
+                        torch.bmm(mqa_q_nope, self.W_UK_T, out=mqa_ql_nope)
 
-                if fp8_attention and self.impl.supports_quant_query_input:
-                    assert mqa_ql_nope.shape[0] == mqa_q_pe.shape[0]
-                    assert mqa_ql_nope.shape[1] == mqa_q_pe.shape[1]
-                    mqa_q = self._decode_concat_quant_fp8_op(
-                        mqa_ql_nope, mqa_q_pe, self._q_scale
+                        # Convert from (N, B, L) to (B, N, L)
+                        mqa_ql_nope = mqa_ql_nope.transpose(0, 1)
+
+                    if fp8_attention and self.impl.supports_quant_query_input:
+                        assert mqa_ql_nope.shape[0] == mqa_q_pe.shape[0]
+                        assert mqa_ql_nope.shape[1] == mqa_q_pe.shape[1]
+                        mqa_q = self._decode_concat_quant_fp8_op(
+                            mqa_ql_nope, mqa_q_pe, self._q_scale
+                        )
+                    else:
+                        mqa_q = (mqa_ql_nope, mqa_q_pe)
+                    precomputed_indices = None
+                    if self.impl.dcp_world_size > 1:
+                        if isinstance(mqa_q, tuple):
+                            # concatenate mqa_ql_nope and mqa_q_pe -> (B, N, L + P)
+                            mqa_q = torch.cat(mqa_q, dim=-1)
+                        # mqa_q do allgather in head dim.
+                        if dcp_comm_overlap_enabled() and hasattr(
+                            self.impl, "precompute_mqa_indices"
+                        ):
+                            # VLLM_GLM_COMM_OVERLAP: launch the query all-gather
+                            # asynchronously and run the (query-independent) top-k
+                            # index conversion -- plus a deferred indexer top-k
+                            # merge, if any -- on the compute stream while the
+                            # collective is in flight. Identical collective and
+                            # kernels with identical inputs => bit-exact vs the
+                            # serial order below.
+                            # flush_coalesce: under VLLM_GLM_COMM_COALESCE this
+                            # launches the layer's deferred indexer candidates
+                            # all-gather and this query all-gather in one NCCL group.
+                            ag_q = AsyncAllGather(
+                                get_dcp_group(), mqa_q, dim=1, flush_coalesce=True
+                            )
+                            precomputed_indices = self.impl.precompute_mqa_indices(  # type: ignore[attr-defined]
+                                attn_metadata, num_mqa_tokens
+                            )
+                            mqa_q = ag_q.wait()
+                        else:
+                            # If the indexer deferred its DCP top-k merge but this
+                            # impl cannot consume it via precompute_mqa_indices,
+                            # complete it here so forward_mqa reads a final top-k
+                            # buffer. No-op unless VLLM_GLM_COMM_OVERLAP deferred one.
+                            consume_pending_dcp_merge()
+                            mqa_q = get_dcp_group().all_gather(mqa_q, dim=1)
+
+                # call decode attn
+                if not is_sparse_impl:
+                    assert attn_metadata.decode is not None
+                if precomputed_indices is not None:
+                    attn_out, lse = self.impl.forward_mqa(  # type: ignore[attr-defined]
+                        mqa_q,
+                        kv_cache,
+                        attn_metadata,
+                        self,
+                        precomputed_indices=precomputed_indices,
                     )
                 else:
-                    mqa_q = (mqa_ql_nope, mqa_q_pe)
-                precomputed_indices = None
+                    attn_out, lse = self.impl.forward_mqa(  # type: ignore[attr-defined]
+                        mqa_q, kv_cache, attn_metadata, self
+                    )
+
+                # correct dcp attn_out with lse.
                 if self.impl.dcp_world_size > 1:
-                    if isinstance(mqa_q, tuple):
-                        # concatenate mqa_ql_nope and mqa_q_pe -> (B, N, L + P)
-                        mqa_q = torch.cat(mqa_q, dim=-1)
-                    # mqa_q do allgather in head dim.
-                    if dcp_comm_overlap_enabled() and hasattr(
-                        self.impl, "precompute_mqa_indices"
-                    ):
-                        # VLLM_GLM_COMM_OVERLAP: launch the query all-gather
-                        # asynchronously and run the (query-independent) top-k
-                        # index conversion -- plus a deferred indexer top-k
-                        # merge, if any -- on the compute stream while the
-                        # collective is in flight. Identical collective and
-                        # kernels with identical inputs => bit-exact vs the
-                        # serial order below.
-                        # flush_coalesce: under VLLM_GLM_COMM_COALESCE this
-                        # launches the layer's deferred indexer candidates
-                        # all-gather and this query all-gather in one NCCL group.
-                        ag_q = AsyncAllGather(
-                            get_dcp_group(), mqa_q, dim=1, flush_coalesce=True
+                    if self.dcp_a2a_exact:
+                        attn_out = dcp_a2a_lse_reduce_exact(
+                            attn_out,
+                            lse,
+                            get_dcp_group(),
+                            is_lse_base_on_e=self.impl.lse_base_on_e,
                         )
-                        precomputed_indices = self.impl.precompute_mqa_indices(  # type: ignore[attr-defined]
-                            attn_metadata, num_mqa_tokens
+                    elif self.dcp_a2a:
+                        attn_out = dcp_a2a_lse_reduce(
+                            attn_out,
+                            lse,
+                            get_dcp_group(),
+                            is_lse_base_on_e=self.impl.lse_base_on_e,
                         )
-                        mqa_q = ag_q.wait()
                     else:
-                        # If the indexer deferred its DCP top-k merge but this
-                        # impl cannot consume it via precompute_mqa_indices,
-                        # complete it here so forward_mqa reads a final top-k
-                        # buffer. No-op unless VLLM_GLM_COMM_OVERLAP deferred one.
-                        consume_pending_dcp_merge()
-                        mqa_q = get_dcp_group().all_gather(mqa_q, dim=1)
-
-            # call decode attn
-            if not is_sparse_impl:
-                assert attn_metadata.decode is not None
-            if precomputed_indices is not None:
-                attn_out, lse = self.impl.forward_mqa(  # type: ignore[attr-defined]
-                    mqa_q,
-                    kv_cache,
-                    attn_metadata,
-                    self,
-                    precomputed_indices=precomputed_indices,
-                )
-            else:
-                attn_out, lse = self.impl.forward_mqa(  # type: ignore[attr-defined]
-                    mqa_q, kv_cache, attn_metadata, self
-                )
-
-            # correct dcp attn_out with lse.
-            if self.impl.dcp_world_size > 1:
-                if self.dcp_a2a_exact:
-                    attn_out = dcp_a2a_lse_reduce_exact(
-                        attn_out,
-                        lse,
-                        get_dcp_group(),
-                        is_lse_base_on_e=self.impl.lse_base_on_e,
-                    )
-                elif self.dcp_a2a:
-                    attn_out = dcp_a2a_lse_reduce(
-                        attn_out,
-                        lse,
-                        get_dcp_group(),
-                        is_lse_base_on_e=self.impl.lse_base_on_e,
-                    )
-                else:
-                    attn_out = cp_lse_ag_out_rs(
-                        attn_out,
-                        lse,
-                        get_dcp_group(),
-                        is_lse_base_on_e=self.impl.lse_base_on_e,
-                    )
+                        attn_out = cp_lse_ag_out_rs(
+                            attn_out,
+                            lse,
+                            get_dcp_group(),
+                            is_lse_base_on_e=self.impl.lse_base_on_e,
+                        )
 
             # v_up projection
             self._v_up_proj(attn_out, out=mqa_output_slice)

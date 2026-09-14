@@ -1,0 +1,17 @@
+{
+  "kv_gather_experiment.py": {
+    "qualified_source_sha256": "2ae66dd39b41ad8880ea6e318c286664fa845f899a61ccaa40cb1bb36fae20ef",
+    "repository_file": "vllm/v1/attention/ops/raw_kv_gather.py",
+    "repository_sha256": "5550eecde952cee88c59af348b25f7b4873eac3fcb0a5222363b2c7cc05fa6cc"
+  },
+  "kv_gather_merge.py": {
+    "qualified_source_sha256": "e0476e1d8363ae9a2fd4d505a2242319acd74a0c53774153ad2910a8172329fc",
+    "repository_file": "vllm/v1/attention/ops/raw_kv_merge.py",
+    "repository_sha256": "a6578a4945967fa89f87f44f770730117f2274abb56a5b928d1855555e2d2688"
+  },
+  "kv_gather_probe.py": {
+    "qualified_source_sha256": "568f12a490f05af9c42f6b4d1ed51053fe47d6eb3b1b0533a21e0acf0a123aeb",
+    "repository_file": "vllm/v1/attention/ops/raw_kv_collective_guard.py",
+    "repository_sha256": "04b025ff5c68a9c11ac4914c1cc668d99ee2d4cadc44474362ffa3f203a12b40"
+  }
+}

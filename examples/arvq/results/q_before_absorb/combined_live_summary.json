@@ -1,0 +1,96 @@
+{
+  "cold8k_1_cold": {
+    "valid": true,
+    "cold_aggregate_prefill_wall_tps": 1386.1285947635176,
+    "server_prefill_histogram_tps": 1388.2675441728206,
+    "mean_server_prefill_s": 5.900879865977913,
+    "steady_decode": {
+      "valid": false,
+      "reason": "No common decode interval"
+    },
+    "speculative": {
+      "drafts": 0.0,
+      "accepted": 0.0,
+      "proposed": 0.0,
+      "expected_emitted_per_step": null,
+      "acceptance_rate": null
+    },
+    "gpu_cache_hits": 0.0,
+    "external_cache_hits": 0.0,
+    "per_request_decode_tps": [
+      null
+    ]
+  },
+  "cold8k_2_cold": {
+    "valid": true,
+    "cold_aggregate_prefill_wall_tps": 1383.3484510703195,
+    "server_prefill_histogram_tps": 1385.2118220856187,
+    "mean_server_prefill_s": 5.913896971847862,
+    "steady_decode": {
+      "valid": false,
+      "reason": "No common decode interval"
+    },
+    "speculative": {
+      "drafts": 0.0,
+      "accepted": 0.0,
+      "proposed": 0.0,
+      "expected_emitted_per_step": null,
+      "acceptance_rate": null
+    },
+    "gpu_cache_hits": 0.0,
+    "external_cache_hits": 0.0,
+    "per_request_decode_tps": [
+      null
+    ]
+  },
+  "cold128k_cold": {
+    "valid": true,
+    "cold_aggregate_prefill_wall_tps": 1366.7391814004793,
+    "server_prefill_histogram_tps": 1367.5413398666904,
+    "mean_server_prefill_s": 95.84500020509586,
+    "steady_decode": {
+      "valid": false,
+      "reason": "No common decode interval"
+    },
+    "speculative": {
+      "drafts": 0.0,
+      "accepted": 0.0,
+      "proposed": 0.0,
+      "expected_emitted_per_step": null,
+      "acceptance_rate": null
+    },
+    "gpu_cache_hits": 0.0,
+    "external_cache_hits": 0.0,
+    "per_request_decode_tps": [
+      null
+    ]
+  },
+  "decode8k_c1_warm": {
+    "valid": true,
+    "cold_aggregate_prefill_wall_tps": null,
+    "server_prefill_histogram_tps": 87472.80398454894,
+    "mean_server_prefill_s": 0.09365196526050568,
+    "steady_decode": {
+      "valid": true,
+      "start_offset_s": 0.10052668675780296,
+      "end_offset_s": 3.7314256648533046,
+      "duration_s": 3.6308989780955017,
+      "tokens_per_stream": [
+        511
+      ],
+      "aggregate_decode_tps": 140.73649613574003
+    },
+    "speculative": {
+      "drafts": 129.0,
+      "accepted": 382.0,
+      "proposed": 387.0,
+      "expected_emitted_per_step": 3.9612403100775193,
+      "acceptance_rate": 0.9870801033591732
+    },
+    "gpu_cache_hits": 7680.0,
+    "external_cache_hits": 511.0,
+    "per_request_decode_tps": [
+      140.73649613574003
+    ]
+  }
+}

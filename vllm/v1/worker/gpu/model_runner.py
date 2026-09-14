@@ -99,6 +99,7 @@ from vllm.v1.worker.gpu.mm.lora import set_active_mm_loras
 from vllm.v1.worker.gpu.model_states import init_model_state
 from vllm.v1.worker.gpu.pool.pooling_runner import PoolingRunner
 from vllm.v1.worker.gpu.pp_utils import PPHandler
+from vllm.v1.worker.gpu.prefill_dispatch import decode_only_uniform_token_count
 from vllm.v1.worker.gpu.sample.output import SamplerOutput
 from vllm.v1.worker.gpu.sample.prompt_logprob import PromptLogprobsWorker
 from vllm.v1.worker.gpu.sample.sampler import Sampler
@@ -196,9 +197,8 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         # and every draft-touching phase (model build, KV alloc, forward) runs
         # under the draft-TP group installed as the global `_TP` via
         # `patch_tp_group`. See TP_DRAFT_PP_FINDINGS.md.
-        self.draft_tp_over_pp = (
-            self.speculative_config is not None
-            and getattr(self.speculative_config, "draft_tp_over_pp", False)
+        self.draft_tp_over_pp = self.speculative_config is not None and getattr(
+            self.speculative_config, "draft_tp_over_pp", False
         )
         if self.speculative_config is not None:
             if self.is_last_pp_rank or self.draft_tp_over_pp:
@@ -487,9 +487,7 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         else:
             aux_list_src = []
             num_aux = 0
-        header = torch.tensor(
-            [num_aux], dtype=torch.int64, device=device
-        )
+        header = torch.tensor([num_aux], dtype=torch.int64, device=device)
         g.broadcast(header, src=src)
         num_aux = int(header.item())
 
@@ -547,12 +545,16 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         #    last rank's sampler; only the last rank has self.sampler.
         if is_src:
             assert self.sampler is not None
-            b_seeds = self.sampler.sampling_states.seeds.gpu[:max_nr].to(
-                torch.int64
-            ).contiguous()
-            b_temperature = self.sampler.sampling_states.temperature.gpu[:max_nr].to(
-                torch.float32
-            ).contiguous()
+            b_seeds = (
+                self.sampler.sampling_states.seeds.gpu[:max_nr]
+                .to(torch.int64)
+                .contiguous()
+            )
+            b_temperature = (
+                self.sampler.sampling_states.temperature.gpu[:max_nr]
+                .to(torch.float32)
+                .contiguous()
+            )
         else:
             b_seeds = torch.empty(max_nr, dtype=torch.int64, device=device)
             b_temperature = torch.empty(max_nr, dtype=torch.float32, device=device)
@@ -1278,11 +1280,13 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         )
 
         import os as _os
+
         if _os.environ.get("VLLM_DSPARK_DBG") == "1" and total_num_draft_tokens > 0:
             _step = getattr(self, "_dbg_step", 0)
             if _step < 40:
                 self._dbg_step = _step + 1
                 from vllm.logger import init_logger as _il
+
                 _nc = self.req_states.num_computed_tokens.gpu[idx_mapping].tolist()
                 _qsl = query_start_loc.tolist()
                 _cul = cu_num_logits.tolist()
@@ -1291,7 +1295,12 @@ class GPUModelRunner(LoRAModelRunnerMixin):
                 _il(__name__).error(
                     "COMBINEDBG rank_last=%s num_computed=%s qsl=%s cu_logits=%s "
                     "logits_idx=%s toks_at_idx=%s",
-                    self.is_last_pp_rank, _nc, _qsl, _cul, _li, _toks,
+                    self.is_last_pp_rank,
+                    _nc,
+                    _qsl,
+                    _cul,
+                    _li,
+                    _toks,
                 )
 
         # CPU upper bound on seq_lens; padded entries left at zero.
@@ -1423,16 +1432,20 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         else:
             output_bin_counts = None
         import os as _os
+
         if _os.environ.get("VLLM_DSPARK_DBG") == "1":
             _s = getattr(self, "_dbg_pp_step", 0)
             if _s < 40:
                 self._dbg_pp_step = _s + 1
                 from vllm.logger import init_logger as _il
+
                 _il(__name__).error(
                     "POSTDBG rank_last=%s from_fifo=%s num_sampled=%s num_rej=%s "
                     "nc_before=%s",
-                    self.is_last_pp_rank, query_start_loc is None,
-                    num_sampled.tolist(), num_rejected.tolist(),
+                    self.is_last_pp_rank,
+                    query_start_loc is None,
+                    num_sampled.tolist(),
+                    num_rejected.tolist(),
                     self.req_states.num_computed_tokens.gpu[idx_mapping].tolist(),
                 )
         post_update(
@@ -1479,6 +1492,16 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         num_toks = scheduler_output.total_num_scheduled_tokens
         max_query_len = max(scheduler_output.num_scheduled_tokens.values())
         uniform_tok_count = get_uniform_token_count(num_reqs, num_toks, max_query_len)
+        # FULL graphs are captured for uniform decode, not prompt extensions.
+        # Decide before DP synchronization and input/attention preparation.
+        uniform_tok_count = decode_only_uniform_token_count(
+            uniform_tok_count,
+            scheduler_output.num_scheduled_tokens,
+            self.req_states.req_id_to_index,
+            self.req_states.num_computed_prefill_tokens,
+            self.req_states.prefill_len.np,
+            dummy_run=dummy_run,
+        )
 
         num_active_loras = 0
         if self.lora_config:

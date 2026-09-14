@@ -118,6 +118,18 @@ class RejectionSampler:
             draft_sampled,
             input_batch.expanded_local_pos,
         )
+        padded_prefill = None
+        if (
+            input_batch.num_draft_tokens_per_req is not None
+            and input_batch.is_prefilling_np.any()
+        ):
+            padded_prefill_np = input_batch.is_prefilling_np & (
+                input_batch.num_draft_tokens_per_req > 0
+            )
+            if padded_prefill_np.any():
+                padded_prefill = torch.as_tensor(
+                    padded_prefill_np, device=logits.device, dtype=torch.bool
+                )
         sampled, num_sampled = rejection_sample(
             processed_logits,
             draft_logits,
@@ -133,6 +145,7 @@ class RejectionSampler:
             self.synthetic_conditional_rates,
             use_fp64=self.sampler.use_fp64_gumbel,
             use_block_verification=self.use_block_verification,
+            padded_prefill=padded_prefill,
         )
         logprobs_tensors = self._get_logprobs_tensors(
             input_batch,

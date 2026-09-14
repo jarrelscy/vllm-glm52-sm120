@@ -340,8 +340,10 @@ def _combine_sampled_and_draft_tokens_kernel(
         # Handling prefill tokens. No sampled or draft tokens.
         return
 
-    if NUM_NEW_SAMPLED_TOKENS > 0:
-        # Write the last sampled token ID to input_ids.
+    if NUM_NEW_SAMPLED_TOKENS > 0 and seq_len - num_draft_tokens > prefill_len:
+        # Speculative padding may extend a newly admitted prefill past its
+        # prompt boundary. Preserve its already-prepared final prompt token;
+        # last_sampled_tokens refers to the preceding computed token there.
         last_token_id = tl.load(last_sampled_tokens_ptr + req_state_idx)
         tl.store(input_ids_ptr + query_end - num_logits, last_token_id)
 

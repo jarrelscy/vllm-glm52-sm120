@@ -513,6 +513,8 @@ def _rejection_kernel(
     HAS_DRAFT_LOGITS: tl.constexpr,
     SYNTHETIC_MODE: tl.constexpr,
     USE_BLOCK_VERIFICATION: tl.constexpr,
+    padded_prefill_ptr,
+    HAS_PADDED_PREFILL: tl.constexpr,
 ):
     req_idx = tl.program_id(0)
     req_state_idx = tl.load(idx_mapping_ptr + req_idx).to(tl.int64)
@@ -522,6 +524,26 @@ def _rejection_kernel(
     seed = tl.load(seed_ptr + req_state_idx)
     temp = tl.load(temp_ptr + req_state_idx).to(tl.float32)
     is_greedy = temp == 0.0
+
+    # These rows are graph padding, not actual draft proposals. Sample
+    # exactly one token from the first target distribution for every mode.
+    if HAS_PADDED_PREFILL:  # noqa: SIM102 - constexpr guards the optional pointer
+        if tl.load(padded_prefill_ptr + req_idx):
+            tl.store(rejected_steps_ptr + req_idx, 0)
+            tl.store(target_rejected_logsumexp_ptr + req_idx, 0.0)
+            tl.store(draft_rejected_logsumexp_ptr + req_idx, 0.0)
+            if is_greedy:
+                target_argmax = _compute_global_target_argmax(
+                    target_local_max_ptr,
+                    target_local_max_stride,
+                    target_local_argmax_ptr,
+                    target_local_argmax_stride,
+                    start_idx,
+                    vocab_num_blocks,
+                    PADDED_VOCAB_NUM_BLOCKS,
+                )
+                tl.store(sampled_ptr + req_idx * sampled_stride, target_argmax)
+            return
 
     accepted_length = tl.zeros((), tl.int64)
     target_lse = 0.0
@@ -693,6 +715,8 @@ def _resample_kernel(
     HAS_DRAFT_LOGITS: tl.constexpr,
     USE_FP64: tl.constexpr,
     USE_BLOCK_VERIFICATION: tl.constexpr,
+    padded_prefill_ptr,
+    HAS_PADDED_PREFILL: tl.constexpr,
 ):
     req_idx = tl.program_id(0)
     resample_idx = tl.load(rejected_step_ptr + req_idx)
@@ -717,8 +741,11 @@ def _resample_kernel(
         other=float("-inf"),
     ).to(tl.float32)
 
-    # Compute the residual logits to resample the rejected token from.
-    if is_bonus:
+    padded_prefill = False
+    if HAS_PADDED_PREFILL:
+        padded_prefill = tl.load(padded_prefill_ptr + req_idx)
+    # Fake padding has no proposal distribution: do not subtract stale q.
+    if is_bonus or padded_prefill:
         # Bonus token (no rejections). Directly use the target logits.
         residual_logits = target_logits
     elif HAS_DRAFT_LOGITS:
@@ -887,6 +914,7 @@ def rejection_sample(
     synthetic_conditional_rates: torch.Tensor | None = None,
     use_fp64: bool = False,
     use_block_verification: bool = False,
+    padded_prefill: torch.Tensor | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     num_reqs = cu_num_logits.shape[0] - 1
     num_logits, vocab_size = target_logits.shape
@@ -1066,6 +1094,8 @@ def rejection_sample(
         SYNTHETIC_MODE=synthetic_conditional_rates is not None,
         USE_BLOCK_VERIFICATION=use_block_verification,
         num_warps=1,
+        padded_prefill_ptr=padded_prefill,
+        HAS_PADDED_PREFILL=padded_prefill is not None,
     )
 
     # Resample the rejected/bonus tokens.
@@ -1105,6 +1135,8 @@ def rejection_sample(
         HAS_DRAFT_LOGITS=has_draft_logits,
         USE_FP64=use_fp64,
         USE_BLOCK_VERIFICATION=use_block_verification,
+        padded_prefill_ptr=padded_prefill,
+        HAS_PADDED_PREFILL=padded_prefill is not None,
     )
 
     # Insert the resampled tokens into the output sampled.

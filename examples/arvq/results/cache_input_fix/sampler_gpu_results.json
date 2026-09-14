@@ -1,0 +1,146 @@
+[
+  {
+    "temperature": 0.0,
+    "draft_logits": "random",
+    "block_verification": false,
+    "ordinary_exact": true,
+    "padded_target_only_exact": true,
+    "graph_exact": true
+  },
+  {
+    "temperature": 0.0,
+    "draft_logits": "random",
+    "block_verification": true,
+    "ordinary_exact": true,
+    "padded_target_only_exact": true,
+    "graph_exact": true
+  },
+  {
+    "temperature": 0.0,
+    "draft_logits": "nan",
+    "block_verification": false,
+    "ordinary_exact": true,
+    "padded_target_only_exact": true,
+    "graph_exact": true
+  },
+  {
+    "temperature": 0.0,
+    "draft_logits": "nan",
+    "block_verification": true,
+    "ordinary_exact": true,
+    "padded_target_only_exact": true,
+    "graph_exact": true
+  },
+  {
+    "temperature": 0.0,
+    "draft_logits": "none",
+    "block_verification": false,
+    "ordinary_exact": true,
+    "padded_target_only_exact": true,
+    "graph_exact": true
+  },
+  {
+    "temperature": 0.0,
+    "draft_logits": "none",
+    "block_verification": true,
+    "ordinary_exact": true,
+    "padded_target_only_exact": true,
+    "graph_exact": true
+  },
+  {
+    "temperature": 0.7,
+    "draft_logits": "random",
+    "block_verification": false,
+    "ordinary_exact": true,
+    "padded_target_only_exact": true,
+    "graph_exact": true
+  },
+  {
+    "temperature": 0.7,
+    "draft_logits": "random",
+    "block_verification": true,
+    "ordinary_exact": true,
+    "padded_target_only_exact": true,
+    "graph_exact": true
+  },
+  {
+    "temperature": 0.7,
+    "draft_logits": "nan",
+    "block_verification": false,
+    "ordinary_exact": true,
+    "padded_target_only_exact": true,
+    "graph_exact": true
+  },
+  {
+    "temperature": 0.7,
+    "draft_logits": "nan",
+    "block_verification": true,
+    "ordinary_exact": true,
+    "padded_target_only_exact": true,
+    "graph_exact": true
+  },
+  {
+    "temperature": 0.7,
+    "draft_logits": "none",
+    "block_verification": false,
+    "ordinary_exact": true,
+    "padded_target_only_exact": true,
+    "graph_exact": true
+  },
+  {
+    "temperature": 0.7,
+    "draft_logits": "none",
+    "block_verification": true,
+    "ordinary_exact": true,
+    "padded_target_only_exact": true,
+    "graph_exact": true
+  },
+  {
+    "temperature": 1.0,
+    "draft_logits": "random",
+    "block_verification": false,
+    "ordinary_exact": true,
+    "padded_target_only_exact": true,
+    "graph_exact": true
+  },
+  {
+    "temperature": 1.0,
+    "draft_logits": "random",
+    "block_verification": true,
+    "ordinary_exact": true,
+    "padded_target_only_exact": true,
+    "graph_exact": true
+  },
+  {
+    "temperature": 1.0,
+    "draft_logits": "nan",
+    "block_verification": false,
+    "ordinary_exact": true,
+    "padded_target_only_exact": true,
+    "graph_exact": true
+  },
+  {
+    "temperature": 1.0,
+    "draft_logits": "nan",
+    "block_verification": true,
+    "ordinary_exact": true,
+    "padded_target_only_exact": true,
+    "graph_exact": true
+  },
+  {
+    "temperature": 1.0,
+    "draft_logits": "none",
+    "block_verification": false,
+    "ordinary_exact": true,
+    "padded_target_only_exact": true,
+    "graph_exact": true
+  },
+  {
+    "temperature": 1.0,
+    "draft_logits": "none",
+    "block_verification": true,
+    "ordinary_exact": true,
+    "padded_target_only_exact": true,
+    "graph_exact": true
+  }
+]

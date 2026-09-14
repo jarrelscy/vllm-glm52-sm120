@@ -1,0 +1,23 @@
+[
+  {
+    "batch_row": 1,
+    "original_stream": 3,
+    "actual_first_input": 30386,
+    "expected_final_prompt_input": 13,
+    "incorrect_penultimate_prompt_input": 30386
+  },
+  {
+    "batch_row": 2,
+    "original_stream": 0,
+    "actual_first_input": 104029,
+    "expected_final_prompt_input": 30386,
+    "incorrect_penultimate_prompt_input": 104029
+  },
+  {
+    "batch_row": 3,
+    "original_stream": 2,
+    "actual_first_input": 220,
+    "expected_final_prompt_input": 104029,
+    "incorrect_penultimate_prompt_input": 220
+  }
+]

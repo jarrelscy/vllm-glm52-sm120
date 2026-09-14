@@ -10,7 +10,7 @@ vLLM's MoE runner, as in TPHybridExpertsMoEMethod.
 import ctypes
 import os
 from pathlib import Path
-from typing import cast
+from typing import Literal, cast
 
 import regex as re
 import torch
@@ -242,6 +242,10 @@ class NvFp4ArvqHybridConfig(NvFp4AqlmHybridConfig):
             raise ValueError(f"Unsupported ARVQ format: {arvq_format}")
         super().__init__(*args, **kwargs)
         self.arvq_format = arvq_format
+
+    @classmethod
+    def get_name(cls) -> Literal["nvfp4_arvq_hybrid"]:
+        return "nvfp4_arvq_hybrid"
 
     @classmethod
     def from_config(cls, config):

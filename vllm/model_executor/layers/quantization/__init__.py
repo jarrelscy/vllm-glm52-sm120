@@ -20,6 +20,7 @@ QuantizationMethods = Literal[
     "modelopt_mxfp8",
     "modelopt_mixed",
     "nvfp4_aqlm_hybrid",
+    "nvfp4_arvq_hybrid",
     "auto_gptq",
     "gptq",
     "gptq_marlin",
@@ -136,6 +137,7 @@ def get_quantization_config(quantization: str) -> type[QuantizationConfig]:
     from .moe_wna16 import MoeWNA16Config
     from .mxfp4 import GptOssMxfp4Config, Mxfp4Config
     from .nvfp4_aqlm_hybrid import NvFp4AqlmHybridConfig
+    from .nvfp4_arvq_hybrid import NvFp4ArvqHybridConfig
     from .online.base import OnlineQuantizationConfig
     from .torchao import TorchAOConfig
 
@@ -151,6 +153,7 @@ def get_quantization_config(quantization: str) -> type[QuantizationConfig]:
         "modelopt_mxfp8": ModelOptMxFp8Config,
         "modelopt_mixed": ModelOptMixedPrecisionConfig,
         "nvfp4_aqlm_hybrid": NvFp4AqlmHybridConfig,
+        "nvfp4_arvq_hybrid": NvFp4ArvqHybridConfig,
         "auto_gptq": AutoGPTQConfig,
         "gptq": AutoGPTQConfig,
         "gptq_marlin": AutoGPTQConfig,

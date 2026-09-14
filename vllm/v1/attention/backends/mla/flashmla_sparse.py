@@ -31,6 +31,9 @@ from vllm.v1.attention.backends.mla.sparse_utils import (
     triton_convert_req_index_to_global_index,
     triton_filter_and_convert_dcp_index,
 )
+from vllm.v1.attention.backends.mla.workspace_limits import (
+    needs_bf16_prefill_workspace,
+)
 from vllm.v1.attention.backends.utils import (
     reshape_attn_output_for_spec_decode,
     reshape_query_for_spec_decode,
@@ -604,8 +607,11 @@ class FlashMLASparseImpl(SparseMLAAttentionImpl[FlashMLASparseMetadata]):
                 "fp8_ds_mla kv-cache dtype"
             )
 
-        if kv_cache_dtype == "fp8_ds_mla":
-            # Reserve workspace during initialization
+        if needs_bf16_prefill_workspace(
+            kv_cache_dtype, num_heads, MIN_HEADS_FOR_BF16_PREFILL
+        ):
+            # Reserve workspace only for the separate BF16 prefill path.
+            # Mixed-batch attention never reads this workspace.
             assert vllm_config is not None and vllm_config.model_config is not None
             prefill_workspace_size = get_prefill_workspace_size(
                 vllm_config.model_config.max_model_len
@@ -966,7 +972,10 @@ class FlashMLASparseImpl(SparseMLAAttentionImpl[FlashMLASparseMetadata]):
             )
         elif attn_metadata.fp8_use_mixed_batch:
             attn_out, lse = self._forward_fp8_kv_mixed_batch(
-                q, kv_c_and_k_pe_cache, topk_indices, attn_metadata,
+                q,
+                kv_c_and_k_pe_cache,
+                topk_indices,
+                attn_metadata,
                 return_lse=return_lse,
             )
             return attn_out, lse

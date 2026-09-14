@@ -1,0 +1,33 @@
+{
+  "utc": "2026-09-14T12:34:50.186477+00:00",
+  "health": 200,
+  "image": "glm53-arvq-sm120:paired-compact",
+  "image_id": "sha256:d27bae779bf0ae5fcba740ae780282dcdbd8b67d5064cb7d23237edd74f3af60",
+  "restart_count": 0,
+  "cold_format": "8+7",
+  "workspace_candidate_enabled": false,
+  "shared_kv_token_capacity": 1074176,
+  "safe_environment": {
+    "MAXLEN": "1048576",
+    "MAX_NUM_SEQS": "8",
+    "UTIL": "0.94",
+    "ENABLE_LMCACHE": "1",
+    "LMCACHE_MAX_LOCAL_CPU_SIZE": "24",
+    "LMCACHE_MAX_LOCAL_DISK_SIZE": "100",
+    "VLLM_NVFP4_P4_MAX_TOKENS": "16",
+    "VLLM_NVFP4_P4_PAIRED": "1",
+    "VLLM_ARVQ_GROUPED_PREFILL": "1",
+    "VLLM_ARVQ_COMPACT_PREFILL": "1"
+  },
+  "smoke": {
+    "text": " jumps over the lazy dog. The dog, tired and content, lay in the",
+    "usage": {
+      "prompt_tokens": 8,
+      "total_tokens": 24,
+      "completion_tokens": 16,
+      "prompt_tokens_details": null
+    },
+    "wall_s": 0.32197248423472047,
+    "scope": "16tokenfunctionalcheck,notbenchmark"
+  }
+}

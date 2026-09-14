@@ -1,0 +1,36 @@
+{
+  "image": "glm53-arvq-sm120:compact-workspace",
+  "image_id": "sha256:89a45a3fbedf8ea2f9bde74ecdf1b516a7a64411bbbdc5f7d9f33852105fa9f1",
+  "restart_count": 0,
+  "config": {
+    "MAXLEN": "1048576",
+    "MAX_NUM_SEQS": "8",
+    "UTIL": "0.94",
+    "ENABLE_LMCACHE": "1",
+    "VLLM_SM120_COMPACT_WORKSPACE": "1",
+    "VLLM_DEBUG_WORKSPACE": "1",
+    "VLLM_NVFP4_P4_MAX_TOKENS": "16",
+    "LMCACHE_MAX_LOCAL_CPU_SIZE": "24",
+    "LMCACHE_MAX_LOCAL_DISK_SIZE": "100"
+  },
+  "candidate_blocks": 5596,
+  "baseline_blocks": 4196,
+  "candidate_global_tokens": 1432576,
+  "baseline_global_tokens": 1074176,
+  "pool_bytes_per_block_per_rank": 3502592,
+  "kv_capacity_gain_bytes_per_rank": 4903628800,
+  "projected_8plus8_capacity_tokens": [
+    1287424,
+    1287680
+  ],
+  "projection_scope": "Extraweight/codebookdelta1983360000B/rank, otherallocationsunchanged; not8+8modeldeployment",
+  "graph_gib_rounded": [
+    1.02,
+    1.03,
+    1.02,
+    1.02
+  ],
+  "workspace_mib_rounded": 1057,
+  "available_kv_gib_rounded": 18.26,
+  "load_memory_gib_rounded": 68.75
+}

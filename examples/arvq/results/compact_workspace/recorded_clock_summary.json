@@ -1,0 +1,126 @@
+{
+  "baseline": {
+    "4": [
+      {
+        "file": "workspace_baseline_p128_c4_r0_clocks.csv",
+        "sm_clock_mhz": 2072.8,
+        "temperature_c": 72.44
+      },
+      {
+        "file": "workspace_baseline_p128_c4_r1_clocks.csv",
+        "sm_clock_mhz": 2044.7307692307693,
+        "temperature_c": 76.0
+      }
+    ],
+    "8": [
+      {
+        "file": "workspace_baseline_p128_c8_r0_clocks.csv",
+        "sm_clock_mhz": 1856.212765957447,
+        "temperature_c": 84.06382978723404
+      },
+      {
+        "file": "workspace_baseline_p128_c8_r1_clocks.csv",
+        "sm_clock_mhz": 1821.9166666666667,
+        "temperature_c": 87.39583333333333
+      }
+    ]
+  },
+  "candidate": {
+    "4": [
+      {
+        "file": "workspace_candidate_p128_c4_r0_clocks.csv",
+        "sm_clock_mhz": 1981.5,
+        "temperature_c": 84.8076923076923
+      },
+      {
+        "file": "workspace_candidate_p128_c4_r1_clocks.csv",
+        "sm_clock_mhz": 1947.1851851851852,
+        "temperature_c": 87.22222222222223
+      }
+    ],
+    "8": [
+      {
+        "file": "workspace_candidate_p128_c8_r0_clocks.csv",
+        "sm_clock_mhz": 1776.469387755102,
+        "temperature_c": 90.87755102040816
+      },
+      {
+        "file": "workspace_candidate_p128_c8_r1_clocks.csv",
+        "sm_clock_mhz": 1786.204081632653,
+        "temperature_c": 90.9795918367347
+      }
+    ]
+  },
+  "baseline_repeat": {
+    "4": [
+      {
+        "file": "workspace_baseline_repeat_p128_c4_r0_clocks.csv",
+        "sm_clock_mhz": 1962.148148148148,
+        "temperature_c": 85.11111111111111
+      },
+      {
+        "file": "workspace_baseline_repeat_p128_c4_r1_clocks.csv",
+        "sm_clock_mhz": 1942.2692307692307,
+        "temperature_c": 87.88461538461539
+      },
+      {
+        "file": "workspace_baseline_repeat_p128_c4_r2_clocks.csv",
+        "sm_clock_mhz": 1909.8148148148148,
+        "temperature_c": 89.88888888888889
+      }
+    ],
+    "8": [
+      {
+        "file": "workspace_baseline_repeat_p128_c8_r0_clocks.csv",
+        "sm_clock_mhz": 1753.6,
+        "temperature_c": 91.0
+      },
+      {
+        "file": "workspace_baseline_repeat_p128_c8_r1_clocks.csv",
+        "sm_clock_mhz": 1782.3265306122448,
+        "temperature_c": 91.0
+      },
+      {
+        "file": "workspace_baseline_repeat_p128_c8_r2_clocks.csv",
+        "sm_clock_mhz": 1745.82,
+        "temperature_c": 91.0
+      }
+    ]
+  },
+  "candidate_repeat": {
+    "4": [
+      {
+        "file": "workspace_candidate_repeat_p128_c4_r0_clocks.csv",
+        "sm_clock_mhz": 1956.0,
+        "temperature_c": 85.11111111111111
+      },
+      {
+        "file": "workspace_candidate_repeat_p128_c4_r1_clocks.csv",
+        "sm_clock_mhz": 1925.7037037037037,
+        "temperature_c": 87.74074074074075
+      },
+      {
+        "file": "workspace_candidate_repeat_p128_c4_r2_clocks.csv",
+        "sm_clock_mhz": 1903.0740740740741,
+        "temperature_c": 89.77777777777777
+      }
+    ],
+    "8": [
+      {
+        "file": "workspace_candidate_repeat_p128_c8_r0_clocks.csv",
+        "sm_clock_mhz": 1769.9591836734694,
+        "temperature_c": 90.9795918367347
+      },
+      {
+        "file": "workspace_candidate_repeat_p128_c8_r1_clocks.csv",
+        "sm_clock_mhz": 1771.8,
+        "temperature_c": 91.0
+      },
+      {
+        "file": "workspace_candidate_repeat_p128_c8_r2_clocks.csv",
+        "sm_clock_mhz": 1754.26,
+        "temperature_c": 91.0
+      }
+    ]
+  }
+}

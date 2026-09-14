@@ -1,0 +1,26 @@
+{
+  "vllm/model_executor/layers/sparse_attn_indexer.py": {
+    "expected_source": "/home/jarrelscy/homeassistant/.runtime/glm53-arvq/sparse_attn_indexer.py",
+    "expected_sha256": "48e6801f4475ec913f4fb6cbfed1ac2b3b491f7a4990f39f0128eb3823c68255",
+    "live_sha256": "48e6801f4475ec913f4fb6cbfed1ac2b3b491f7a4990f39f0128eb3823c68255",
+    "match": true
+  },
+  "vllm/v1/attention/backends/mla/flashmla_sparse.py": {
+    "expected_source": "/home/jarrelscy/glm52/vllm-arvq-serving/vllm/v1/attention/backends/mla/flashmla_sparse.py",
+    "expected_sha256": "b379bc863f2db174ba7c966618721937d20b0d9bf6f1a01a232bb358bee691f7",
+    "live_sha256": "b379bc863f2db174ba7c966618721937d20b0d9bf6f1a01a232bb358bee691f7",
+    "match": true
+  },
+  "vllm/v1/attention/backends/mla/workspace_limits.py": {
+    "expected_source": "/home/jarrelscy/glm52/vllm-arvq-serving/vllm/v1/attention/backends/mla/workspace_limits.py",
+    "expected_sha256": "7530ba5d65924d9e353942f204ac2295686e51179ffecf12efd5d12d2efa6ace",
+    "live_sha256": "7530ba5d65924d9e353942f204ac2295686e51179ffecf12efd5d12d2efa6ace",
+    "match": true
+  },
+  "vllm/v1/worker/gpu/spec_decode/eagle/utils.py": {
+    "expected_source": "/home/jarrelscy/glm52/vllm-arvq-serving/vllm/v1/worker/gpu/spec_decode/eagle/utils.py",
+    "expected_sha256": "abede19518d8721b64c819773dd55ebcc81b4d170fbf1619750f5fc479ef4933",
+    "live_sha256": "abede19518d8721b64c819773dd55ebcc81b4d170fbf1619750f5fc479ef4933",
+    "match": true
+  }
+}

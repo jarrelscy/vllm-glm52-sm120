@@ -36,6 +36,7 @@ from vllm.utils.torch_utils import (
 from vllm.v1.attention.backends.mla.indexer import (
     DeepseekV32IndexerMetadata,
 )
+from vllm.v1.attention.backends.mla.workspace_limits import indexer_allocation_tokens
 from vllm.v1.attention.ops.common import pack_seq_triton, unpack_seq_triton
 from vllm.v1.worker.workspace import current_workspace_manager
 
@@ -103,9 +104,8 @@ def _canonicalize_topk_order(topk_indices: torch.Tensor) -> None:
     """
     # NB: unstable sort is fine — values are unique except the repeated -1
     # padding, so the sorted OUTPUT is identical either way.
-    topk_indices.copy_(
-        torch.sort(topk_indices, dim=-1, descending=True).values
-    )
+    topk_indices.copy_(torch.sort(topk_indices, dim=-1, descending=True).values)
+
 
 # --- index_share_for_mtp_iteration (GLM-5.2 / DSA MTP draft) ---------------
 # When enabled by the V2 speculator around the MTP draft-decode loop
@@ -124,6 +124,7 @@ def set_mtp_draft_reuse_topk(enable: bool) -> None:
     """Toggle indexer top-k reuse for MTP draft decode steps."""
     global _MTP_DRAFT_REUSE_TOPK
     _MTP_DRAFT_REUSE_TOPK = enable
+
 
 # MXFP4 layout: 2 values packed per byte, ue8m0 (1-byte) scale per block of 32.
 MXFP4_BLOCK_SIZE = 32
@@ -291,16 +292,10 @@ def _merge_dcp_topk_global_async(
     )
     ag = AsyncAllGather(get_dcp_group(), packed, dim=1)
 
-    def _finish(
-        ag=ag, topk_tokens=topk_tokens, topk_indices=topk_indices
-    ) -> None:
-        if envs.VLLM_GLM_DCP_AG_RAW_TOPK:
-            # Zero-copy rank-major view of the collective output; the merge
-            # kernel addresses it directly (bit-identical result, one
-            # direct_copy per merge removed).
-            gathered = ag.wait_raw()
-        else:
-            gathered = ag.wait()
+    def _finish(ag=ag, topk_tokens=topk_tokens, topk_indices=topk_indices) -> None:
+        # Raw mode keeps a zero-copy rank-major view; the merge kernel
+        # addresses it directly (bit-identical, one direct_copy removed).
+        gathered = ag.wait_raw() if envs.VLLM_GLM_DCP_AG_RAW_TOPK else ag.wait()
         stable_topk_from_gathered_candidates_cutedsl(
             gathered, topk_tokens, out=topk_indices
         )
@@ -619,6 +614,9 @@ def sparse_attn_indexer(
             cu_seqlen_ks = chunk.cu_seqlen_ks
             cu_seqlen_ke = chunk.cu_seqlen_ke
             assert chunk.local_cu_seq_lens is not None
+            assert chunk.max_local_total_seq_lens <= total_seq_lens, (
+                "Indexer local gather exceeds its configured allocation bound"
+            )
             k_quant = k_quant_full[: chunk.max_local_total_seq_lens]
             k_scale = k_scale_full[: chunk.max_local_total_seq_lens]
             if not chunk.skip_kv_gather and chunk.local_total_seq_lens > 0:
@@ -954,7 +952,18 @@ class SparseAttnIndexer(CustomOp):
         self.topk_tokens = topk_tokens
         self.head_dim = head_dim
         self.max_model_len = max_model_len
-        self.max_total_seq_len = max_total_seq_len
+        config = get_current_vllm_config()
+        speculative_tokens = (
+            config.speculative_config.num_speculative_tokens or 0
+            if config.speculative_config is not None
+            else 0
+        )
+        self.max_total_seq_len = indexer_allocation_tokens(
+            max_total_seq_len,
+            max_model_len,
+            config.scheduler_config.max_num_seqs,
+            speculative_tokens,
+        )
         self.topk_indices_buffer = topk_indices_buffer
         self.skip_k_cache_insert = skip_k_cache_insert
         self.use_fp4_cache = use_fp4_cache

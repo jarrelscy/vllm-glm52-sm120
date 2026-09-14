@@ -26,3 +26,6 @@ RUN NVCC=/usr/local/cuda/bin/nvcc bash /opt/vllm/vllm/model_executor/layers/quan
 RUN NVCC=/usr/local/cuda/bin/nvcc bash /opt/vllm/vllm/model_executor/layers/quantization/arvq/build_prefill_pairs.sh
 RUN NVCC=/usr/local/cuda/bin/nvcc bash /opt/vllm/vllm/model_executor/layers/quantization/arvq/build_prefill_wide.sh
 RUN NVCC=/usr/local/cuda/bin/nvcc bash /opt/vllm/vllm/model_executor/layers/quantization/arvq/build_activation.sh
+# Keep each LMCache worker's persisted disk index inside its own key namespace.
+COPY examples/arvq/compat/lmcache_disk_ownership /opt/arvq-compat/lmcache_disk_ownership
+RUN /opt/vllm/.venv/bin/python /opt/arvq-compat/lmcache_disk_ownership/install.py

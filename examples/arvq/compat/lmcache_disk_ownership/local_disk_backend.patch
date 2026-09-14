@@ -1,0 +1,75 @@
+--- local_disk_backend.py
++++ local_disk_backend.py
+@@ -302,6 +302,17 @@
+         finally:
+             self._index_rebuilt.set()
+ 
++    def _owns_persisted_key(self, key: CacheEngineKey) -> bool:
++        """A shared directory is partitioned by model, world size and rank."""
++        if self.metadata is None:
++            # Preserve metadata-free backends' existing explicit-key behavior.
++            return True
++        return (
++            key.model_name == self.metadata.model_name
++            and key.world_size == self.metadata.world_size
++            and key.worker_id == self.metadata.worker_id
++        )
++
+     def _rebuild_index_sync(self) -> None:
+         """Scan `self.path` for `<key>.pt` + `<key>.pt.meta` pairs left by a
+         previous process instance and repopulate `self.dict` so that
+@@ -354,6 +365,14 @@
+                     n_skipped += 1
+                     continue
+                 unmangled_key_str = self.metadata.model_name + key_str[len(model_prefix):]
++                try:
++                    key = CacheEngineKey.from_string(unmangled_key_str)
++                except Exception:
++                    n_skipped += 1
++                    continue
++                if not self._owns_persisted_key(key):
++                    n_skipped += 1
++                    continue
+                 data_path = entry.path[: -len(suffix)]
+                 if not os.path.exists(data_path):
+                     # Orphan metadata (crash between the two writes below).
+@@ -364,7 +383,6 @@
+                     n_skipped += 1
+                     continue
+                 try:
+-                    key = CacheEngineKey.from_string(unmangled_key_str)
+                     with open(entry.path, "rb") as f:
+                         shape, dtype, fmt, size, shapes, dtypes = (
+                             _unpack_local_disk_metadata(f.read())
+@@ -404,6 +422,8 @@
+         running) or may have started after this key's files were written
+         by a concurrent process. Mirrors GDS backend's lazy per-key probe.
+         """
++        if not self._owns_persisted_key(key):
++            return False
+         path = self._key_to_path(key)
+         meta_path = path + _LOCAL_DISK_METADATA_FILE_SUFFIX
+         if not os.path.exists(meta_path) or not os.path.exists(path):
+@@ -482,6 +502,8 @@
+         key: CacheEngineKey,
+         force: bool = True,
+     ) -> bool:
++        if not self._owns_persisted_key(key):
++            return False
+         lock_context = self.disk_lock if force else nullcontext()
+         with lock_context:
+             if not (meta := self.dict.pop(key, None)):
+@@ -499,7 +521,12 @@
+             # )
+             # res.result()
+ 
+-            os.remove(path)
++            try:
++                os.remove(path)
++            except FileNotFoundError:
++                # Another cleanup may already have removed this entry. Finish
++                # retiring our index record and sidecar without killing serving.
++                pass
+             try:
+                 os.remove(path + _LOCAL_DISK_METADATA_FILE_SUFFIX)
+             except OSError:

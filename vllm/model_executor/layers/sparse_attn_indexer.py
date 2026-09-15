@@ -873,7 +873,11 @@ def sparse_attn_indexer(
             (topk_workspace,) = workspace_manager.get_simultaneous(
                 ((RADIX_TOPK_WORKSPACE_SIZE,), torch.uint8),
             )
-            torch.ops._C.persistent_topk(
+            if os.environ.get("VLLM_DSA_FIXED_PERSISTENT_TOPK", "0") == "1":
+                from vllm.v1.attention.ops.arvq_persistent_topk import persistent_topk
+            else:
+                persistent_topk = torch.ops._C.persistent_topk
+            persistent_topk(
                 logits,
                 seq_lens,
                 topk_indices,

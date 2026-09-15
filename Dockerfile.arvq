@@ -20,6 +20,9 @@ RUN /opt/vllm/.venv/bin/python -c "import importlib.metadata as m; assert not an
 # Overlay the complete fork package so model loaders, vision, MTP and quantization
 # come from this branch. Existing compiled extensions in the base are retained.
 COPY vllm /opt/vllm/vllm
+COPY csrc/libtorch_stable/topk.cu csrc/libtorch_stable/persistent_topk.cuh csrc/libtorch_stable/topk_histogram_4096.cuh csrc/libtorch_stable/torch_utils.h /opt/vllm/csrc/libtorch_stable/
+RUN NVCC=/usr/local/cuda/bin/nvcc bash /opt/vllm/vllm/model_executor/layers/quantization/arvq/build_topk.sh
+ENV VLLM_DSA_FIXED_PERSISTENT_TOPK=1
 RUN NVCC=/usr/local/cuda/bin/nvcc bash /opt/vllm/vllm/model_executor/layers/quantization/arvq/build.sh
 RUN NVCC=/usr/local/cuda/bin/nvcc bash /opt/vllm/vllm/model_executor/layers/quantization/arvq/build_dense.sh
 RUN NVCC=/usr/local/cuda/bin/nvcc bash /opt/vllm/vllm/model_executor/layers/quantization/arvq/build_prefill.sh

@@ -60,6 +60,71 @@ __device__ __forceinline__ auto convert_to_uint8(float x) -> uint8_t {
   return static_cast<uint8_t>(key >> 8);
 }
 
+// Exact bounded-memory fallback when a coarse histogram bucket overflows.
+template <int TopK>
+__device__ __noinline__ void unbuffered_radix_topk(
+    const float* __restrict__ logits, int32_t* __restrict__ output,
+    int seq_len) {
+  extern __shared__ int fallback_smem[];
+  int* hist = fallback_smem;
+  int* scratch = hist + RADIX;
+  int* scalars = scratch + RADIX;
+  const int tx = threadIdx.x;
+  uint32_t prefix = 0;
+  uint32_t mask = 0;
+  int remaining = TopK;
+#pragma unroll
+  for (int pass = 0; pass < 4; ++pass) {
+    if (tx < RADIX) hist[tx] = 0;
+    __syncthreads();
+    const int shift = 24 - 8 * pass;
+    for (int i = tx; i < seq_len; i += kThreadsPerBlock) {
+      const uint32_t value = convert_to_uint32_v2(logits[i]);
+      if ((value & mask) == prefix) {
+        atomicAdd(&hist[(value >> shift) & 255], 1);
+      }
+    }
+    __syncthreads();
+#pragma unroll
+    for (int bit = 0; bit < 8; ++bit) {
+      if (tx < RADIX) {
+        const int* src = (bit & 1) ? scratch : hist;
+        int* dst = (bit & 1) ? hist : scratch;
+        const int next = tx + (1 << bit);
+        dst[tx] = src[tx] + (next < RADIX ? src[next] : 0);
+      }
+      __syncthreads();
+    }
+    if (tx < RADIX) {
+      const int above = tx + 1 < RADIX ? hist[tx + 1] : 0;
+      if (hist[tx] >= remaining && above < remaining) {
+        scalars[0] = tx;
+        scalars[1] = remaining - above;
+      }
+    }
+    __syncthreads();
+    prefix |= static_cast<uint32_t>(scalars[0]) << shift;
+    mask |= 255u << shift;
+    remaining = scalars[1];
+    __syncthreads();
+  }
+  if (tx == 0) scalars[0] = 0;
+  __syncthreads();
+  for (int i = tx; i < seq_len; i += kThreadsPerBlock) {
+    if (convert_to_uint32_v2(logits[i]) > prefix) {
+      output[atomicAdd(&scalars[0], 1)] = i;
+    }
+  }
+  __syncthreads();
+  for (int i = tx; i < seq_len; i += kThreadsPerBlock) {
+    if (convert_to_uint32_v2(logits[i]) == prefix) {
+      const int slot = atomicAdd(&scalars[0], 1);
+      if (slot < TopK) output[slot] = i;
+    }
+  }
+  __syncthreads();
+}
+
 // ============================================================================
 // Vectorized load helpers
 // ============================================================================
@@ -305,6 +370,10 @@ __device__ __noinline__ void histogram_2048_topk(
 
   // If all buffered elements fit, output them all (common for short seqs)
   const int raw_buf0 = decode_smem[SBASE + sBUF0];
+  if (raw_buf0 > DBUF) {
+    unbuffered_radix_topk<TopK>(logits, output_indices, seq_len);
+    return;
+  }
   if (raw_buf0 <= remaining_k) {
     const int nb = (raw_buf0 < DBUF) ? raw_buf0 : DBUF;
     const int base = decode_smem[SBASE + sOUT];
@@ -481,6 +550,13 @@ __device__ __noinline__ void histogram_256_topk(
   __syncthreads();
 
   const int threshold_bin = shared_threshold_bin;
+  if (shared_histogram[0][threshold_bin] -
+          shared_histogram[0][threshold_bin + 1] >
+      MAX_BUFFERED_ITEMS) {
+    unbuffered_radix_topk<TopK>(logits + logits_offset, output_indices,
+                                seq_len);
+    return;
+  }
   remaining_k -= shared_histogram[0][threshold_bin + 1];
 
   if (remaining_k == 0) {

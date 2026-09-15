@@ -968,3 +968,32 @@ def test_workspace_topk_padded_stride(top_k: int, backend: str) -> None:
                 f"Row {i}: {backend} with padded stride doesn't match. "
                 f"seq_len={sl}, stride={padded_stride}"
             )
+
+
+@pytest.mark.skipif(not current_platform.is_cuda(), reason="This test requires CUDA")
+@pytest.mark.parametrize("top_k", [512, 1024, 2048])
+@pytest.mark.parametrize("seq_len", [8191, 8192, 8193, 26451, 32768])
+@pytest.mark.parametrize("batch_size", [1, 4])
+@torch.inference_mode()
+def test_persistent_topk_coarse_bucket_overflow(
+    top_k: int, seq_len: int, batch_size: int
+) -> None:
+    """Distinct FP32 scores in one coarse bin must survive candidate overflow."""
+    set_random_seed(44)
+    values = 70.0 + torch.arange(seq_len, device="cuda") * (2.0**-17)
+    logits = torch.empty((batch_size, 131072), device="cuda", dtype=torch.float32)
+    expected = []
+    for row in range(batch_size):
+        permutation = torch.randperm(seq_len, device="cuda")
+        logits[row, :seq_len] = values[permutation]
+        expected.append(logits[row, :seq_len].topk(top_k).indices.sort().values)
+    lengths = torch.full((batch_size,), seq_len, device="cuda", dtype=torch.int32)
+    indices = torch.empty((batch_size, top_k), device="cuda", dtype=torch.int32)
+    for _ in range(3):
+        _run_topk_backend("persistent_topk", logits, lengths, indices, top_k, seq_len)
+        torch.testing.assert_close(
+            indices.long().sort(dim=1).values,
+            torch.stack(expected),
+            rtol=0,
+            atol=0,
+        )

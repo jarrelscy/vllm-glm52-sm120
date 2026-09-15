@@ -26,8 +26,8 @@ torch.manual_seed(44015)
 device = "cuda"
 results = []
 for bits in (7, 8):
-    for k in (128, 256, 7168):
-        n, experts = 32, 2
+    for n, k in ((32, 128), (32, 256), (32, 7168), (2048, 128)):
+        experts = 2
         words = 4 * (8 + bits)
         cw = torch.randint(
             -(2**31),

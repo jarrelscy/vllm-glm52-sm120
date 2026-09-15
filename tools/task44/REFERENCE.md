@@ -17,7 +17,7 @@ Both switches default off:
 Use eager execution, no MTP, and no LMCache for the initial reference arm.
 The reference module disables TF32. It synchronizes for dynamic expert dispatch;
 CUDA graph execution is unsupported. Temporary decoded weights are bounded to
-128 output rows, and attention decodes one query's selected cache entries at a
+1024 output rows, and attention decodes one query's selected cache entries at a
 time. It is intentionally slow and retains no persistent decoded-weight cache.
 
 The model checkpoint is unchanged. Weight quantization and the documented
@@ -45,3 +45,8 @@ Initial results: all pass; maximum projection absolute error 6.103515625e-5;
 maximum nonempty-row paged LSE absolute error 1.430511474609375e-6.
 These fixtures do not establish full-model token-distribution equivalence.
 Full-model short/long/batched comparisons are a separate pending experiment.
+
+The first PP4 end-to-end attempt exceeded the default 300-second worker RPC
+timeout. Diagnostic runs should set `VLLM_EXECUTE_MODEL_TIMEOUT_SECONDS=3600`.
+The row block was increased from 128 to 1024 to reduce Python dispatch overhead;
+the checks also cover N=2048 to exercise multiple output blocks.

@@ -112,8 +112,8 @@ def projection(x, cold_ids, hot_ids, tensors, alpha, n, split=1, hot_parts=1):
             valid &= cold_ids < 0
         for expert in ids[valid].unique().tolist():
             slots = torch.where(valid & (ids == expert))[0]
-            for first in range(0, n, 128):
-                stop = min(first + 128, n)
+            for first in range(0, n, 1024):
+                stop = min(first + 1024, n)
                 if cold:
                     weights = cold_rows(cw, cb, cs, n, k, expert, first, stop)
                     scale = alpha

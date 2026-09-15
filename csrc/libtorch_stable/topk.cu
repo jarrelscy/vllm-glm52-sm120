@@ -30,10 +30,23 @@ void launch_persistent_topk(const torch::stable::Tensor& logits,
   static int num_sms = 0;
   static int max_smem_per_block = 0;
   if (num_sms == 0) {
-    const cudaDeviceProp* device_prop = get_device_prop();
-    num_sms = device_prop->multiProcessorCount;
-    max_smem_per_block = device_prop->sharedMemPerBlockOptin;
+    // Attribute queries avoid sharing a cudaDeviceProp cache with extensions
+    // built against a different CUDA struct ABI in the same process.
+    cudaError_t status = cudaDeviceGetAttribute(
+        &num_sms, cudaDevAttrMultiProcessorCount, logits.get_device_index());
+    STD_TORCH_CHECK(status == cudaSuccess,
+                    "SM count query failed: ", cudaGetErrorString(status));
+    status = cudaDeviceGetAttribute(&max_smem_per_block,
+                                    cudaDevAttrMaxSharedMemoryPerBlockOptin,
+                                    logits.get_device_index());
+    STD_TORCH_CHECK(status == cudaSuccess,
+                    "Shared memory query failed: ", cudaGetErrorString(status));
   }
+  STD_TORCH_CHECK(stride > 0,
+                  "persistent_topk row stride must be positive: ", stride);
+  STD_TORCH_CHECK(num_sms > 0 && max_smem_per_block > P::kFixedSmemLarge,
+                  "Invalid persistent_topk device properties: num_sms=",
+                  num_sms, ", max_smem_per_block=", max_smem_per_block);
 
   if (num_rows > 32 && max_smem_per_block >= 128 * 1024) {
     cudaError_t status =

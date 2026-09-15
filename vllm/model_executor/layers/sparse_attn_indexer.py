@@ -698,16 +698,25 @@ def sparse_attn_indexer(
                         clean_logits=False,
                     )
                 num_rows = logits.shape[0]
-                ops.top_k_per_row_prefill(
-                    logits,
-                    cu_seqlen_ks,
-                    cu_seqlen_ke,
-                    topk_indices,
-                    num_rows,
-                    logits.stride(0),
-                    logits.stride(1),
-                    topk_tokens,
-                )
+                if os.environ.get("VLLM_DSA_REFERENCE_TOPK", "0") == "1":
+                    from vllm.model_executor.layers.quantization.arvq_reference import (
+                        stable_indexer_topk,
+                    )
+
+                    stable_indexer_topk(
+                        logits, cu_seqlen_ks, cu_seqlen_ke, topk_indices
+                    )
+                else:
+                    ops.top_k_per_row_prefill(
+                        logits,
+                        cu_seqlen_ks,
+                        cu_seqlen_ke,
+                        topk_indices,
+                        num_rows,
+                        logits.stride(0),
+                        logits.stride(1),
+                        topk_tokens,
+                    )
 
             _merge_dcp_topk_global(
                 logits,
@@ -831,7 +840,22 @@ def sparse_attn_indexer(
             1024,
             2048,
         )
-        if use_cooperative_topk:
+        if os.environ.get("VLLM_DSA_REFERENCE_TOPK", "0") == "1":
+            from vllm.model_executor.layers.quantization.arvq_reference import (
+                stable_indexer_topk,
+            )
+
+            if seq_lens.ndim == 2:
+                reference_ends = seq_lens.flatten()
+            else:
+                offsets = torch.arange(num_rows, device=logits.device) % next_n
+                reference_ends = (
+                    seq_lens.repeat_interleave(next_n) - next_n + offsets + 1
+                )
+            stable_indexer_topk(
+                logits, torch.zeros_like(reference_ends), reference_ends, topk_indices
+            )
+        elif use_cooperative_topk:
             workspace_manager = current_workspace_manager()
             (topk_workspace,) = workspace_manager.get_simultaneous(
                 ((RADIX_TOPK_WORKSPACE_SIZE,), torch.uint8),

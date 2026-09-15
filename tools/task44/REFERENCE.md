@@ -83,5 +83,65 @@ Two confounders were identified:
 `check_dense_global_scale.py` tests quantization invariance under TP slicing.
 `check_paired_dense.py` tests paired MMA, BF16 weight decoding, and both dense
 reference dispatch paths. Its BF16 comparison disables reduced-precision
-reduction explicitly. Same-topology full-model reference and accumulation-policy
-controls are required before assigning the remaining distribution shift.
+reduction explicitly.
+
+The completed same-topology TP4/DCP1 reference, with both reference switches on,
+agreed with native execution on the first eight tokens of the same prompt.
+The maximum chosen-token logprob difference was 0.2108 (mean 0.03385); replacing
+the kernels did not remove the third-token PP4/TP4 flip. This reference request
+took 729 seconds. These eight tokens are insufficient to establish general
+distribution equivalence or to explain the benchmark's excessive reasoning.
+
+A native TP4/DCP1 control with BF16 reduced-precision reduction disabled agreed
+on all 32 greedy tokens with the original native control. Against the eight-token
+reference, its maximum chosen-token logprob difference was 0.0759 (mean 0.02043).
+This isolates one numerical contribution to the same-topology discrepancy, but
+does not establish a corruption bug or justify a production precision change.
+Long-context and concurrent fixed-prefix comparisons remain separate checks.
+
+`check_dense_batch_threshold.py` measures another numerical discontinuity: the
+same dense projection switches from FP4 MMA to BF16 reconstructed-weight GEMM
+above `VLLM_NVFP4_P4_MAX_TOKENS` rows (16 in production). With BF16 truncated
+reduction disabled, two 256-output fixtures at K=4096/16384 differed by relative
+L2 0.00249/0.00179 across this threshold. Keeping both batch sizes on FP4 gave
+bit-identical BF16 outputs in these fixtures. Applying the global scale after
+FP32-output GEMM instead of rounding scaled weights first reduced the relative
+differences to 0.000302/0.000293. These are diagnostic measurements, not a claim
+that this discontinuity causes the observed benchmark behavior.
+The full-model control keeping all 32 test rows on FP4 did not remove serial
+drift: twenty identical 131071-token requests still alternated greedy tokens.
+The post-GEMM scale prototype is therefore not promoted as a fix for this issue.
+
+## Non-DCP selector control
+
+Fixed-prefix runs up to 131071 input tokens, with 1/4/8 submitted requests,
+showed probability shifts even between serial warm-cache repeats. Thus a
+single-versus-concurrent difference alone does not isolate a concurrency bug.
+On the native control, the largest common-top-20 probability change between
+two serial passes was 0.3768, including one greedy flip. Prefix caching was on;
+LMCache, DCP, MTP, and experimental DCP flags were off.
+
+`check_nodcp_topk_order.py` identifies a confounder in that control: native
+non-DCP prefill top-k changes output order on every one of 100 fixed-logit
+repeats at 1 and 32 rows. With rounded, tied logits, the selected set also
+changed on 99/100 and 100/100 repeats. Different choices among tied scores are
+valid top-k results, but unsuitable for a deterministic reference. The existing
+`inkernel` canonical-order setting acts in the DCP merge, which returns early
+when DCP size is one. These measurements do not establish production DCP
+corruption or show that tie-set changes occur on the real model's logits.
+
+`VLLM_DSA_REFERENCE_TOPK=1` replaces prefill and decode selection with an eager
+PyTorch stable sort: descending score, low logical index at ties, then descending
+logical index for attention accumulation. It preserves relative row bounds and
+uses -1 for padding. `check_reference_topk.py` covers ties, nonzero starts, short
+rows, and empties. This adds an independent selector to the diagnostic toolbox;
+indexer logits are still computed by the native kernel. The flag defaults off.
+
+The full-model TP4/DCP1 control changing only this selector, with otherwise
+native precision and kernels, returned bit-identical top-20 logprobs for all
+20 identical 8192-token requests. Its 1/4/8-request comparisons were also
+bit-identical on that prompt. This isolates the selector as the cause of the
+observed non-DCP repeatability failure on the 8K control. It does not establish
+that the production TP4/DCP4/MTP3 path has that failure. CUDA selector checks
+also match native selected sets for unique logits under nonzero prefill starts,
+ragged 2-D decode bounds, short rows, and empty rows.

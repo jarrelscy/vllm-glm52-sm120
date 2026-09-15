@@ -13,6 +13,26 @@ import torch
 torch.backends.cuda.matmul.allow_tf32 = False
 
 
+def stable_indexer_topk(logits, starts, ends, output):
+    """Reference selection: descending score, low index at ties, canonical order.
+
+    Bounds address columns in each logits row. Returned indices are relative
+    to each row's start, matching the native prefill selector. Invalid output
+    positions are -1. This diagnostic intentionally synchronizes row bounds.
+    """
+    output.fill_(-1)
+    bounds = zip(starts.flatten().tolist(), ends.flatten().tolist())
+    for row, (start, end) in enumerate(bounds):
+        start = max(0, min(start, logits.shape[1]))
+        end = max(start, min(end, logits.shape[1]))
+        count = min(end - start, output.shape[1])
+        if count:
+            selected = torch.argsort(
+                logits[row, start:end], descending=True, stable=True
+            )[:count]
+            output[row, :count] = selected.sort(descending=True).values
+
+
 def fp4(codes):
     levels = torch.tensor(
         [0, 0.5, 1, 1.5, 2, 3, 4, 6], device=codes.device, dtype=torch.float32

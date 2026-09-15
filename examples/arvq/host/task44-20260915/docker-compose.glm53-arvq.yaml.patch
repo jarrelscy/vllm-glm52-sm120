@@ -1,0 +1,11 @@
+--- a/docker-compose.glm53-arvq.yaml
++++ b/docker-compose.glm53-arvq.yaml
+@@ -1,7 +1,7 @@
+ # Banked 2026-09-14: measured initial 8+8 hybrid; diagnostics and C1-budget prototype disabled.
+ services:
+   vllm-glm5.3-hybrid-1m:
+-    image: glm53-arvq-sm120:banked-20260914
++    image: glm53-arvq-sm120:accuracy-task44-20260915
+     pull_policy: never
+     build: !reset null
+     environment:

@@ -1,0 +1,11 @@
+--- a/switch.sh
++++ b/switch.sh
+@@ -315,7 +315,7 @@
+ if [ "$1" = "glm5.3-hybrid-1m" ]; then
+   ARVQ_COMPOSE="$SCRIPT_DIR/docker-compose.glm53-arvq.yaml"
+   ARVQ_MODEL="/data/models/jarrelscy/GLM-5.3-Vision-NVFP4-ARVQ-hybrid-initial-8x8"
+-  ARVQ_IMAGE="glm53-arvq-sm120:banked-20260914"
++  ARVQ_IMAGE="glm53-arvq-sm120:accuracy-task44-20260915"
+   if [ ! -f "$ARVQ_COMPOSE" ] || ! docker image inspect "$ARVQ_IMAGE" >/dev/null 2>&1; then
+     echo "ERROR: Banked ARVQ compose override or image $ARVQ_IMAGE is missing." >&2
+     exit 1

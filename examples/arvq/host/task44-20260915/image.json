@@ -1,0 +1,7 @@
+{
+  "tag": "glm53-arvq-sm120:accuracy-task44-20260915",
+  "id": "sha256:b4418f3b1ea354e9b856c7302d2b3db20dd8beb974686ea77f2e524c91a31acb",
+  "fix_commit": "be7c3b62e",
+  "scope": "Two indexer Python files patched over the banked image; native ragged branch fix. SM120 MTP3 uses flattening.",
+  "local_build_context": "/home/jarrelscy/glm52/dcp-groundtruth/task44/image"
+}

@@ -1,0 +1,236 @@
+[
+  {
+    "file": "attention-layer0-pos31.pt",
+    "arms": {
+      "automatic": {
+        "unequal": 0,
+        "rel_l2": 0.0
+      },
+      "matched_split": {
+        "unequal": 0,
+        "rel_l2": 0.0
+      }
+    }
+  },
+  {
+    "file": "attention-layer0-pos703.pt",
+    "arms": {
+      "automatic": {
+        "unequal": 9153,
+        "rel_l2": 0.00281913997605443
+      },
+      "matched_split": {
+        "unequal": 0,
+        "rel_l2": 0.0
+      }
+    }
+  },
+  {
+    "file": "attention-layer0-pos831.pt",
+    "arms": {
+      "automatic": {
+        "unequal": 8672,
+        "rel_l2": 0.0026924379635602236
+      },
+      "matched_split": {
+        "unequal": 0,
+        "rel_l2": 0.0
+      }
+    }
+  },
+  {
+    "file": "attention-layer0-pos994.pt",
+    "arms": {
+      "automatic": {
+        "unequal": 5726,
+        "rel_l2": 0.0020001232624053955
+      },
+      "matched_split": {
+        "unequal": 0,
+        "rel_l2": 0.0
+      }
+    }
+  },
+  {
+    "file": "attention-layer0-pos995.pt",
+    "arms": {
+      "automatic": {
+        "unequal": 0,
+        "rel_l2": 0.0
+      },
+      "matched_split": {
+        "unequal": 0,
+        "rel_l2": 0.0
+      }
+    }
+  },
+  {
+    "file": "attention-layer0-pos996.pt",
+    "arms": {
+      "automatic": {
+        "unequal": 0,
+        "rel_l2": 0.0
+      },
+      "matched_split": {
+        "unequal": 0,
+        "rel_l2": 0.0
+      }
+    }
+  },
+  {
+    "file": "attention-layer42-pos31.pt",
+    "arms": {
+      "automatic": {
+        "unequal": 0,
+        "rel_l2": 0.0
+      },
+      "matched_split": {
+        "unequal": 0,
+        "rel_l2": 0.0
+      }
+    }
+  },
+  {
+    "file": "attention-layer42-pos703.pt",
+    "arms": {
+      "automatic": {
+        "unequal": 14045,
+        "rel_l2": 0.0033333508763462305
+      },
+      "matched_split": {
+        "unequal": 0,
+        "rel_l2": 0.0
+      }
+    }
+  },
+  {
+    "file": "attention-layer42-pos831.pt",
+    "arms": {
+      "automatic": {
+        "unequal": 14516,
+        "rel_l2": 0.003300054930150509
+      },
+      "matched_split": {
+        "unequal": 0,
+        "rel_l2": 0.0
+      }
+    }
+  },
+  {
+    "file": "attention-layer42-pos994.pt",
+    "arms": {
+      "automatic": {
+        "unequal": 10903,
+        "rel_l2": 0.002392423804849386
+      },
+      "matched_split": {
+        "unequal": 0,
+        "rel_l2": 0.0
+      }
+    }
+  },
+  {
+    "file": "attention-layer42-pos995.pt",
+    "arms": {
+      "automatic": {
+        "unequal": 0,
+        "rel_l2": 0.0
+      },
+      "matched_split": {
+        "unequal": 0,
+        "rel_l2": 0.0
+      }
+    }
+  },
+  {
+    "file": "attention-layer42-pos996.pt",
+    "arms": {
+      "automatic": {
+        "unequal": 0,
+        "rel_l2": 0.0
+      },
+      "matched_split": {
+        "unequal": 0,
+        "rel_l2": 0.0
+      }
+    }
+  },
+  {
+    "file": "attention-layer52-pos31.pt",
+    "arms": {
+      "automatic": {
+        "unequal": 0,
+        "rel_l2": 0.0
+      },
+      "matched_split": {
+        "unequal": 0,
+        "rel_l2": 0.0
+      }
+    }
+  },
+  {
+    "file": "attention-layer52-pos703.pt",
+    "arms": {
+      "automatic": {
+        "unequal": 14181,
+        "rel_l2": 0.0032988337334245443
+      },
+      "matched_split": {
+        "unequal": 0,
+        "rel_l2": 0.0
+      }
+    }
+  },
+  {
+    "file": "attention-layer52-pos831.pt",
+    "arms": {
+      "automatic": {
+        "unequal": 14590,
+        "rel_l2": 0.003315497888252139
+      },
+      "matched_split": {
+        "unequal": 0,
+        "rel_l2": 0.0
+      }
+    }
+  },
+  {
+    "file": "attention-layer52-pos994.pt",
+    "arms": {
+      "automatic": {
+        "unequal": 11272,
+        "rel_l2": 0.0023337332531809807
+      },
+      "matched_split": {
+        "unequal": 0,
+        "rel_l2": 0.0
+      }
+    }
+  },
+  {
+    "file": "attention-layer52-pos995.pt",
+    "arms": {
+      "automatic": {
+        "unequal": 0,
+        "rel_l2": 0.0
+      },
+      "matched_split": {
+        "unequal": 0,
+        "rel_l2": 0.0
+      }
+    }
+  },
+  {
+    "file": "attention-layer52-pos996.pt",
+    "arms": {
+      "automatic": {
+        "unequal": 0,
+        "rel_l2": 0.0
+      },
+      "matched_split": {
+        "unequal": 0,
+        "rel_l2": 0.0
+      }
+    }
+  }
+]

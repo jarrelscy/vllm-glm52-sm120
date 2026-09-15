@@ -55,3 +55,28 @@ this full-model reference.
 
 Do not classify checkpoint quality as the sole cause on these results alone.
 Do not change tolerances or the mathematical reference to hide observed errors.
+
+## Fresh-cache row bisect
+
+`row_trace_policy/sitecustomize.py` is a separate observer selected by placing
+its directory first on worker PYTHONPATH. `VLLM_TASK44_ROW_TRACE` selects the
+trace directory. The existing `trace_policy` directory must remain importable
+for the reference chunk wrapper. These hooks record all target rows when a
+forward has at most32 rows, and the final eight rows of larger prefill forwards.
+They record input token IDs, positions, selected sparse indices and routed
+expert IDs/weights alongside layer boundaries. Draft-model internal layers
+are not included. They preserve tensor dtypes and do not replace model outputs.
+
+`capture_rows.py` resets the internal prefix cache before each single-request
+probe, records cache-hit counter changes, and repeats the short prefix with
+tracing off/on to detect observer effects. It uses the same private local
+corpus paths as the original capture harness. `compare_rows.py` aligns by
+position and actual preceding token IDs, excludes wrong speculative prefixes,
+and stops at the shared generated prefix. Forward-step numbers alone are
+insufficient for aligning speculative and non-speculative execution.
+
+CPU fixtures checked four-row and995-row alignment, unchanged toy-model outputs,
+and rejection of rows following an incorrect draft prefix. Real-model observer
+controls and the new per-row comparisons are still pending. The current
+priority is reference operators with MTP off, comparing DCP1 against DCP4 under
+otherwise identical TP4/eager settings and a131K runtime context cap.

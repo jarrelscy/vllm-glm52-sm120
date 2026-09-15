@@ -93,6 +93,10 @@ def _check(err):
 
 
 def _projection(x, cold_ids, hot_ids, tensors, alpha, n, split, hot_parts):
+    if os.environ.get("VLLM_ARVQ_REFERENCE_WEIGHTS", "0") == "1":
+        from vllm.model_executor.layers.quantization.arvq_reference import projection
+
+        return projection(x, cold_ids, hot_ids, tensors, alpha, n, split, hot_parts)
     # Dense hot-only callers alias dummy cold pointers to the packed hot weight.
     hot_only = tensors[0] is tensors[1]
     if not hot_only:
@@ -160,7 +164,10 @@ def arvq_mlp(
     chunk_tokens: int,
 ) -> torch.Tensor:
     """Opaque graph-safe P4 pack, unified projection, SiLU and route combine."""
-    if _grouped_prefill_enabled(x.shape[0], topk_ids.shape[1], x.shape[1]):
+    reference_weights = os.environ.get("VLLM_ARVQ_REFERENCE_WEIGHTS", "0") == "1"
+    if not reference_weights and _grouped_prefill_enabled(
+        x.shape[0], topk_ids.shape[1], x.shape[1]
+    ):
         from vllm.model_executor.layers.quantization.nvfp4_arvq_prefill import (
             grouped_cold_prefill,
         )
@@ -196,7 +203,8 @@ def arvq_mlp(
             2,
         )
         if (
-            slots <= 64
+            not reference_weights
+            and slots <= 64
             and os.environ.get("VLLM_ARVQ_FUSED_ACTIVATION_PACK", "0") == "1"
         ):
             from vllm.model_executor.layers.quantization import (

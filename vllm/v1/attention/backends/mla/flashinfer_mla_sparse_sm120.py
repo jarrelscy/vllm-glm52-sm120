@@ -2,6 +2,7 @@
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
 """SM120 implementation variant for ``FLASHINFER_MLA_SPARSE_SM120``."""
 
+import os
 from typing import TYPE_CHECKING, cast
 
 import torch
@@ -171,9 +172,7 @@ class FlashInferMLASparseSM120Impl(SparseMLAAttentionImpl[FlashInferMLASparseMet
                 topk_indices,
                 dcp_size=self.dcp_world_size,
                 dcp_rank=self.dcp_rank,
-                cp_kv_cache_interleave_size=(
-                    attn_metadata.cp_kv_cache_interleave_size
-                ),
+                cp_kv_cache_interleave_size=(attn_metadata.cp_kv_cache_interleave_size),
                 BLOCK_SIZE=attn_metadata.block_size,
                 NUM_TOPK_TOKENS=topk_indices.shape[1],
                 return_valid_counts=True,
@@ -230,6 +229,15 @@ class FlashInferMLASparseSM120Impl(SparseMLAAttentionImpl[FlashInferMLASparseMet
         # self.num_heads. The flashinfer kernel derives expected out shape from
         # the query, so these must match.
         num_q_heads = q.shape[1]
+        if os.environ.get("VLLM_ARVQ_REFERENCE_ATTENTION", "0") == "1":
+            from vllm.model_executor.layers.quantization.arvq_reference import (
+                paged_attention,
+            )
+
+            out, lse = paged_attention(
+                q, kv_c_and_k_pe_cache, topk_indices_physical, self.scale, seq_lens
+            )
+            return out, lse if self.need_to_return_lse_for_decode else None
         output = q.new_empty(
             (num_actual_toks, num_q_heads, self.kv_lora_rank),
             dtype=q.dtype,

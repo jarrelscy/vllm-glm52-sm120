@@ -1,0 +1,23 @@
+{
+  "time": "2026-09-15T02:25:23.499229+00:00",
+  "image_id": "sha256:19b756a65bad3625de2241cb514c2f0ac5c57c22c286c3be550c08de66fb48d6",
+  "container_id": "cacb3ca19a73c856e48a80879b25b07a23229b71142afc2f4338b490683dc85d",
+  "settings": {
+    "VLLM_GLM_DCP_QUERY_SPLIT": "0",
+    "ENABLE_LMCACHE": "1",
+    "VLLM_EXPERIMENT_DCP_BYTEPACK_OWNER": "1",
+    "VLLM_GLM_SKIP_EMPTY_FILL": "1",
+    "VLLM_GLM_DCP_RS_VIEW": "1",
+    "MODEL_DIR": "/data/models/jarrelscy/GLM-5.3-Vision-NVFP4-ARVQ-hybrid-initial-8x8",
+    "PARALLEL": "tp4-1m-mtp",
+    "VLLM_GLM_DCP_QUERY_SPLIT_MIN_ROWS": "1024",
+    "VLLM_EXPERIMENT_DCP_BYTEPACK_SHADOW": "0",
+    "VLLM_GLM_DCP_AG_RAW_TOPK": "1",
+    "VLLM_DSA_CANONICAL_TOPK": "inkernel",
+    "MAX_NUM_SEQS": "8",
+    "MAXLEN": "1048576",
+    "VLLM_EXPERIMENT_DCP_BYTEPACK": "1",
+    "VLLM_EXPERIMENT_DCP_BYTEPACK_OWNER_SHADOW": "0",
+    "VLLM_GLM_DCP_RS_STAGED": "1"
+  }
+}

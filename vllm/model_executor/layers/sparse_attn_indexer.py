@@ -735,8 +735,7 @@ def sparse_attn_indexer(
             # decode_threshold since we unstrictly split
             # prefill and decode by decode_threshold
             # (currently set to 1 + speculative tokens).
-            # FP8 Q is float8_e4m3fn (pack_seq_triton's fp32 pad path is OK —
-            # downstream context_lens masks stale slots). MXFP4 Q is two
+            # MXFP4 Q is two
             # uint8 tensors (values + ue8m0 scales) — use the dedicated uint8
             # packer with pad_byte=0 so padded slots dequantize to 0 and
             # can't produce NaN/Inf in the logits kernel.
@@ -749,9 +748,12 @@ def sparse_attn_indexer(
                 )
             else:
                 padded_q_quant_decode_tokens = pack_seq_triton(
-                    q_quant[:num_decode_tokens], decode_lens
+                    q_quant[:num_decode_tokens], decode_lens, pad_value=0
                 )
                 padded_q_scale = None
+            decode_weights = pack_seq_triton(
+                weights[:num_decode_tokens], decode_lens, pad_value=0
+            ).flatten(0, 1)
         else:
             # `num_decode_tokens` can be padded up to a CUDA-graph capture size
             # (PIECEWISE rounds the decode token buffer up to a captured size)
@@ -764,6 +766,7 @@ def sparse_attn_indexer(
             b = decode_lens.shape[0]
             next_n = decode_metadata.seq_lens.shape[-1]
             real_rows = b * next_n
+            decode_weights = weights[:real_rows]
             padded_q_quant_decode_tokens = q_quant[:real_rows].reshape(
                 b, next_n, *q_quant.shape[1:]
             )
@@ -795,7 +798,7 @@ def sparse_attn_indexer(
             logits = torch.ops.vllm.xpu_fp8_paged_mqa_logits(
                 padded_q_quant_cast,
                 kv_cache,
-                weights[:num_padded_tokens],
+                decode_weights,
                 seq_lens_xpu,
                 decode_metadata.block_table,
                 decode_metadata.schedule_metadata,
@@ -805,7 +808,7 @@ def sparse_attn_indexer(
             logits = fp8_fp4_paged_mqa_logits(
                 (padded_q_quant_cast, padded_q_scale),
                 kv_cache,
-                weights[:num_padded_tokens],
+                decode_weights,
                 seq_lens,
                 decode_metadata.block_table,
                 decode_metadata.schedule_metadata,

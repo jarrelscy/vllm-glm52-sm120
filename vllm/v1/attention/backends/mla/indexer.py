@@ -212,7 +212,7 @@ class DeepSeekV32IndexerDecodeMetadata:
     block_table: torch.Tensor
     # seq_lens: per-token effective context lengths.
     #   - flatten path / plain decode: 1D (batch_size,)
-    #   - native MTP path: 2D (B, next_n) where [b,j] = L_b - next_n + j + 1
+    #   - native MTP path: 2D (B, max_decode_len), with per-request causal bounds
     # Both fp8_fp4_paged_mqa_logits and the topk kernels accept both shapes.
     seq_lens: torch.Tensor
     decode_lens: torch.Tensor
@@ -517,7 +517,8 @@ class DeepseekV32IndexerMetadataBuilder(AttentionMetadataBuilder):
                 #
                 # The runner's block-table rows can be one kernel-block WIDER
                 # than this buffer: BlockTable sizes rows as
-                #   cdiv(max_model_len, mgr_block * cp_world) * (mgr_block // kernel_block)
+                #   cdiv(max_model_len, mgr_block * cp_world)
+                #   * (mgr_block // kernel_block)
                 # (rounds up at KV-manager block granularity, then splits into
                 # kernel blocks), while expanded_block_table_buffer is
                 #   cdiv(max_model_len, kernel_block * cp_world).
@@ -570,16 +571,24 @@ class DeepseekV32IndexerMetadataBuilder(AttentionMetadataBuilder):
             if use_native and next_n > 1:
                 assert self.decode_seq_lens_buffer.dim() == 1
                 # (B, max_decode_len): token j attends to
-                # L - max_decode_len + j + 1 KV tokens.
+                # L - decode_lens[b] + j + 1 KV tokens.
                 seq_lens_buffer = self.decode_seq_lens_buffer[
                     : num_decodes * max_decode_len
                 ].view(num_decodes, max_decode_len)
                 seq_lens_buffer[:] = (
                     seq_lens.unsqueeze(1)
-                    - max_decode_len
+                    - decode_lens.unsqueeze(1)
                     + 1
                     + self.offsets_buffer[:max_decode_len]
                 )
+                if requires_padding:
+                    # The paged-logits scheduler uses the last column as the
+                    # request's upper bound, including when that slot is padding.
+                    torch.minimum(
+                        seq_lens_buffer,
+                        seq_lens.unsqueeze(1),
+                        out=seq_lens_buffer,
+                    )
                 seq_lens = seq_lens_buffer
             return (
                 seq_lens,

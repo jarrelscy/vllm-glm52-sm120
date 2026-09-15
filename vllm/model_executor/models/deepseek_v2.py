@@ -1362,6 +1362,23 @@ class DeepseekV2DecoderLayer(nn.Module):
         return hidden_states, residual
 
 
+def _make_dsa_intermediate_tensors_factory(
+    keys: list[str], hidden_size: int, index_topk: int | None
+):
+    factory = make_empty_intermediate_tensors_factory(keys, hidden_size)
+    if index_topk is None:
+        return factory
+
+    def make_empty_intermediate_tensors(batch_size, dtype, device):
+        tensors = factory(batch_size, dtype, device)
+        tensors["indexer_topk"] = torch.full(
+            (batch_size, index_topk), -1, dtype=torch.int32, device=device
+        )
+        return tensors
+
+    return make_empty_intermediate_tensors
+
+
 @support_torch_compile
 class DeepseekV2Model(nn.Module):
     fall_back_to_pt_during_load = False
@@ -1386,6 +1403,18 @@ class DeepseekV2Model(nn.Module):
             )
         else:
             topk_indices_buffer = None
+        self.topk_indices_buffer = topk_indices_buffer
+        index_pattern = getattr(config, "index_topk_pattern", None)
+        shares_indices = (
+            "S" in index_pattern
+            if index_pattern is not None
+            else getattr(config, "index_topk_freq", 1) > 1
+        )
+        self.pp_index_topk = (
+            config.index_topk
+            if self.is_v32 and shares_indices and get_pp_group().world_size > 1
+            else None
+        )
 
         if get_pp_group().is_first_rank:
             self.embed_tokens = VocabParallelEmbedding(
@@ -1410,8 +1439,8 @@ class DeepseekV2Model(nn.Module):
             self.norm = RMSNorm(self.hidden_size, eps=config.rms_norm_eps)
         else:
             self.norm = PPMissingLayer()
-        self.make_empty_intermediate_tensors = make_empty_intermediate_tensors_factory(
-            ["hidden_states", "residual"], self.hidden_size
+        self.make_empty_intermediate_tensors = _make_dsa_intermediate_tensors_factory(
+            ["hidden_states", "residual"], self.hidden_size, self.pp_index_topk
         )
 
         # b12x PCIe fused AR+add+rmsnorm (lever #2). Enabled ONLY on this
@@ -1520,6 +1549,12 @@ class DeepseekV2Model(nn.Module):
             assert intermediate_tensors is not None
             hidden_states = intermediate_tensors["hidden_states"]
             residual = intermediate_tensors["residual"]
+            if self.pp_index_topk is not None:
+                # A stage can start with layers that reuse the upstream
+                # indexer's selection. Local scratch may contain a prior batch.
+                self.topk_indices_buffer[: positions.shape[0]].copy_(
+                    intermediate_tensors["indexer_topk"][: positions.shape[0]]
+                )
 
         # Compute llama 4 scaling once per forward pass if enabled
         llama_4_scaling_config = getattr(self.config, "llama_4_scaling", None)
@@ -1581,6 +1616,8 @@ class DeepseekV2Model(nn.Module):
 
         if not get_pp_group().is_last_rank:
             out = {"hidden_states": hidden_states, "residual": residual}
+            if self.pp_index_topk is not None:
+                out["indexer_topk"] = self.topk_indices_buffer[: positions.shape[0]]
             if num_aux > 0:
                 # Slots not yet produced (aux layers owned by later stages) are
                 # sent as zeros; the owning stage overwrites them downstream.
@@ -1996,7 +2033,9 @@ class DeepseekV2ForCausalLM(
         # entry per aux layer so they propagate down the pipeline. All ranks call
         # this (via set_eagle3_aux_hidden_state_layers), keeping schemas matched.
         keys = ["hidden_states", "residual"] + [f"aux_{i}" for i in range(len(layers))]
-        factory = make_empty_intermediate_tensors_factory(keys, self.model.hidden_size)
+        factory = _make_dsa_intermediate_tensors_factory(
+            keys, self.model.hidden_size, self.model.pp_index_topk
+        )
         self.model.make_empty_intermediate_tensors = factory
         self.make_empty_intermediate_tensors = factory
 

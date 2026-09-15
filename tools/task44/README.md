@@ -1,5 +1,11 @@
 # Task 44: GLM-5.3 SM120 accuracy investigation
 
+The large full-model PP4/TP4 probability flip was traced to a **PP4 reference
+bug**: shared indexer selections were not transferred between pipeline stages.
+The fix and causal partition-control results are in [REFERENCE.md](REFERENCE.md).
+This is separate from the latent ragged indexer bug described below; it does
+not establish corruption in production TP4 or explain the benchmark behavior.
+
 The native ragged indexer path had two input-preparation bugs: queries were
 packed but weights were not, and causal bounds subtracted the batch maximum
 query length instead of each request's query length. Fix: `be7c3b62e`.

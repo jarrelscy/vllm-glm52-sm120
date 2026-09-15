@@ -1,5 +1,41 @@
 # Independent eager references
 
+## PP4 reference correction
+
+Earlier full-model PP4 captures are not valid ground truth for GLM-5.3.
+IndexCache shares top-k selections across layers, but the pipeline previously
+transferred only hidden states, residuals, and optional auxiliary states.
+The default 78-layer PP4 partition starts stages at layers 21, 40, and 59.
+Those stages reused stale local index buffers until layers 22, 42, and 62
+computed fresh selections. Identical-input attention comparisons found large
+errors at exactly layers 21, 40, 41, 59, 60, and 61.
+
+The fix carries active int32 top-k rows in `IntermediateTensors` and restores
+the shared buffer before a receiving stage executes. Auxiliary-state schemas
+retain the index tensor. It applies only to pipeline-parallel models with
+index sharing; TP-only execution is unchanged.
+
+Matched-precision, no-MTP controls on `torch-tensor-parallelism@1`, token 3:
+
+| Arm | `solve` | `respond` |
+| --- | ---: | ---: |
+| Broken PP4, default partition | 11.908% | 77.651% |
+| PP4 partition `18,20,20,20`, fresh-indexer stage starts | 48.152% | 42.494% |
+| Fixed PP4, original default partition | 48.152% | 42.494% |
+| TP4, DCP1, matched precision policy | 53.484% | 36.759% |
+
+Fixed PP4 and the aligned partition produce identical captured top-20 logprob
+distributions at all eight generated steps. All 39,546 captured tensors across
+39 complete pipeline positions are bit-identical between these two arms.
+The stage-boundary regression
+fails on the old code; five new schema/forward tests pass with the fix.
+The large original PP/TP probability flip is explained by the invalid PP
+reference. Residual cross-topology numerical differences and the production
+benchmark behavior require separate assessment. Independent full-model
+reference captures must be repeated with the corrected PP implementation.
+
+## Reference operators
+
 `vllm/model_executor/layers/quantization/arvq_reference.py` implements diagnostic
 PyTorch replacements for the hybrid projection and SM120 sparse MLA attention.
 Both switches default off:

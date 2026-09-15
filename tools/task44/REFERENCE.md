@@ -145,3 +145,33 @@ observed non-DCP repeatability failure on the 8K control. It does not establish
 that the production TP4/DCP4/MTP3 path has that failure. CUDA selector checks
 also match native selected sets for unique logits under nonzero prefill starts,
 ragged 2-D decode bounds, short rows, and empty rows.
+
+### TP4 precision isolation (real checkpoint, September 15)
+
+Three additional probes use the local initial-8x8 checkpoint and saved layer
+activations. Paths in the scripts identify the exact checkpoint and trace arm;
+raw traces are not included in Git.
+
+- `check_real_tp_shards.py`: layer 3, expert 0, hot and cold gate/up and down.
+  Actual production TP loading helpers reconstruct matrices identical to the
+  unsharded matrices in all four cases. This is a loader fixture, not an
+  exhaustive checkpoint audit.
+- `check_real_qb_tp.py`: actual layer-0 BF16 Q projection, captured activation
+  repeated over 32 rows. Default BF16 reduced-precision reduction gives 4,350
+  full-versus-TP output mismatches; TP differs from FP64-rounded-BF16 at 4,346
+  coordinates. Disabling reduced-precision reduction reduces the latter to 2
+  (full-matrix GEMM differs at 14). This reproduces the first observed prefill
+  layer difference without attention or communication.
+- `check_real_p4_tp_partials.py`: actual layer-0 O projection, identical globally
+  quantized weights and a real decode activation. Rounding each of four native
+  FP4 partial outputs to BF16 before summing produces 2,131/6,144 differences
+  against the unsharded native result, relative L2 0.002042. Keeping FP32
+  partials until after summing reduces this to 3 differences, relative L2
+  0.000001130. The fixture uses FP32 summation, so it isolates partial-output
+  rounding rather than reproducing every detail of a BF16 NCCL reduction.
+
+These identify local precision losses. Neither is yet established as the
+explanation for the full-model PP4/TP4 third-token probability flip. A diagnostic
+combining matched dense weight scales, strict BF16 accumulation, and FP32 TP
+partial outputs is being compared against a PP4 control with the same policy.
+Production precision defaults have not been changed on this evidence alone.

@@ -9,7 +9,10 @@ are zeroed.
 
 Production SM120 with MTP3 logs `use_flattening=True (next_n=4)` and bypasses
 this native padded branch. This fix therefore does not establish the cause of
-the reported production behavior.
+the reported production behavior. The native dispatcher also requests uniform
+decode lengths: ordinary nonuniform requests can be routed through prefill.
+The direct-helper ragged repro demonstrates the latent bug, not that an actual
+production scheduler batch reaches it.
 
 ## Completed numerical checks
 

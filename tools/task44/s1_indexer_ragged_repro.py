@@ -14,8 +14,10 @@ token of a dl=1 request should see L_b, not L_b - Lmax + 1).
 Reachability on SM120 (this box): indexer.py sets
 use_flattening = not family(100) and next_n not in (1,2). Production
 tp4-1m-mtp has NSDEF=3 -> next_n=4 -> flatten path -> requires_padding never
-True. The padded branch IS live on SM120 when next_n==2 (NUM_SPEC=1) and on
-SM100 for any next_n. Repro geometry: next_n=2, decode_lens=[1,2] / [2,1].
+True. Native mode is available on SM120 for next_n==2 (NUM_SPEC=1) and on
+SM100 for any next_n. The dispatcher also requires uniform decode lengths;
+this direct ragged-helper repro does not prove live scheduler reachability.
+Repro geometry: next_n=2, decode_lens=[1,2] / [2,1].
 
 Method: run fp8_fp4_paged_mqa_logits exactly as the padded branch does
 (production form), then with corrected weights packing, corrected seq_lens,
@@ -214,7 +216,7 @@ def main():
         flat = (not fam100) and nn not in (1, 2)
         print(
             f"[reachability] SM120 next_n={nn}: use_flattening={flat} -> "
-            f"padded native branch {'DEAD' if flat else 'LIVE on ragged batches'}"
+            f"padded native branch {'DEAD' if flat else 'native mode eligible'}"
         )
 
     r1 = run([1, 2], [500, 700])

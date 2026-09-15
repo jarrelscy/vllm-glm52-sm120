@@ -173,5 +173,15 @@ raw traces are not included in Git.
 These identify local precision losses. Neither is yet established as the
 explanation for the full-model PP4/TP4 third-token probability flip. A diagnostic
 combining matched dense weight scales, strict BF16 accumulation, and FP32 TP
-partial outputs is being compared against a PP4 control with the same policy.
+partial outputs was compared against a PP4 control with the same policy.
+At decode position 996, layer-0 attention relative L2 fell to 0.000001129,
+and its MLP input became bit-identical. The third-token probability gap
+nevertheless remained: TP4 gave `solve` 53.484% and `respond` 36.759%; the
+matched PP4 control gave 11.908% and 77.651%, respectively.
+
+A CPU replay of the layer-10 router on the captured position-31 inputs changes
+one of eight selected experts. This accounts for a local amplification from
+approximately 1.3% MLP-input difference to 20.5% output difference. It does not
+establish that every upstream discrepancy is benign rounding, nor explain the
+benchmark failure. The full TP correctness investigation remains open.
 Production precision defaults have not been changed on this evidence alone.

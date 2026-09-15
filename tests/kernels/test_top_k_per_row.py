@@ -997,3 +997,18 @@ def test_persistent_topk_coarse_bucket_overflow(
             rtol=0,
             atol=0,
         )
+
+
+@pytest.mark.skipif(not current_platform.is_cuda(), reason="This test requires CUDA")
+@pytest.mark.parametrize("top_k", [512, 1024, 2048])
+@pytest.mark.parametrize("batch_size", [0, 1, 4, 33])
+@torch.inference_mode()
+def test_persistent_topk_empty_context(top_k: int, batch_size: int) -> None:
+    # The warmup logits allocator can produce zero row stride for zero columns.
+    logits = torch.empty_strided(
+        (batch_size, 0), (0, 1), device="cuda", dtype=torch.float32
+    )
+    lengths = torch.zeros(batch_size, device="cuda", dtype=torch.int32)
+    indices = torch.empty((batch_size, top_k), device="cuda", dtype=torch.int32)
+    _run_topk_backend("persistent_topk", logits, lengths, indices, top_k, 0)
+    torch.testing.assert_close(indices, torch.full_like(indices, -1), rtol=0, atol=0)

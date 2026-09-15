@@ -265,6 +265,18 @@ void persistent_topk(const torch::stable::Tensor& logits,
   const torch::stable::accelerator::DeviceGuard device_guard(
       logits.get_device_index());
 
+  if (num_rows == 0) return;
+  if (logits.size(1) == 0) {
+    STD_TORCH_CHECK(output.is_contiguous(),
+                    "empty-context output must be contiguous");
+    cudaError_t status = cudaMemsetAsync(output.mutable_data_ptr<int32_t>(),
+                                         0xff, num_rows * k * sizeof(int32_t),
+                                         get_current_cuda_stream());
+    STD_TORCH_CHECK(status == cudaSuccess, "empty-context topk fill failed: ",
+                    cudaGetErrorString(status));
+    return;
+  }
+
   if (k == 512) {
     launch_persistent_topk<512>(logits, lengths, output, workspace,
                                 max_seq_len);

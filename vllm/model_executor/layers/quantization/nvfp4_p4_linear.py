@@ -29,7 +29,7 @@ def matches(prefix: str) -> bool:
     )
 
 
-def quantize_weight(weight: torch.Tensor):
+def quantize_weight(weight: torch.Tensor, global_amax: torch.Tensor | None = None):
     """Quantize on CPU in bounded row chunks, returning native E=1 storage."""
     if weight.ndim != 2 or weight.shape[0] % 16 or weight.shape[1] % 64:
         raise ValueError("NVFP4 P4 requires matrix dimensions divisible by 16/64")
@@ -37,7 +37,8 @@ def quantize_weight(weight: torch.Tensor):
         raise ValueError("Experimental NVFP4 P4 loads BF16 weights only")
     weight = weight.detach().cpu().contiguous()
     n, k = weight.shape
-    global_scale = (weight.abs().amax().float() / (6 * 448)).clamp_min(1e-12)
+    maximum = weight.abs().amax().float() if global_amax is None else global_amax.cpu()
+    global_scale = (maximum / (6 * 448)).clamp_min(1e-12)
     fragments = []
     scale_chunks = []
     for start in range(0, n, 256):
@@ -167,6 +168,30 @@ def dense_p4(
     k = weight.shape[2] * 64
     tokens = x.numel() // k
     flat = x.reshape(tokens, k)
+    if os.environ.get("VLLM_ARVQ_REFERENCE_WEIGHTS", "0") == "1":
+        from vllm.model_executor.layers.quantization.arvq_reference import (
+            hot_rows,
+            projection,
+        )
+
+        if 0 < tokens <= native_max_tokens:
+            tensors = [weight, weight, scales, weight, scales, global_scale]
+            out = projection(
+                flat.to(torch.float16),
+                route_ids[0, :tokens],
+                route_ids[1, :tokens],
+                tensors,
+                0.0,
+                n,
+            ).to(x.dtype)
+        else:
+            out = torch.empty((tokens, n), device=x.device, dtype=x.dtype)
+            for first in range(0, n, 1024):
+                stop = min(first + 1024, n)
+                decoded = hot_rows(weight, scales, n, k, 0, first, stop)
+                decoded = (decoded * global_scale.reshape(())).to(torch.bfloat16)
+                out[:, first:stop] = flat.float() @ decoded.float().T
+        return out.reshape(*x.shape[:-1], n)
     # Static process flag: CUDA graph capture freezes this dispatch. Changing
     # the flag requires restarting/recapturing graphs, never a live marker.
     paired = os.environ.get("VLLM_NVFP4_P4_PAIRED", "0") == "1"
@@ -230,7 +255,19 @@ class NvFp4P4LinearMethod(LinearMethodBase):
         if layer.weight.dtype == torch.int32:
             return
         device = layer.weight.device
-        packed = quantize_weight(layer.weight)
+        global_amax = None
+        if os.environ.get("VLLM_NVFP4_P4_GLOBAL_SCALE", "0") == "1":
+            from vllm.distributed import get_tp_group
+
+            global_amax = layer.weight.detach().abs().amax().float()
+            group = get_tp_group()
+            if group.world_size > 1:
+                torch.distributed.all_reduce(
+                    global_amax,
+                    op=torch.distributed.ReduceOp.MAX,
+                    group=group.device_group,
+                )
+        packed = quantize_weight(layer.weight, global_amax=global_amax)
         native_max = int(os.environ.get("VLLM_NVFP4_P4_MAX_TOKENS", "4"))
         if not 1 <= native_max <= 32:
             raise ValueError("VLLM_NVFP4_P4_MAX_TOKENS must be in [1, 32]")

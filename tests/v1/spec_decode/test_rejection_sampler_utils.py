@@ -215,6 +215,38 @@ def test_greedy_rejection_sample(num_speculative_steps: int):
     )
 
 
+@pytest.mark.parametrize("temperature", [0.6, 1.0])
+def test_greedy_draft_stochastic_target_distribution(temperature: float):
+    """Default greedy proposals must preserve a stochastic target at every step."""
+    torch.manual_seed(42)
+    device = "cuda"
+    steps = 3
+    target_logits = torch.full((128,), -torch.inf, device=device)
+    target_logits[:4] = torch.tensor([0.4, 0.3, 0.2, 0.1], device=device).log()
+    target_logits /= temperature
+    draft_logits = torch.full_like(target_logits, -torch.inf)
+    draft_logits[0] = 0
+    inputs = _build_rejection_sample_inputs(
+        target_logits,
+        draft_logits,
+        steps,
+        temperature=temperature,
+        num_trials=32768,
+    )
+    # This is the serving default: a one-hot proposal with no draft logits.
+    inputs["draft_logits"] = None
+    sampled, num_sampled = rejection_sample(**inputs, num_speculative_steps=steps)
+    target_probs = target_logits.softmax(dim=0)
+    for pos in range(steps + 1):
+        mask = num_sampled >= pos + 1
+        # Concentrating target mass gives the bonus position enough samples;
+        # a large uniform vocabulary would almost always reject immediately.
+        assert mask.sum().item() > 1000
+        _assert_distribution_match(
+            sampled[mask, pos], target_probs, device, label=f"position {pos}"
+        )
+
+
 @pytest.mark.parametrize(
     "num_speculative_steps,temperature,unconditional_rates",
     [

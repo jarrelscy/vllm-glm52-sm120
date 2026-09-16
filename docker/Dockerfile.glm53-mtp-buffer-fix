@@ -1,0 +1,7 @@
+# Base: fixes #1/#2, image ID
+# sha256:61a4fdc085eff99276cc5516b8d151cf5e1bb56e4c8c008712cb5782407d49c7
+ARG BASE_IMAGE=glm53-arvq-sm120:fixes-1-2-only-20260916
+FROM ${BASE_IMAGE}
+
+# Python-only loader correction; retain the base's compiled CUDA extensions.
+COPY vllm/v1/worker/gpu/spec_decode/eagle/utils.py /opt/vllm/vllm/v1/worker/gpu/spec_decode/eagle/utils.py

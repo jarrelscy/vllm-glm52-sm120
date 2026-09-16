@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
-"""V2 MTP must find the head inside a multimodal language-model wrapper."""
+"""V2 MTP sharing must reach nested heads and plain-object attention backends."""
 
 from types import SimpleNamespace
 
@@ -17,6 +17,7 @@ def test_multimodal_mtp_head_sharing(monkeypatch, own_distinct_head):
     language = nn.Module()
     language.model = nn.Module()
     language.model.embed_tokens = nn.Embedding(8, 4)
+    language.model.topk_indices_buffer = torch.full((4, 8), -1, dtype=torch.int32)
     language.lm_head = nn.Linear(4, 8, bias=False)
     target.language_model = language
     target.get_language_model = lambda: language
@@ -31,6 +32,13 @@ def test_multimodal_mtp_head_sharing(monkeypatch, own_distinct_head):
     layer.shared_head.head = nn.Linear(4, 8, bias=False)
     # GLM's MTP loader remaps the same checkpoint lm_head.weight here.
     layer.shared_head.head.weight.data.copy_(language.lm_head.weight)
+    old_indices = torch.zeros((4, 8), dtype=torch.int32)
+    layer.indexer = nn.Module()
+    layer.indexer.topk_indices_buffer = old_indices
+    layer.attn = nn.Module()
+    # Real attention backends are not nn.Modules and hence are absent from
+    # named_modules(). Rebinding the indexer alone leaves attention stale.
+    layer.attn.impl = SimpleNamespace(topk_indices_buffer=old_indices)
     draft.model.layers = nn.ModuleDict({"78": layer})
     original_head = layer.shared_head.head
     original_norm = layer.shared_head.norm
@@ -49,6 +57,11 @@ def test_multimodal_mtp_head_sharing(monkeypatch, own_distinct_head):
     assert result is draft
     assert draft.model.embed_tokens is language.model.embed_tokens
     assert layer.shared_head.norm is original_norm
+    assert layer.indexer.topk_indices_buffer is language.model.topk_indices_buffer
+    assert layer.attn.impl.topk_indices_buffer is layer.indexer.topk_indices_buffer
+    layer.indexer.topk_indices_buffer[0, 0] = 7
+    assert layer.attn.impl.topk_indices_buffer[0, 0].item() == 7
+    assert old_indices[0, 0].item() == 0
     if own_distinct_head:
         assert draft.lm_head is original_head
         assert layer.shared_head.head is original_head

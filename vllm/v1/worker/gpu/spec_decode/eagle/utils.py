@@ -100,5 +100,11 @@ def load_eagle_model(target_model: nn.Module, vllm_config: VllmConfig) -> nn.Mod
             for _, module in draft_inner.named_modules():
                 if hasattr(module, "topk_indices_buffer"):
                     module.topk_indices_buffer = target_buffer
+                # Attention implementations are plain objects, not registered
+                # submodules. They retain the buffer passed at construction;
+                # update them too so attention reads what the indexer writes.
+                impl = getattr(module, "impl", None)
+                if impl is not None and hasattr(impl, "topk_indices_buffer"):
+                    impl.topk_indices_buffer = target_buffer
 
     return eagle_model

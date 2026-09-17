@@ -76,6 +76,11 @@ def activation_planes(x, planes=4):
 def cold_rows(packed, codebooks, scales, n, k, expert, first=0, stop=None):
     """Decode physical tiled 8+7/8+8 storage into ordinary FP32 matrix rows."""
     stop = n if stop is None else stop
+    from vllm.model_executor.layers.quantization.nvfp4_arvq_hybrid import (
+        _expert_codebooks,
+    )
+
+    codebooks = _expert_codebooks(codebooks, expert)
     if codebooks.numel() not in (384, 512) or n % 16 or k % 128:
         raise ValueError("Invalid ARVQ layout")
     bits = 15 if codebooks.numel() == 384 else 16

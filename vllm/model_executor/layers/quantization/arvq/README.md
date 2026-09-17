@@ -1,19 +1,20 @@
 # SM120 NVFP4–ARVQ hybrid
 
-This experimental loader supports two serialized cold formats alongside hot
+This experimental loader supports three serialized cold formats alongside hot
 NVFP4 experts. Each cold vector has eight weights and is the sum of two FP4
 codebook vectors.
 
 | Checkpoint `arvq.format` | Index bits | Codebook sizes | Index + scale bpw |
 | --- | --- | --- | ---: |
 | `rvq256_128x8` | 8 + 7 | 256 + 128 | 1.9375 |
-| `rvq256_256x8` | 8 + 8 | 256 + 256 | 2.0625 |
+| `rvq256_256x8` | 8 + 8 | 256 + 256 shared | 2.0625 |
+| `rvq256_256x8_expert` (v3) | 8 + 8 | 256 + 256 per cold expert | 2.0625 |
 
 The bpw figures include one E4M3 scale per 128 weights; shared codebooks and
-projection globals add a small overhead. The existing checkpoint uses 8+7.
+projection globals add a small overhead. v3 has separate books per cold expert.
 8+8 exceeds the original 2 bpw cold budget. Hot weights remain NVFP4.
 
-Both native branches consume four residual activation planes through SM120
+All native branches consume four residual activation planes through SM120
 FP4 block-scaled MMA, weighted 1, 1/16, 1/256, 1/4096. Both cold formats use
 two MMAs per K tile. The 8+8 specialization uses aligned 16-bit index pairs;
 it does not add another MMA. No original AQLM weights or fallback are retained.
@@ -98,3 +99,51 @@ The CPU tests exercise all four TP shards and invoke the actual main-model and
 MTP checkpoint loaders to verify serialized name remapping. The GPU test checks
 mixed-format execution, bounded-chunk equivalence, CUDA graph replay, and Torch
 full-graph tracing. SM120 is required for the GPU test.
+
+## Version 3: per-expert 8+8 books
+
+Use this exact marker in root `quantization_config.arvq` and in
+`text_config.quantization_config.arvq` when present:
+
+```json
+{
+  "format": "rvq256_256x8_expert",
+  "version": 3,
+  "codebook_scope": "expert",
+  "codebook_sizes": [256, 256],
+  "activation_planes": 4,
+  "weight_scale_group": 128
+}
+```
+
+Only the codebook tensor shape changes: uint32 `[E,512]`. `packed`, `scales`,
+`global`, fragment ordering, FP4 nibble semantics and activation packing stay
+unchanged. Global scale remains `[1]`, not `[E]`. Gate/up share one pair per
+cold expert; down has a separate pair. All books are replicated on TP ranks;
+only packed weights and scales are sliced on the existing N/K dimensions.
+The loader rejects shape/dtype mismatch, including broadcasting `[512]` into
+`[E,512]`. Shared `[512]` v2 remains a separate, unchanged ABI path.
+
+`hybrid_launch_8x8_expert` has the same signature as `hybrid_launch_8x8`.
+Its cold block reads `cb + cold_ids[slot] * 512` into its 2 KiB shared LUT.
+No cross-expert LUT cache exists in this path. Fused down projection selects
+the same new ABI. Grouped prefill, reference decode and fused decode/gather
+select one expert's contiguous `[512]` row before calling the decoder.
+Hot-only paired/wide paths do not consume cold books: their route partition
+requires a negative cold slot. Existing grouped GEMM arithmetic is unchanged;
+it is not newly claimed to be identical to native FP4-plane prefill.
+
+Book row is always the **cold slot**, never the global expert ID. The legacy
+convention assigns cold slots in ascending `hyb_kind == 2` global-ID order.
+For any other manifest ordering, mirror the ordered list explicitly in
+`aqlm_layer_books["L"]["cold_expert_ids"]` in both quantization envelopes, e.g.
+`[2,0]` means packed/scales/books row 0 belongs to global expert 2 and row 1
+belongs to global expert 0. IDs must uniquely enumerate the cold `hyb_kind`
+entries. The runtime does not discover an external manifest file implicitly.
+Reordering storage must reorder packed weights, scales, books and this mapping
+together. EP remains explicitly unsupported, rather than silently using a
+TP mapping under EP.
+
+For synthetic equivalence tests, duplicate shared books in memory with
+`shared_books.repeat(E, 1)`. No production checkpoint conversion is needed.
+See `docs/arvq_expert_books_v3.md` for measured parity, timing and limitations.

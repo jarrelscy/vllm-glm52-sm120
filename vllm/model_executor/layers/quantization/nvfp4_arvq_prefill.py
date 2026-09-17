@@ -37,6 +37,8 @@ def dequantize_cold(packed, codebooks, scales, global_scale, n, k, dtype=torch.f
     from vllm.model_executor.layers.quantization.nvfp4_arvq_hybrid import _layout
 
     words, entries = _layout(codebooks)
+    if codebooks.ndim != 1:
+        raise ValueError("Select one cold slot's codebooks before prefill decode")
     required = (n // 16) * (k // 64) * words + (entries == 384)
     if n <= 0 or k <= 0 or n % 16 or k % 128 or packed.numel() < required:
         raise ValueError("Invalid ARVQ prefill packed layout")
@@ -119,8 +121,12 @@ def grouped_cold_prefill(
         offset = 0 if name == "w13" else 6
         n, k = (n13, hidden) if offset == 0 else (hidden, n13 // 2)
         packed, codebooks, scales = tensors[offset : offset + 3]
-        from vllm.model_executor.layers.quantization.nvfp4_arvq_hybrid import _layout
+        from vllm.model_executor.layers.quantization.nvfp4_arvq_hybrid import (
+            _expert_codebooks,
+            _layout,
+        )
 
+        codebooks = _expert_codebooks(codebooks, expert)
         tile_words, _ = _layout(codebooks)
         words = (n // 16) * (k // 64) * tile_words
         # Packed storage has one final guard; internal expert boundaries also
@@ -305,12 +311,13 @@ def grouped_cold_prefill(
                 and n13 == 1024
                 and x.dtype == torch.bfloat16
                 and x.is_contiguous()
-                and tensors[1].numel() == 512
+                and tensors[1].shape[-1] == 512
             ):
                 from vllm.model_executor.layers.quantization import (
                     nvfp4_arvq_cold_gather as cold_gather,
                 )
                 from vllm.model_executor.layers.quantization.nvfp4_arvq_hybrid import (
+                    _expert_codebooks,
                     _layout,
                 )
 
@@ -320,7 +327,7 @@ def grouped_cold_prefill(
                     x,
                     route_slots,
                     tensors[0].reshape(-1)[expert * words : expert * words + words + 1],
-                    tensors[1],
+                    _expert_codebooks(tensors[1], expert),
                     tensors[2][expert],
                     alphas[0],
                     n13,

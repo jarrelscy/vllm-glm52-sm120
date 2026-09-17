@@ -10,7 +10,7 @@ vLLM's MoE runner, as in TPHybridExpertsMoEMethod.
 import ctypes
 import os
 from pathlib import Path
-from typing import Literal, cast
+from typing import Any, Literal, cast
 
 import regex as re
 import torch
@@ -21,7 +21,6 @@ from vllm.model_executor.layers.quantization.nvfp4_aqlm_hybrid import (
 from vllm.model_executor.layers.quantization.tp_hybrid_moe import (
     TPHybridExpertsMoEMethod,
     _gateup_loader,
-    _replicate_loader,
     _rowk_loader,
 )
 from vllm.model_executor.utils import set_weight_attrs
@@ -58,26 +57,45 @@ def _kernels():
     return _LIB
 
 
-_FORMATS = {"rvq256_128x8": (60, 384), "rvq256_256x8": (64, 512)}
+_EXPERT_FORMAT = "rvq256_256x8_expert"
+_FORMATS = {
+    "rvq256_128x8": (60, 384),
+    "rvq256_256x8": (64, 512),
+    _EXPERT_FORMAT: (64, 512),
+}
 
 
 def _layout(codebooks):
-    entries = codebooks.numel()
-    if entries not in (384, 512):
-        raise ValueError(f"Invalid ARVQ codebook size {entries}; expected 384 or 512")
+    if codebooks.ndim == 1 and codebooks.shape[0] in (384, 512):
+        entries = codebooks.shape[0]
+    elif codebooks.ndim == 2 and codebooks.shape[1] == 512:
+        entries = 512
+    else:
+        raise ValueError(
+            f"Invalid ARVQ codebook size/shape {tuple(codebooks.shape)}; "
+            "expected [384], [512], or expert [E,512]"
+        )
+    if not codebooks.is_contiguous():
+        raise ValueError("ARVQ codebooks must be contiguous")
     return (60 if entries == 384 else 64), entries
+
+
+def _expert_codebooks(codebooks, cold_slot):
+    _layout(codebooks)
+    return codebooks[cold_slot] if codebooks.ndim == 2 else codebooks
 
 
 def _launch_for_codebooks(lib, codebooks):
     _, entries = _layout(codebooks)
     if entries == 384:
         return lib.hybrid_launch
+    symbol = "hybrid_launch_8x8"
+    if codebooks.ndim == 2:
+        symbol += "_expert"
     try:
-        launch = lib.hybrid_launch_8x8
+        launch = getattr(lib, symbol)
     except AttributeError as error:
-        raise RuntimeError(
-            "ARVQ 8+8 requires hybrid_launch_8x8; rebuild arvq/build.sh"
-        ) from error
+        raise RuntimeError(f"ARVQ requires {symbol}; rebuild arvq/build.sh") from error
     launch.argtypes = lib.hybrid_launch.argtypes
     launch.restype = ctypes.c_int
     return launch
@@ -262,23 +280,44 @@ class NvFp4ArvqHybridConfig(NvFp4AqlmHybridConfig):
         )
 
         marker = config["arvq"]
-        expected = {
+        expected: dict[str, object] = {
             "activation_planes": 4,
             "weight_scale_group": 128,
         }
         # Published 8+8 checkpoints use version 2 for the same native layout.
         # Preserve version 1 support and the original 8+7 version policy.
-        versions = (1, 2) if marker.get("format") == "rvq256_256x8" else (1,)
+        fmt = marker.get("format")
+        versions = (1, 2) if fmt == "rvq256_256x8" else (1,)
+        if fmt == _EXPERT_FORMAT:
+            versions = (3,)
+            expected.update(codebook_scope="expert", codebook_sizes=[256, 256])
+        elif marker.get("codebook_scope", "shared") != "shared":
+            raise ValueError(f"Unsupported ARVQ checkpoint metadata: {marker}")
+        elif "codebook_sizes" in marker:
+            expected["codebook_sizes"] = [256, 256 if fmt == "rvq256_256x8" else 128]
         if (
             marker.get("format") not in _FORMATS
             or marker.get("version") not in versions
             or any(marker.get(k) != v for k, v in expected.items())
         ):
             raise ValueError(f"Unsupported ARVQ checkpoint metadata: {marker}")
-        books = {
+        books: dict[int, dict[str, Any]] = {
             int(k): {n: int(v[n]) for n in ("n_nvfp4", "n_base", "n_cold")}
             for k, v in config["aqlm_layer_books"].items()
         }
+        for key, value in config["aqlm_layer_books"].items():
+            if "cold_expert_ids" in value:
+                ids = value["cold_expert_ids"]
+                count = books[int(key)]["n_cold"]
+                total = count + books[int(key)]["n_nvfp4"]
+                if (
+                    not isinstance(ids, list)
+                    or len(ids) != count
+                    or any(type(i) is not int or i < 0 or i >= total for i in ids)
+                    or len(set(ids)) != count
+                ):
+                    raise ValueError("Invalid ordered ARVQ cold_expert_ids")
+                books[int(key)]["cold_expert_ids"] = ids
         if any(b["n_base"] != 0 for b in books.values()):
             raise ValueError("ARVQ checkpoint requires n_base=0")
         nvfp4 = cast(
@@ -332,10 +371,13 @@ class NvFp4ArvqHybridConfig(NvFp4AqlmHybridConfig):
 class ArvqExpertsMoEMethod(TPHybridExpertsMoEMethod):
     arvq_format = "rvq256_128x8"
 
-    def __init__(self, *args, arvq_format="rvq256_128x8", **kwargs):
+    def __init__(
+        self, *args, arvq_format="rvq256_128x8", cold_expert_ids=None, **kwargs
+    ):
         if arvq_format not in _FORMATS:
             raise ValueError(f"Unsupported ARVQ format: {arvq_format}")
         self.arvq_format = arvq_format
+        self.cold_expert_ids = cold_expert_ids
         super().__init__(*args, **kwargs)
         if self.n_base:
             raise ValueError("Serialized ARVQ supports hot and cold experts only")
@@ -360,7 +402,16 @@ class ArvqExpertsMoEMethod(TPHybridExpertsMoEMethod):
         if h % 128 or ish % 128 or self.n_nvfp4 + self.n_cold != num_experts:
             raise ValueError("ARVQ requires K multiples of 128 and complete routes")
         layer._arvq_ish = ish
-        rep = _replicate_loader()
+
+        def rep(param, loaded):
+            # copy_ permits broadcasting: explicitly reject v2 books in v3.
+            if loaded.shape != param.shape or loaded.dtype != param.dtype:
+                raise ValueError(
+                    "Serialized ARVQ tensor shape/dtype disagrees with format: "
+                    f"expected {tuple(param.shape)} {param.dtype}, "
+                    f"got {tuple(loaded.shape)} {loaded.dtype}"
+                )
+            param.data.copy_(loaded)
 
         def make(name, shape, dtype, loader):
             p = torch.nn.Parameter(torch.empty(shape, dtype=dtype), requires_grad=False)
@@ -385,7 +436,12 @@ class ArvqExpertsMoEMethod(TPHybridExpertsMoEMethod):
                 torch.uint8,
                 shard,
             )
-            make(f"arvq_{proj}_codebooks", (entries,), torch.uint32, rep)
+            book_shape = (
+                (self.n_cold, entries)
+                if self.arvq_format == _EXPERT_FORMAT
+                else (entries,)
+            )
+            make(f"arvq_{proj}_codebooks", book_shape, torch.uint32, rep)
             make(f"arvq_{proj}_global", (1,), torch.float32, rep)
         na = self.n_nvfp4
         make(
@@ -420,7 +476,20 @@ class ArvqExpertsMoEMethod(TPHybridExpertsMoEMethod):
         for proj in ("w13", "w2"):
             packed = getattr(layer, f"arvq_{proj}_packed")
             cb = getattr(layer, f"arvq_{proj}_codebooks")
-            if packed.ndim != 4 or packed.shape[-1] != words or cb.numel() != entries:
+            expected_books = (
+                (self.n_cold, entries)
+                if self.arvq_format == _EXPERT_FORMAT
+                else (entries,)
+            )
+            if (
+                packed.ndim != 4
+                or packed.shape[0] != self.n_cold
+                or packed.shape[-1] != words
+                or packed.dtype != torch.uint32
+                or tuple(cb.shape) != expected_books
+                or cb.dtype != torch.uint32
+                or not cb.is_contiguous()
+            ):
                 raise ValueError(
                     "Serialized ARVQ packed/codebook layout disagrees with format"
                 )
@@ -435,8 +504,23 @@ class ArvqExpertsMoEMethod(TPHybridExpertsMoEMethod):
             mask = kind == value
             if int(mask.sum().item()) != count:
                 raise ValueError("ARVQ expert count differs from hyb_kind")
-            local = mask.long().cumsum(0) - 1
-            lookups.append(torch.where(mask, local, -1).to(torch.int32))
+            ordered = getattr(self, "cold_expert_ids", None) if value == 2 else None
+            if ordered is None:
+                # Legacy exporters enumerate cold slots by ascending global ID.
+                local = mask.long().cumsum(0) - 1
+                lookup = torch.where(mask, local, -1).to(torch.int32)
+            else:
+                ids = torch.tensor(ordered, device=device, dtype=torch.long)
+                if (
+                    ids.numel() != count
+                    or ids.unique().numel() != count
+                    or bool(((ids < 0) | (ids >= kind.numel())).any().item())
+                    or not bool(mask[ids].all().item())
+                ):
+                    raise ValueError("cold_expert_ids disagrees with hyb_kind")
+                lookup = torch.full_like(kind, -1, dtype=torch.int32)
+                lookup[ids] = torch.arange(count, device=device, dtype=torch.int32)
+            lookups.append(lookup)
         layer._arvq_lookups = torch.stack(lookups).contiguous()
         tensors: list[torch.Tensor] = []
         alphas: list[float] = []

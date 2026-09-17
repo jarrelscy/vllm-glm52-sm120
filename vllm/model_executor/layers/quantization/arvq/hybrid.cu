@@ -51,7 +51,7 @@ extern "C" int hybrid_pack(const void* x, void* q, void* s, int K, int slots,
 }
 // Routes must be disjoint: cold_ids[slot]>=0 XOR hot_ids[slot]>=0.
 // A slot with bothnegative is defined as zero; with bothpositive cold wins.
-template <int RESIDUAL_BITS>
+template <int RESIDUAL_BITS, bool EXPERT_BOOKS = false>
 __global__ void hybrid_kernel(const unsigned* cw, const unsigned* cb,
                               const unsigned char* cs, const unsigned* hw,
                               const unsigned* hs, const unsigned* x,
@@ -63,6 +63,7 @@ __global__ void hybrid_kernel(const unsigned* cw, const unsigned* cb,
   int slot = blockIdx.z, cold_e = cold_ids[slot], hot_e = hot_ids[slot];
   bool cold = cold_e >= 0;
   if (cold) {
+    if constexpr (EXPERT_BOOKS) cb += (long long)cold_e * LUT_SIZE;
     for (int i = threadIdx.x; i < LUT_SIZE; i += blockDim.x) lut[i] = cb[i];
     __syncthreads();
   }
@@ -147,7 +148,7 @@ __global__ void hybrid_reduce(const float* p, float* y, const int* cold_ids,
 // cold_ids/hot_ids:i32[slots]; partial:f32[slots,N,split]; out:f32[slots,N].
 // cold_global:f32; N,K,slots,split,P,hot_parts:int; CUDAstream:void*.
 // N%16=0,K%128=0,P=1or4,hot_parts=1or2, split>0.
-template <int RESIDUAL_BITS>
+template <int RESIDUAL_BITS, bool EXPERT_BOOKS = false>
 int hybrid_launch_impl(const void* cold_w, const void* cold_cb,
                        const void* cold_scales, const void* hot_w,
                        const void* hot_scales, const void* hot_global,
@@ -159,7 +160,7 @@ int hybrid_launch_impl(const void* cold_w, const void* cold_cb,
       (P != 1 && P != 4) || (hot_parts != 1 && hot_parts != 2))
     return (int)cudaErrorInvalidValue;
   cudaStream_t s = (cudaStream_t)stream;
-  hybrid_kernel<RESIDUAL_BITS>
+  hybrid_kernel<RESIDUAL_BITS, EXPERT_BOOKS>
       <<<dim3((N + 63) / 64, split, slots), 128, 0, s>>>(
           (const unsigned*)cold_w, (const unsigned*)cold_cb,
           (const unsigned char*)cold_scales, (const unsigned*)hot_w,
@@ -204,4 +205,17 @@ extern "C" int hybrid_launch_8x8(const void* cold_w, const void* cold_cb,
                                hot_global, x, xs, cold_ids, hot_ids, partial,
                                out, cold_global, N, K, slots, split, P,
                                hot_parts, stream);
+}
+
+// v3: cold_cb:u32[Ec,512], indexed by the same cold slot as weights/scales.
+extern "C" int hybrid_launch_8x8_expert(
+    const void* cold_w, const void* cold_cb, const void* cold_scales,
+    const void* hot_w, const void* hot_scales, const void* hot_global,
+    const void* x, const void* xs, const void* cold_ids, const void* hot_ids,
+    void* partial, void* out, float cold_global, int N, int K, int slots,
+    int split, int P, int hot_parts, void* stream) {
+  return hybrid_launch_impl<8, true>(cold_w, cold_cb, cold_scales, hot_w,
+                                     hot_scales, hot_global, x, xs, cold_ids,
+                                     hot_ids, partial, out, cold_global, N, K,
+                                     slots, split, P, hot_parts, stream);
 }

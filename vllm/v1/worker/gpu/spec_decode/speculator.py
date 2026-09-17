@@ -270,8 +270,8 @@ class DraftModelSpeculator(BaseSpeculator):
     ) -> torch.Tensor:
         if draft_logits is not None:
             logits = self.model.compute_logits(hidden_states)
-            # NOTE(woosuk): We must add 1 to the positions to match the Gumbel noise
-            # used for draft and target sampling.
+            # The draft predicts the next position. Use an independent noise
+            # stream: verification may resample from the residual distribution.
             return gumbel_sample(
                 logits,
                 idx_mapping,
@@ -282,6 +282,7 @@ class DraftModelSpeculator(BaseSpeculator):
                 output_processed_logits=draft_logits,
                 output_processed_logits_col=draft_step,
                 use_fp64=self.use_fp64_gumbel,
+                is_drafting=True,
             )
         return self._greedy_sample_draft(hidden_states)
 

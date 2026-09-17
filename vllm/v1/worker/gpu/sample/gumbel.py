@@ -12,6 +12,9 @@ from vllm.triton_utils import HAS_TRITON, tl, tldevice, triton
 # available — on the CPU worker path `tl` is a placeholder whose `constexpr`
 # attribute is `None`, and `tl.constexpr(...)` would crash at import time.
 _TL_RAND_MIN = tl.constexpr(4.6566127342e-10) if HAS_TRITON else 4.6566127342e-10
+# Keep proposal noise independent of rejection's residual sampling. Real
+# positions stay below this offset, so their Philox counter ranges are disjoint.
+_DRAFT_NOISE_SALT = tl.constexpr(1 << 30) if HAS_TRITON else (1 << 30)
 
 
 @triton.jit
@@ -98,6 +101,7 @@ def gumbel_block_argmax(
     APPLY_TEMPERATURE: tl.constexpr,
     USE_FP64: tl.constexpr,
     PER_TOKEN_COL: tl.constexpr = False,
+    IS_DRAFTING: tl.constexpr = False,
 ):
     req_state_idx = tl.load(expanded_idx_mapping_ptr + token_idx).to(tl.int64)
     is_valid_req = req_state_idx >= 0
@@ -136,6 +140,8 @@ def gumbel_block_argmax(
         # Calculate the seed for gumbel noise.
         seed = tl.load(seeds_ptr + req_state_idx, mask=is_valid_req, other=0)
         pos = tl.load(pos_ptr + token_idx)
+        if IS_DRAFTING:
+            pos = pos + _DRAFT_NOISE_SALT
         gumbel_seed = tl.randint(seed, pos)
 
         if USE_FP64:
@@ -178,6 +184,7 @@ def _gumbel_sample_kernel(
     APPLY_TEMPERATURE: tl.constexpr,
     USE_FP64: tl.constexpr,
     PER_TOKEN_COL: tl.constexpr,
+    IS_DRAFTING: tl.constexpr,
 ):
     token_idx = tl.program_id(0).to(tl.int64)
     block_idx = tl.program_id(1)
@@ -206,6 +213,7 @@ def _gumbel_sample_kernel(
         APPLY_TEMPERATURE=APPLY_TEMPERATURE,
         USE_FP64=USE_FP64,
         PER_TOKEN_COL=PER_TOKEN_COL,
+        IS_DRAFTING=IS_DRAFTING,
     )
     token_id = block_idx * BLOCK_SIZE + idx
     tl.store(local_argmax_ptr + token_idx * local_argmax_stride + block_idx, token_id)
@@ -222,6 +230,7 @@ def gumbel_sample(
     output_processed_logits: torch.Tensor | None = None,
     output_processed_logits_col: torch.Tensor | None = None,
     use_fp64: bool = False,
+    is_drafting: bool = False,
 ) -> torch.Tensor:
     # Enforce contiguity on non-strided input tensors
     expanded_idx_mapping = expanded_idx_mapping.contiguous()
@@ -257,6 +266,7 @@ def gumbel_sample(
         APPLY_TEMPERATURE=apply_temperature,
         USE_FP64=use_fp64,
         PER_TOKEN_COL=per_token_col,
+        IS_DRAFTING=is_drafting,
     )
     # NOTE(woosuk): Use int64 for later indexing.
     max_block_idx = local_max.argmax(dim=-1, keepdim=True)

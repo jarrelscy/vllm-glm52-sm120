@@ -1,0 +1,159 @@
+{
+  "checkpoint": "2c88fc41911eaa3b675f1ba950095bba4c16c654",
+  "workloads": {
+    "pangram": {
+      "baseline": {
+        "tps": 145.3722746624001,
+        "ttft_ms": 288.3448200300336,
+        "emitted_per_step": 4.0,
+        "decode_ms_per_draft": 27.515563124325126,
+        "tps_samples": [
+          145.67575816274396,
+          145.3722746624001,
+          145.02783951557362
+        ]
+      },
+      "fp16": {
+        "tps": 143.80349821361585,
+        "ttft_ms": 300.2650123089552,
+        "emitted_per_step": 4.0,
+        "decode_ms_per_draft": 27.815735011245124,
+        "tps_samples": [
+          144.1510575804572,
+          143.80349821361585,
+          143.2804820322799
+        ]
+      },
+      "tps_change_pct": -1.0791441851119354
+    },
+    "counting": {
+      "baseline": {
+        "tps": 116.27976501209356,
+        "ttft_ms": 123.76082316040993,
+        "emitted_per_step": 3.2264150943396226,
+        "decode_ms_per_draft": 27.692916182180245,
+        "tps_samples": [
+          135.79696793103383,
+          108.99853336277033,
+          116.27976501209356
+        ]
+      },
+      "fp16": {
+        "tps": 122.4179973742106,
+        "ttft_ms": 126.7753541469574,
+        "emitted_per_step": 3.4066666666666667,
+        "decode_ms_per_draft": 27.884871748513017,
+        "tps_samples": [
+          122.4179973742106,
+          108.64621598907382,
+          122.73852068355029
+        ]
+      },
+      "tps_change_pct": 5.278848268637826
+    },
+    "prose": {
+      "baseline": {
+        "tps": 88.09698499270647,
+        "ttft_ms": 122.7966770529747,
+        "emitted_per_step": 2.410377358490566,
+        "decode_ms_per_draft": 27.384738570877484,
+        "tps_samples": [
+          86.51316742724161,
+          92.10120743555127,
+          88.09698499270647
+        ]
+      },
+      "fp16": {
+        "tps": 86.00723496786345,
+        "ttft_ms": 123.64835944026709,
+        "emitted_per_step": 2.386046511627907,
+        "decode_ms_per_draft": 27.688314241552074,
+        "tps_samples": [
+          81.92711509546126,
+          91.01237686979042,
+          86.00723496786345
+        ]
+      },
+      "tps_change_pct": -2.3721016389108285
+    },
+    "code": {
+      "baseline": {
+        "tps": 101.08587694489644,
+        "ttft_ms": 126.9455598667264,
+        "emitted_per_step": 2.7923497267759565,
+        "decode_ms_per_draft": 27.630666333260304,
+        "tps_samples": [
+          101.95285426892472,
+          95.51616402949581,
+          101.08587694489644
+        ]
+      },
+      "fp16": {
+        "tps": 96.88647453406351,
+        "ttft_ms": 125.40503405034542,
+        "emitted_per_step": 2.7037037037037037,
+        "decode_ms_per_draft": 27.928944932562963,
+        "tps_samples": [
+          94.22169997792895,
+          96.88647453406351,
+          104.75563229397656
+        ]
+      },
+      "tps_change_pct": -4.1542919127289135
+    }
+  },
+  "identical_outputs": {
+    "warmup": true,
+    "pangram-0": true,
+    "counting-0": false,
+    "prose-0": false,
+    "code-0": false,
+    "pangram-1": true,
+    "counting-1": false,
+    "prose-1": false,
+    "code-1": false,
+    "pangram-2": true,
+    "counting-2": false,
+    "prose-2": false,
+    "code-2": false,
+    "prefill-0": true,
+    "prefill-1": false,
+    "arithmetic": false
+  },
+  "scale_storage": {
+    "original_bytes": 3966566400,
+    "fp16_bytes": 7933132800,
+    "additional_GiB": 3.69415283203125,
+    "additional_GiB_per_TP4_gpu": 0.9235382080078125
+  },
+  "prefill": {
+    "baseline": [
+      {
+        "label": "prefill-0",
+        "prompt_tokens": 7182,
+        "ttft_ms": 7371.634892188013
+      },
+      {
+        "label": "prefill-1",
+        "prompt_tokens": 7182,
+        "ttft_ms": 4828.444931656122
+      }
+    ],
+    "fp16": [
+      {
+        "label": "prefill-0",
+        "prompt_tokens": 7182,
+        "ttft_ms": 7379.129117354751
+      },
+      {
+        "label": "prefill-1",
+        "prompt_tokens": 7182,
+        "ttft_ms": 4866.984655149281
+      }
+    ]
+  },
+  "arithmetic": {
+    "baseline": "323",
+    "fp16": "323"
+  }
+}

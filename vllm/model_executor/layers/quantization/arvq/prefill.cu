@@ -40,13 +40,8 @@ __global__ void arvq_dequant_kernel(const unsigned* packed,
     pair = __funnelshift_r(tile[bit / 32], tile[bit / 32 + 1], bit % 32);
   unsigned first = lut[pair & 255],
            second = lut[256 + ((pair >> 8) & ((1 << RESIDUAL_BITS) - 1))];
-  unsigned scale =
-      scales[((int64_t)(row / 16) * (K / 128) + col / 128) * 16 + row % 16];
-  unsigned exponent = (scale >> 3) & 15, mantissa = scale & 7;
-  float block_scale =
-      exponent == 0
-          ? mantissa * 0x1p-9f
-          : (1.f + mantissa * .125f) * __uint_as_float((exponent + 120) << 23);
+  float block_scale = __half2float(reinterpret_cast<const half*>(
+      scales)[((int64_t)(row / 16) * (K / 128) + col / 128) * 16 + row % 16]);
   uint16_t values[8];
 #pragma unroll
   for (int i = 0; i < 4; i++) {
@@ -69,7 +64,7 @@ __global__ void arvq_dequant_kernel(const unsigned* packed,
 }
 
 // One expert: packed u32[N/16,K/64,60]+1 readable guard;
-// codebooks u32[384], scales u8[N/16,K/128,16], output bf16[N,K].
+// codebooks u32[384], scales f16[N/16,K/128,16], output bf16[N,K].
 extern "C" int arvq_dequant(const void* packed, const void* codebooks,
                             const void* scales, float global, void* output,
                             int N, int K, void* stream) {

@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
+// FP16 cold weight-scale experiment: incompatible with uint8 cold scale
+// buffers.
 #include <cuda_runtime.h>
 #include <cuda_fp16.h>
 #include <stdint.h>
@@ -94,12 +96,18 @@ __global__ void hybrid_kernel(const unsigned* cw, const unsigned* cb,
           a[j] = lut[pair & 255];
           r[j] = lut[256 + ((pair >> 8) & ((1 << RESIDUAL_BITS) - 1))];
         }
-        int row = q + 8 * (c & 1);
-        sa = cs[(((long long)cold_e * (N / 16) + tile) * (G / 2) + g / 2) * 16 +
-                row] *
-             0x1010101u;
-        mma(d0, d1, d2, d3, a[0], a[1], a[2], a[3], b0, b1, sa, sb);
-        mma(d0, d1, d2, d3, r[0], r[1], r[2], r[3], b0, b1, sa, sb);
+        long long si =
+            (((long long)cold_e * (N / 16) + tile) * (G / 2) + g / 2) * 16;
+        const half* fs = reinterpret_cast<const half*>(cs);
+        float s0 = __half2float(fs[si + q]);
+        float s1 = __half2float(fs[si + q + 8]);
+        float t0 = 0, t1 = 0, t2 = 0, t3 = 0;
+        mma(t0, t1, t2, t3, a[0], a[1], a[2], a[3], b0, b1, 0x38383838u, sb);
+        mma(t0, t1, t2, t3, r[0], r[1], r[2], r[3], b0, b1, 0x38383838u, sb);
+        d0 = fmaf(t0, s0, d0);
+        d1 = fmaf(t1, s0, d1);
+        d2 = fmaf(t2, s1, d2);
+        d3 = fmaf(t3, s1, d3);
       } else {
 #pragma unroll
         for (int j = 0; j < 4; j++)
@@ -141,7 +149,7 @@ __global__ void hybrid_reduce(const float* p, float* y, const int* cold_ids,
 }
 // C ABI (12pointers, float, 6ints, stream):
 // cold_w:u32 [Ec,N/16,K/64,60]+1guard; cold_cb:u32[384];
-// cold_scales:u8[Ec,N/16,K/128,16];
+// EXPERIMENTAL: cold_scales:f16[Ec,N/16,K/128,16];
 // hot_w:u32[Eh,N/16,K/64,4,32]; hot_scales:u32[Eh,N,K/64];
 // hot_global:f32[Eh,hot_parts] (hot_parts=2 gate/up or1down);
 // x:u32[slots,P,K/8]; xs:u8[slots,P,K/16] aliasu32[slots,P,K/64];

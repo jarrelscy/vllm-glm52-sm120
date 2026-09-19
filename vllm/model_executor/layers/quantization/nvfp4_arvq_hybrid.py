@@ -532,6 +532,16 @@ class ArvqExpertsMoEMethod(TPHybridExpertsMoEMethod):
             packed.data = guarded
             cb = getattr(layer, f"arvq_{proj}_codebooks")
             cs = getattr(layer, f"arvq_{proj}_scales")
+            if cs.dtype != torch.uint8:
+                raise ValueError("FP16 scale trial expects original uint8 ARVQ scales")
+            if bool((cs >= 127).any().item()):
+                raise ValueError("FP16 scale trial encountered invalid unsigned E4M3")
+            cs.data = cs.view(torch.float8_e4m3fn).to(torch.float16)
+            print(
+                f"ARVQ_FP16_SCALES projection={proj} shape={tuple(cs.shape)} "
+                f"elements={cs.numel()} dtype={cs.dtype}",
+                flush=True,
+            )
             hw = getattr(layer, f"nvfp4_{proj}_packed")
             e, n, k2 = hw.shape
             k = k2 * 2

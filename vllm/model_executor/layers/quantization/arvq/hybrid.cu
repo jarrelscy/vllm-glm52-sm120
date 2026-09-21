@@ -53,20 +53,30 @@ extern "C" int hybrid_pack(const void* x, void* q, void* s, int K, int slots,
 }
 // Routes must be disjoint: cold_ids[slot]>=0 XOR hot_ids[slot]>=0.
 // A slot with bothnegative is defined as zero; with bothpositive cold wins.
-template <int RESIDUAL_BITS, bool EXPERT_BOOKS = false>
+// RESIDUAL_BOOKS > 1 (mcbook16): the codebook carries one base book plus
+// RESIDUAL_BOOKS residual books of 2^RESIDUAL_BITS atoms each. A per-tile
+// uint8 selector `sel[e, N/16, K/64]` picks the residual book, and its atoms
+// contribute scaled by book_factors[selector] (FP32, exact via a separate
+// residual accumulator; base-book math is unchanged).
+template <int RESIDUAL_BITS, bool EXPERT_BOOKS = false, int RESIDUAL_BOOKS = 1>
 __global__ void hybrid_kernel(const unsigned* cw, const unsigned* cb,
                               const unsigned char* cs, const unsigned* hw,
                               const unsigned* hs, const unsigned* x,
                               const unsigned* xs, const int* cold_ids,
                               const int* hot_ids, float* partial, int N, int G,
-                              int S, int P) {
-  constexpr int LUT_SIZE = 256 + (1 << RESIDUAL_BITS);
+                              int S, int P, const unsigned char* sel = nullptr,
+                              const float* bf = nullptr) {
+  constexpr int LUT_SIZE = 256 + RESIDUAL_BOOKS * (1 << RESIDUAL_BITS);
   __shared__ unsigned lut[LUT_SIZE];
+  __shared__ float factors[RESIDUAL_BOOKS];
   int slot = blockIdx.z, cold_e = cold_ids[slot], hot_e = hot_ids[slot];
   bool cold = cold_e >= 0;
   if (cold) {
     if constexpr (EXPERT_BOOKS) cb += (long long)cold_e * LUT_SIZE;
     for (int i = threadIdx.x; i < LUT_SIZE; i += blockDim.x) lut[i] = cb[i];
+    if constexpr (RESIDUAL_BOOKS > 1)
+      for (int i = threadIdx.x; i < RESIDUAL_BOOKS; i += blockDim.x)
+        factors[i] = bf[i];
     __syncthreads();
   }
   int lane = threadIdx.x & 31, q = lane / 4, c = lane % 4,
@@ -84,6 +94,9 @@ __global__ void hybrid_kernel(const unsigned* cw, const unsigned* cb,
         const unsigned* w =
             cw + (((long long)cold_e * (N / 16) + tile) * G + g) *
                      (4 * (8 + RESIDUAL_BITS));
+        unsigned m = 0;
+        if constexpr (RESIDUAL_BOOKS > 1)
+          m = sel[((long long)cold_e * (N / 16) + tile) * G + g];
 #pragma unroll
         for (int j = 0; j < 4; j++) {
           int bit = (j * 32 + lane) * (8 + RESIDUAL_BITS), word = bit / 32,
@@ -94,7 +107,8 @@ __global__ void hybrid_kernel(const unsigned* cw, const unsigned* cb,
           else
             pair = __funnelshift_r(w[word], w[word + 1], shift);
           a[j] = lut[pair & 255];
-          r[j] = lut[256 + ((pair >> 8) & ((1 << RESIDUAL_BITS) - 1))];
+          r[j] = lut[256 + (m << RESIDUAL_BITS) +
+                     ((pair >> 8) & ((1 << RESIDUAL_BITS) - 1))];
         }
         long long si =
             (((long long)cold_e * (N / 16) + tile) * (G / 2) + g / 2) * 16;
@@ -103,7 +117,19 @@ __global__ void hybrid_kernel(const unsigned* cw, const unsigned* cb,
         float s1 = __half2float(fs[si + q + 8]);
         float t0 = 0, t1 = 0, t2 = 0, t3 = 0;
         mma(t0, t1, t2, t3, a[0], a[1], a[2], a[3], b0, b1, 0x38383838u, sb);
-        mma(t0, t1, t2, t3, r[0], r[1], r[2], r[3], b0, b1, 0x38383838u, sb);
+        if constexpr (RESIDUAL_BOOKS > 1) {
+          // Residual accumulated separately, then weighted by its book's
+          // factor in FP32: exact for arbitrary per-book factors.
+          float u0 = 0, u1 = 0, u2 = 0, u3 = 0;
+          mma(u0, u1, u2, u3, r[0], r[1], r[2], r[3], b0, b1, 0x38383838u, sb);
+          float f = factors[m];
+          t0 = fmaf(u0, f, t0);
+          t1 = fmaf(u1, f, t1);
+          t2 = fmaf(u2, f, t2);
+          t3 = fmaf(u3, f, t3);
+        } else {
+          mma(t0, t1, t2, t3, r[0], r[1], r[2], r[3], b0, b1, 0x38383838u, sb);
+        }
         d0 = fmaf(t0, s0, d0);
         d1 = fmaf(t1, s0, d1);
         d2 = fmaf(t2, s1, d2);
@@ -156,25 +182,28 @@ __global__ void hybrid_reduce(const float* p, float* y, const int* cold_ids,
 // cold_ids/hot_ids:i32[slots]; partial:f32[slots,N,split]; out:f32[slots,N].
 // cold_global:f32; N,K,slots,split,P,hot_parts:int; CUDAstream:void*.
 // N%16=0,K%128=0,P=1or4,hot_parts=1or2, split>0.
-template <int RESIDUAL_BITS, bool EXPERT_BOOKS = false>
+template <int RESIDUAL_BITS, bool EXPERT_BOOKS = false, int RESIDUAL_BOOKS = 1>
 int hybrid_launch_impl(const void* cold_w, const void* cold_cb,
                        const void* cold_scales, const void* hot_w,
                        const void* hot_scales, const void* hot_global,
                        const void* x, const void* xs, const void* cold_ids,
                        const void* hot_ids, void* partial, void* out,
                        float cold_global, int N, int K, int slots, int split,
-                       int P, int hot_parts, void* stream) {
+                       int P, int hot_parts, void* stream,
+                       const void* selectors = nullptr,
+                       const void* book_factors = nullptr) {
   if (N <= 0 || N % 16 || K <= 0 || K % 128 || slots <= 0 || split <= 0 ||
       (P != 1 && P != 4) || (hot_parts != 1 && hot_parts != 2))
     return (int)cudaErrorInvalidValue;
   cudaStream_t s = (cudaStream_t)stream;
-  hybrid_kernel<RESIDUAL_BITS, EXPERT_BOOKS>
+  hybrid_kernel<RESIDUAL_BITS, EXPERT_BOOKS, RESIDUAL_BOOKS>
       <<<dim3((N + 63) / 64, split, slots), 128, 0, s>>>(
           (const unsigned*)cold_w, (const unsigned*)cold_cb,
           (const unsigned char*)cold_scales, (const unsigned*)hot_w,
           (const unsigned*)hot_scales, (const unsigned*)x, (const unsigned*)xs,
           (const int*)cold_ids, (const int*)hot_ids, (float*)partial, N, K / 64,
-          split, P);
+          split, P, (const unsigned char*)selectors,
+          (const float*)book_factors);
   cudaError_t err = cudaGetLastError();
   if (err != cudaSuccess) return (int)err;
   hybrid_reduce<<<((long long)slots * N + 255) / 256, 256, 0, s>>>(
@@ -226,4 +255,26 @@ extern "C" int hybrid_launch_8x8_expert(
                                      hot_scales, hot_global, x, xs, cold_ids,
                                      hot_ids, partial, out, cold_global, N, K,
                                      slots, split, P, hot_parts, stream);
+}
+
+// v5 mcbook16 (rvq256_mb16_256x8_expert_fp16block):
+// cold_cb u32[Ec,4352] (rows 0-255 base book, rows 256+m*256..256+(m+1)*256
+// residual book m, m in 0..15); selectors u8[Ec,N/16,K/64] pick the residual
+// book per packed tile; book_factors f32[16] scale that book's contribution.
+// Reconstruction per 8-weight group:
+//   w = global * fp16_block_scale * (c0[main] + book_factors[m] * c_m[res]).
+// All other arguments match hybrid_launch_8x8_expert; the two extra pointers
+// trail the stream.
+extern "C" int hybrid_launch_8x8_expert_mb16(
+    const void* cold_w, const void* cold_cb, const void* cold_scales,
+    const void* hot_w, const void* hot_scales, const void* hot_global,
+    const void* x, const void* xs, const void* cold_ids, const void* hot_ids,
+    void* partial, void* out, float cold_global, int N, int K, int slots,
+    int split, int P, int hot_parts, void* stream, const void* selectors,
+    const void* book_factors) {
+  if (!selectors || !book_factors) return (int)cudaErrorInvalidValue;
+  return hybrid_launch_impl<8, true, 16>(
+      cold_w, cold_cb, cold_scales, hot_w, hot_scales, hot_global, x, xs,
+      cold_ids, hot_ids, partial, out, cold_global, N, K, slots, split, P,
+      hot_parts, stream, selectors, book_factors);
 }

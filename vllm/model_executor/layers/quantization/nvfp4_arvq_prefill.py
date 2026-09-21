@@ -32,13 +32,44 @@ def _sort_native_prefill_enabled():
     )
 
 
-def dequantize_cold(packed, codebooks, scales, global_scale, n, k, dtype=torch.float16):
-    """Decode one expert into an ephemeral 16-bit [N,K] matrix."""
-    from vllm.model_executor.layers.quantization.nvfp4_arvq_hybrid import _layout
+def dequantize_cold(
+    packed,
+    codebooks,
+    scales,
+    global_scale,
+    n,
+    k,
+    dtype=torch.float16,
+    selectors=None,
+    book_factors=None,
+):
+    """Decode one expert into an ephemeral 16-bit [N,K] matrix.
+
+    mcbook16 experts additionally take one expert's per-tile residual-book
+    selectors u8[N/16,K/64] and the shared book_factors f32[16].
+    """
+    from vllm.model_executor.layers.quantization.nvfp4_arvq_hybrid import (
+        _MB16_BOOKS,
+        _MB16_ENTRIES,
+        _layout,
+    )
 
     words, entries = _layout(codebooks)
     if codebooks.ndim != 1:
         raise ValueError("Select one cold slot's codebooks before prefill decode")
+    if (entries == _MB16_ENTRIES) != (selectors is not None):
+        raise ValueError("mcbook16 codebooks require selectors, and vice versa")
+    if selectors is not None:
+        if (
+            book_factors is None
+            or tuple(selectors.shape) != (n // 16, k // 64)
+            or selectors.dtype != torch.uint8
+            or not selectors.is_contiguous()
+            or book_factors.numel() != _MB16_BOOKS
+            or book_factors.dtype != torch.float32
+            or not book_factors.is_contiguous()
+        ):
+            raise ValueError("Invalid mcbook16 selectors/book_factors layout")
     required = (n // 16) * (k // 64) * words + (entries == 384)
     if n <= 0 or k <= 0 or n % 16 or k % 128 or packed.numel() < required:
         raise ValueError("Invalid ARVQ prefill packed layout")
@@ -69,17 +100,22 @@ def dequantize_cold(packed, codebooks, scales, global_scale, n, k, dtype=torch.f
 
     pointer = lambda tensor: ctypes.c_void_p(tensor.data_ptr())
     name = "arvq_dequant_fp16" if dtype == torch.float16 else "arvq_dequant"
-    if entries == 512:
+    if entries in (512, _MB16_ENTRIES):
         name += "_8x8"
+    if entries == _MB16_ENTRIES:
+        name += "_mb16"
     try:
         decoder = getattr(_LIB, name)
     except AttributeError as missing_symbol:
         raise RuntimeError(
             f"Missing {name}; rebuild arvq/build_prefill.sh for ARVQ 8+8"
         ) from missing_symbol
-    decoder.argtypes = _LIB.arvq_dequant.argtypes
+    decoder.argtypes = _LIB.arvq_dequant.argtypes + (
+        [ctypes.c_void_p] * 2 if name.endswith("_mb16") else []
+    )
     decoder.restype = ctypes.c_int
     output = torch.empty((n, k), device=packed.device, dtype=dtype)
+    trailing = () if selectors is None else (pointer(selectors), pointer(book_factors))
     error = decoder(
         pointer(packed),
         pointer(codebooks),
@@ -89,6 +125,7 @@ def dequantize_cold(packed, codebooks, scales, global_scale, n, k, dtype=torch.f
         n,
         k,
         ctypes.c_void_p(torch.cuda.current_stream().cuda_stream),
+        *trailing,
     )
     if error:
         raise RuntimeError(f"ARVQ prefill weight decode failed with CUDA error {error}")
@@ -118,9 +155,10 @@ def grouped_cold_prefill(
     n13 = tensors[3].shape[1] * 16
 
     def decode(name, expert):
-        offset = 0 if name == "w13" else 6
+        offset = 0 if name == "w13" else 8
         n, k = (n13, hidden) if offset == 0 else (hidden, n13 // 2)
         packed, codebooks, scales = tensors[offset : offset + 3]
+        selectors, book_factors = tensors[offset + 6], tensors[offset + 7]
         from vllm.model_executor.layers.quantization.nvfp4_arvq_hybrid import (
             _expert_codebooks,
             _layout,
@@ -135,9 +173,11 @@ def grouped_cold_prefill(
             packed.reshape(-1)[expert * words : expert * words + words + 1],
             codebooks,
             scales[expert],
-            alphas[offset // 6],
+            alphas[0 if offset == 0 else 1],
             n,
             k,
+            selectors=selectors[expert] if selectors.numel() else None,
+            book_factors=book_factors if selectors.numel() else None,
         )
 
     ids = lookups[:, topk_ids.reshape(-1).long()]
@@ -209,9 +249,13 @@ def grouped_cold_prefill(
 
         # CPU-known upper bound: avoid candidate kernels when too few hot
         # routes can qualify (including all-cold and tiny-hot controls).
+        # The paired/wide diagnostic libraries have no mcbook16 decode, so
+        # pairing stays off whenever either projection carries selectors.
         if (
             os.environ.get("VLLM_ARVQ_PAIRED_HOT_PREFILL", "0") == "1"
             and slots - cold_slots.numel() >= 512
+            and tensors[6].numel() == 0
+            and tensors[14].numel() == 0
         ):
             paired_batches = partition(batches, tokens, hot_ids, native_cold)
         else:
@@ -260,18 +304,23 @@ def grouped_cold_prefill(
                         active_projection = paired_runtime.PairedHot()
                 else:
                     active_projection = projection
+                # Paired/wide runtimes take the classic 6-tensor groups (they
+                # never see mcbook16 layers); _projection takes the 8-wide
+                # groups carrying selectors/book_factors.
+                g13 = tensors[:6] if use_pairs else tensors[:8]
+                g2 = tensors[8:14] if use_pairs else tensors[8:]
                 h13 = active_projection(
-                    xr, cold, hot, tensors[:6], alphas[0], n13, split, 2
+                    xr, cold, hot, g13, alphas[0], n13, split, 2
                 ).half()
                 gate, up = h13.chunk(2, dim=-1)
                 act = (torch.nn.functional.silu(gate) * up).half()
                 if inverse is None:
                     routed[route_slots] = active_projection(
-                        act, cold, hot, tensors[6:], alphas[1], hidden, 2, 1
+                        act, cold, hot, g2, alphas[1], hidden, 2, 1
                     )
                 else:
                     native_out = active_projection(
-                        act, cold, hot, tensors[6:], alphas[1], hidden, 2, 1
+                        act, cold, hot, g2, alphas[1], hidden, 2, 1
                     )
                     direct_output.scatter(routed, route_slots, native_out, inverse)
                     del native_out
@@ -311,7 +360,7 @@ def grouped_cold_prefill(
                 and n13 == 1024
                 and x.dtype == torch.bfloat16
                 and x.is_contiguous()
-                and tensors[1].shape[-1] == 512
+                and tensors[1].shape[-1] in (512, 4352)
             ):
                 from vllm.model_executor.layers.quantization import (
                     nvfp4_arvq_cold_gather as cold_gather,
@@ -323,6 +372,7 @@ def grouped_cold_prefill(
 
                 words_per_tile, _ = _layout(tensors[1])
                 words = (n13 // 16) * (hidden // 64) * words_per_tile
+                sel13 = tensors[6]
                 rows, w13 = cold_gather.decode_gather(
                     x,
                     route_slots,
@@ -333,6 +383,8 @@ def grouped_cold_prefill(
                     n13,
                     hidden,
                     top_k,
+                    selectors=sel13[expert] if sel13.numel() else None,
+                    book_factors=tensors[7] if sel13.numel() else None,
                 )
             else:
                 rows = x[route_slots // top_k].to(torch.float16)
@@ -421,7 +473,7 @@ def _native_prefill_routes(
             xr,
             cold,
             hot,
-            tensors[:6],
+            tensors[:8],
             alphas[0],
             n13,
             16 if xr.shape[0] <= 32 else 8,
@@ -433,7 +485,7 @@ def _native_prefill_routes(
             act,
             cold,
             hot,
-            tensors[6:],
+            tensors[8:],
             alphas[1],
             hidden,
             2,

@@ -99,3 +99,45 @@ submitted. Checkpoint files were not modified; conversion happens during load.
 
 Numeric measurements are in `fullmodel_results.json` and
 `projection_results.json`.
+
+## mcbook16: selectable residual books (`rvq256_mb16_256x8_expert_fp16block`, v5)
+
+Extension of the FP16 block-scale format with sixteen residual books per
+expert instead of one. Per layer, per projection:
+
+- `codebooks`: `u32[E, 4352]` — rows 0-255 are the base book (unchanged);
+  rows `256 + m*256 .. 256 + (m+1)*256` are residual book `m` for `m` in
+  0..15, nibble-encoded on the same plain e2m1 grid.
+- `book_factors`: `f32[16]` — the effective residual atom is
+  `LUT(nibbles) * book_factors[m]`. Loaded from the checkpoint, never
+  hardcoded (the current campaign uses `[1.0]*8 + [0.25]*8`).
+- `selectors`: `u8[E, N/16, K/64]`, values 0-15 — one residual-book id per
+  packed tile, indexed identically to the first three dims of `packed`.
+- `packed`, `scales`, `global`: unchanged from the FP16 block-scale format.
+
+Reconstruction per 8-weight group in tile `(i, j)` with
+`m = selectors[e, i, j]`:
+
+```text
+w_group = global * fp16_block_scale * (c0[main] + book_factors[m] * c_m[res])
+```
+
+Serving implementation:
+
+- Per-LAYER format detection: a projection decodes as mcbook16 exactly when
+  the checkpoint provides its `arvq_{proj}_selectors` tensor; without it the
+  untouched v4 path runs, so mid-campaign mixed checkpoints load. The config
+  marker is `format = "rvq256_mb16_256x8_expert_fp16block"`, `version` 5,
+  `codebook_scope = "expert"`.
+- `hybrid.so`: `hybrid_launch_8x8_expert_mb16` grows the shared-memory LUT
+  from 512 to 4352 words (17.4 KiB static smem) plus the 16 factors; the
+  residual MMA accumulates separately and is weighted by `book_factors[m]`
+  in FP32 (exact for arbitrary factors, 4 extra FMAs per tile-group step).
+  The selector costs one uint8 read per tile per K-group.
+- `prefill.so`: `arvq_dequant{,_fp16}_8x8_mb16`; `decode_gather.so`:
+  `arvq_dequant_gather_fp16_8_mb16`. Residual half2 is weighted by the
+  book's factor in FP32 before the add. Selector/factor pointers trail the
+  original argument lists. Rebuild all three libraries together.
+- The paired/wide diagnostic prefill runtimes (`VLLM_ARVQ_PAIRED_HOT_PREFILL`)
+  have no mcbook16 decode; pairing is automatically disabled on layers that
+  carry selectors.

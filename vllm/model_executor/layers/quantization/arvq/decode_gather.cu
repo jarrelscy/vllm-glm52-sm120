@@ -112,12 +112,17 @@ extern "C" int arvq_dequant_fp16_8x8(const void* packed, const void* codebooks,
   return (int)cudaGetLastError();
 }
 
-template <bool FP16, int RESIDUAL_BITS>
+// RESIDUAL_BOOKS > 1 (mcbook16): codebooks hold one base book plus
+// RESIDUAL_BOOKS residual books of 2^RESIDUAL_BITS atoms each; a per-tile
+// uint8 selector picks the residual book and book_factors[selector] weights
+// its contribution (applied in FP32, exact for arbitrary factors).
+template <bool FP16, int RESIDUAL_BITS, int RESIDUAL_BOOKS = 1>
 __global__ void arvq_dequant_gather_kernel(
     const unsigned* packed, const unsigned* codebooks,
     const unsigned char* scales, float global, void* output, int N, int K,
     const __nv_bfloat16* x, const int64_t* routes, __half* rows, int M,
-    int top_k, int weight_blocks) {
+    int top_k, int weight_blocks, const unsigned char* sel = nullptr,
+    const float* bf = nullptr) {
   // Extra CTAs perform pure gather+BF16->FP16 cast. Weight decode below is
   // byte-for-byte source-identical; existing GEMM shapes and strides unchanged.
   if (blockIdx.x >= weight_blocks) {
@@ -134,10 +139,14 @@ __global__ void arvq_dequant_gather_kernel(
     reinterpret_cast<uint4*>(rows)[index] = *reinterpret_cast<uint4*>(values);
     return;
   }
-  constexpr int LUT_SIZE = 256 + (1 << RESIDUAL_BITS);
+  constexpr int LUT_SIZE = 256 + RESIDUAL_BOOKS * (1 << RESIDUAL_BITS);
   __shared__ unsigned lut[LUT_SIZE];
+  __shared__ float factors[RESIDUAL_BOOKS];
   for (int i = threadIdx.x; i < LUT_SIZE; i += blockDim.x)
     lut[i] = codebooks[i];
+  if constexpr (RESIDUAL_BOOKS > 1)
+    for (int i = threadIdx.x; i < RESIDUAL_BOOKS; i += blockDim.x)
+      factors[i] = bf[i];
   __syncthreads();
   int64_t index = (int64_t)blockIdx.x * blockDim.x + threadIdx.x;
   if (index >= (int64_t)N * (K / 8)) return;
@@ -152,8 +161,13 @@ __global__ void arvq_dequant_gather_kernel(
     pair = tile[bit / 32] >> (bit % 32);
   else
     pair = __funnelshift_r(tile[bit / 32], tile[bit / 32 + 1], bit % 32);
+  unsigned m = 0;
+  if constexpr (RESIDUAL_BOOKS > 1)
+    m = sel[(int64_t)(row / 16) * G + col / 64];
   unsigned first = lut[pair & 255],
-           second = lut[256 + ((pair >> 8) & ((1 << RESIDUAL_BITS) - 1))];
+           second = lut[256 + m * (1 << RESIDUAL_BITS) +
+                        ((pair >> 8) & ((1 << RESIDUAL_BITS) - 1))];
+  float factor = RESIDUAL_BOOKS > 1 ? factors[m] : 1.f;
   float block_scale = __half2float(reinterpret_cast<const half*>(
       scales)[((int64_t)(row / 16) * (K / 128) + col / 128) * 16 + row % 16]);
   uint16_t values[8];
@@ -163,7 +177,13 @@ __global__ void arvq_dequant_gather_kernel(
         (__nv_fp4x2_storage_t)(first >> (8 * i)), __NV_E2M1));
     __half2 b = static_cast<__half2>(__nv_cvt_fp4x2_to_halfraw2(
         (__nv_fp4x2_storage_t)(second >> (8 * i)), __NV_E2M1));
-    float2 value = __half22float2(__hadd2(a, b));
+    float2 value;
+    if constexpr (RESIDUAL_BOOKS > 1) {
+      float2 av = __half22float2(a), bv = __half22float2(b);
+      value = make_float2(fmaf(factor, bv.x, av.x), fmaf(factor, bv.y, av.y));
+    } else {
+      value = __half22float2(__hadd2(a, b));
+    }
     float scaled_x = value.x * block_scale * global;
     float scaled_y = value.y * block_scale * global;
     if constexpr (FP16) {
@@ -208,5 +228,29 @@ extern "C" int arvq_dequant_gather_fp16_8(
           (const unsigned char*)scales, global, weight, N, K,
           (const __nv_bfloat16*)x, (const int64_t*)routes, (__half*)rows, M,
           top_k, wb);
+  return (int)cudaGetLastError();
+}
+
+// v5 mcbook16 (rvq256_mb16_256x8_expert_fp16block): one expert's
+// codebooks u32[4352] (base book + 16 residual books), selectors
+// u8[N/16,K/64] pick the residual book per tile, book_factors f32[16] weight
+// its atoms. Extra pointers trail the original argument list.
+extern "C" int arvq_dequant_gather_fp16_8_mb16(
+    const void* packed, const void* codebooks, const void* scales, float global,
+    void* weight, int N, int K, void* stream, const void* x, const void* routes,
+    void* rows, int M, int top_k, const void* selectors,
+    const void* book_factors) {
+  if (N <= 0 || K <= 0 || N % 16 || K % 128 || M < 0 || top_k <= 0 ||
+      !selectors || !book_factors)
+    return (int)cudaErrorInvalidValue;
+  int wb = ((int64_t)N * (K / 8) + 255) / 256;
+  int rb = ((int64_t)M * (K / 8) + 255) / 256;
+  arvq_dequant_gather_kernel<true, 8, 16>
+      <<<wb + rb, 256, 0, (cudaStream_t)stream>>>(
+          (const unsigned*)packed, (const unsigned*)codebooks,
+          (const unsigned char*)scales, global, weight, N, K,
+          (const __nv_bfloat16*)x, (const int64_t*)routes, (__half*)rows, M,
+          top_k, wb, (const unsigned char*)selectors,
+          (const float*)book_factors);
   return (int)cudaGetLastError();
 }

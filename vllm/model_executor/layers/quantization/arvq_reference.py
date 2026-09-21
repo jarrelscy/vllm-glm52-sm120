@@ -73,16 +73,34 @@ def activation_planes(x, planes=4):
     return result.reshape(x.shape)
 
 
-def cold_rows(packed, codebooks, scales, n, k, expert, first=0, stop=None):
-    """Decode physical tiled 8+7/8+8 storage into ordinary FP32 matrix rows."""
+def cold_rows(
+    packed,
+    codebooks,
+    scales,
+    n,
+    k,
+    expert,
+    first=0,
+    stop=None,
+    selectors=None,
+    book_factors=None,
+):
+    """Decode physical tiled 8+7/8+8 storage into ordinary FP32 matrix rows.
+
+    mcbook16 (4352-entry expert codebooks): selectors [E, N/16, K/64] pick one
+    of 16 residual books per tile and book_factors [16] weight its atoms.
+    """
     stop = n if stop is None else stop
     from vllm.model_executor.layers.quantization.nvfp4_arvq_hybrid import (
         _expert_codebooks,
     )
 
     codebooks = _expert_codebooks(codebooks, expert)
-    if codebooks.numel() not in (384, 512) or n % 16 or k % 128:
+    if codebooks.numel() not in (384, 512, 4352) or n % 16 or k % 128:
         raise ValueError("Invalid ARVQ layout")
+    mb16 = codebooks.numel() == 4352
+    if mb16 != (selectors is not None) or (mb16 and book_factors is None):
+        raise ValueError("mcbook16 codebooks require selectors and book_factors")
     bits = 15 if codebooks.numel() == 384 else 16
     device = packed.device
     row = torch.arange(first, stop, device=device)[:, None]
@@ -99,10 +117,17 @@ def cold_rows(packed, codebooks, scales, n, k, expert, first=0, stop=None):
         pair |= (storage[word + 1].long() & 0xFFFFFFFF) << (32 - bit % 32)
     cb = codebooks.flatten().long() & 0xFFFFFFFF
     a = cb[pair & 255]
-    b = cb[256 + ((pair >> 8) & ((1 << (bits - 8)) - 1))]
+    residual = (pair >> 8) & ((1 << (bits - 8)) - 1)
+    if mb16:
+        m = selectors[expert, row // 16, col // 64].long()
+        b = cb[256 + m * 256 + residual]
+        factor = book_factors.float()[m][..., None]
+    else:
+        b = cb[256 + residual]
+        factor = 1.0
     shifts = torch.arange(8, device=device) * 4
     values = fp4((a[..., None] >> shifts) & 15)
-    values += fp4((b[..., None] >> shifts) & 15)
+    values += fp4((b[..., None] >> shifts) & 15) * factor
     block = scales.reshape(-1, n // 16, k // 128, 16)
     scale = e4m3(block[expert, row // 16, col // 128, row % 16])
     return (values * scale[..., None]).reshape(stop - first, k)
@@ -127,7 +152,11 @@ def hot_rows(packed, scales, n, k, expert, first=0, stop=None):
 def projection(x, cold_ids, hot_ids, tensors, alpha, n, split=1, hot_parts=1):
     """Drop-in eager projection reference with bounded temporary weight storage."""
     del split
-    cw, cb, cs, hw, hs, hg = tensors
+    cw, cb, cs, hw, hs, hg = tensors[:6]
+    # 8-wide groups append mcbook16 selectors/book_factors (zero-element
+    # placeholders on v4 projections).
+    sel = tensors[6] if len(tensors) > 6 and tensors[6].numel() else None
+    fac = tensors[7] if sel is not None else None
     k = x.shape[-1]
     activation = activation_planes(x)
     out = torch.zeros((x.shape[0], n), device=x.device, dtype=torch.float32)
@@ -140,7 +169,10 @@ def projection(x, cold_ids, hot_ids, tensors, alpha, n, split=1, hot_parts=1):
             for first in range(0, n, 1024):
                 stop = min(first + 1024, n)
                 if cold:
-                    weights = cold_rows(cw, cb, cs, n, k, expert, first, stop)
+                    weights = cold_rows(
+                        cw, cb, cs, n, k, expert, first, stop,
+                        selectors=sel, book_factors=fac,
+                    )
                     scale = alpha
                 else:
                     weights = hot_rows(hw, hs, n, k, expert, first, stop)

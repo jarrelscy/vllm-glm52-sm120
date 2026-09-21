@@ -58,26 +58,39 @@ def _kernels():
 
 
 _EXPERT_FORMAT = "rvq256_256x8_expert"
+# v5 mcbook16: rows 0-255 base book; rows 256+m*256..256+(m+1)*256 residual
+# book m for m in 0..15. Per packed tile a uint8 selector picks the residual
+# book, whose atoms contribute scaled by book_factors[m] (f32[16]).
+_MB16_FORMAT = "rvq256_mb16_256x8_expert_fp16block"
+_MB16_BOOKS = 16
+_MB16_ENTRIES = 256 + _MB16_BOOKS * 256
 _FORMATS = {
     "rvq256_128x8": (60, 384),
     "rvq256_256x8": (64, 512),
     _EXPERT_FORMAT: (64, 512),
+    _MB16_FORMAT: (64, 512),
 }
 
 
 def _layout(codebooks):
-    if codebooks.ndim == 1 and codebooks.shape[0] in (384, 512):
+    if codebooks.ndim == 1 and codebooks.shape[0] in (384, 512, _MB16_ENTRIES):
         entries = codebooks.shape[0]
-    elif codebooks.ndim == 2 and codebooks.shape[1] == 512:
-        entries = 512
+    elif codebooks.ndim == 2 and codebooks.shape[1] in (512, _MB16_ENTRIES):
+        entries = codebooks.shape[1]
     else:
         raise ValueError(
             f"Invalid ARVQ codebook size/shape {tuple(codebooks.shape)}; "
-            "expected [384], [512], or expert [E,512]"
+            f"expected [384], [512], [{_MB16_ENTRIES}], or expert "
+            f"[E,512]/[E,{_MB16_ENTRIES}]"
         )
     if not codebooks.is_contiguous():
         raise ValueError("ARVQ codebooks must be contiguous")
     return (60 if entries == 384 else 64), entries
+
+
+def _is_mb16(codebooks):
+    """mcbook16 codebooks carry 16 residual books after the base book."""
+    return codebooks.shape[-1] == _MB16_ENTRIES
 
 
 def _expert_codebooks(codebooks, cold_slot):
@@ -92,11 +105,17 @@ def _launch_for_codebooks(lib, codebooks):
     symbol = "hybrid_launch_8x8"
     if codebooks.ndim == 2:
         symbol += "_expert"
+        if entries == _MB16_ENTRIES:
+            symbol += "_mb16"
+    elif entries == _MB16_ENTRIES:
+        raise ValueError("mcbook16 requires per-expert [E,4352] codebooks")
     try:
         launch = getattr(lib, symbol)
     except AttributeError as error:
         raise RuntimeError(f"ARVQ requires {symbol}; rebuild arvq/build.sh") from error
-    launch.argtypes = lib.hybrid_launch.argtypes
+    launch.argtypes = lib.hybrid_launch.argtypes + (
+        [ctypes.c_void_p] * 2 if symbol.endswith("_mb16") else []
+    )
     launch.restype = ctypes.c_int
     return launch
 
@@ -110,6 +129,19 @@ def _check(err):
         raise RuntimeError(f"ARVQ CUDA kernel launch failed with error {err}")
 
 
+def _mb16_extras(tensors):
+    """Return (selectors, book_factors) for an mcbook16 per-proj group.
+
+    Per-proj tensor groups are 8 wide on this branch: the classic 6 kernel
+    tensors followed by the mcbook16 selectors and book_factors. v4 layers
+    carry zero-element placeholders there; 6-wide hot-only groups from dense
+    callers are accepted unchanged.
+    """
+    if len(tensors) < 8 or tensors[6].numel() == 0:
+        return None
+    return tensors[6], tensors[7]
+
+
 def _projection(x, cold_ids, hot_ids, tensors, alpha, n, split, hot_parts):
     if os.environ.get("VLLM_ARVQ_REFERENCE_WEIGHTS", "0") == "1":
         from vllm.model_executor.layers.quantization.arvq_reference import projection
@@ -117,8 +149,13 @@ def _projection(x, cold_ids, hot_ids, tensors, alpha, n, split, hot_parts):
         return projection(x, cold_ids, hot_ids, tensors, alpha, n, split, hot_parts)
     # Dense hot-only callers alias dummy cold pointers to the packed hot weight.
     hot_only = tensors[0] is tensors[1]
+    extras = None if hot_only else _mb16_extras(tensors)
     if not hot_only:
         _layout(tensors[1])
+        if _is_mb16(tensors[1]) != (extras is not None):
+            raise ValueError(
+                "mcbook16 codebooks and selectors must be loaded together"
+            )
     lib = _kernels()
     launch = lib.hybrid_launch if hot_only else _launch_for_codebooks(lib, tensors[1])
     slots, k = x.shape
@@ -132,8 +169,10 @@ def _projection(x, cold_ids, hot_ids, tensors, alpha, n, split, hot_parts):
         lib.hybrid_pack(_ptr(x), _ptr(packed), _ptr(scales), k, slots, planes, stream)
     )
     # cw, cb, cs, hw, hs, hot_global, activations, activation_scales,
-    # cold_ids, hot_ids, partial, output.
-    args = [*tensors, packed, scales, cold_ids, hot_ids, partial, out]
+    # cold_ids, hot_ids, partial, output. mcbook16 appends selectors and
+    # book_factors after the stream.
+    args = [*tensors[:6], packed, scales, cold_ids, hot_ids, partial, out]
+    trailing = [] if extras is None else [_ptr(extras[0]), _ptr(extras[1])]
     _check(
         launch(
             *[_ptr(t) for t in args],
@@ -145,6 +184,7 @@ def _projection(x, cold_ids, hot_ids, tensors, alpha, n, split, hot_parts):
             planes,
             hot_parts,
             stream,
+            *trailing,
         )
     )
     return out
@@ -214,7 +254,7 @@ def arvq_mlp(
             xr,
             cold_ids,
             hot_ids,
-            tensors[:6],
+            tensors[:8],
             alphas[0],
             n13,
             16 if slots <= 32 else 8,
@@ -236,7 +276,7 @@ def arvq_mlp(
                 activation_scales,
                 cold_ids,
                 hot_ids,
-                tensors[6:],
+                tensors[8:],
                 alphas[1],
                 hidden,
             )
@@ -245,7 +285,7 @@ def arvq_mlp(
             gate, up = h13.chunk(2, dim=-1)
             hact = (torch.nn.functional.silu(gate) * up).to(torch.float16)
             down = _projection(
-                hact, cold_ids, hot_ids, tensors[6:], alphas[1], hidden, 2, 1
+                hact, cold_ids, hot_ids, tensors[8:], alphas[1], hidden, 2, 1
             )
         weighted = down.reshape(stop - start, top_k, hidden)
         weighted = weighted * topk_weights[start:stop, :, None].float()
@@ -291,6 +331,14 @@ class NvFp4ArvqHybridConfig(NvFp4AqlmHybridConfig):
         if fmt == _EXPERT_FORMAT:
             versions = (3,)
             expected.update(codebook_scope="expert", codebook_sizes=[256, 256])
+        elif fmt == _MB16_FORMAT:
+            versions = (5,)
+            expected.update(codebook_scope="expert")
+            # Exporters may describe the residual stage as one 256-entry book
+            # (selected among 16) or enumerate all sixteen books.
+            sizes = marker.get("codebook_sizes", [256, 256])
+            if sizes not in ([256, 256], [256] * (1 + _MB16_BOOKS)):
+                raise ValueError(f"Unsupported ARVQ checkpoint metadata: {marker}")
         elif marker.get("codebook_scope", "shared") != "shared":
             raise ValueError(f"Unsupported ARVQ checkpoint metadata: {marker}")
         elif "codebook_sizes" in marker:
@@ -418,6 +466,57 @@ class ArvqExpertsMoEMethod(TPHybridExpertsMoEMethod):
             layer.register_parameter(name, p)
             set_weight_attrs(p, {"weight_loader": loader})
 
+        mb16 = self.arvq_format == _MB16_FORMAT
+        if mb16:
+            # Per-layer format detection: a projection is mcbook16 exactly
+            # when the checkpoint provides its arvq_{proj}_selectors tensor;
+            # otherwise it decodes on the untouched v4 path. Mixed
+            # (mid-campaign) checkpoints therefore load per layer.
+            layer._arvq_mb16_selectors = set()
+            layer._arvq_mb16_factors = set()
+
+        def flagged(loader, registry, proj):
+            def load(param, loaded):
+                loader(param, loaded)
+                registry.add(proj)
+
+            return load
+
+        def flex_books(param, loaded):
+            # Mixed mcbook16 checkpoints carry v4 [E,512] books on some
+            # layers and [E,4352] on others; adopt the layer's own width.
+            if (
+                loaded.dtype != torch.uint32
+                or loaded.ndim != 2
+                or loaded.shape[0] != self.n_cold
+                or loaded.shape[1] not in (512, _MB16_ENTRIES)
+            ):
+                raise ValueError(
+                    "Serialized ARVQ codebooks disagree with mcbook16: expected "
+                    f"[{self.n_cold},512] or [{self.n_cold},{_MB16_ENTRIES}] "
+                    f"uint32, got {tuple(loaded.shape)} {loaded.dtype}"
+                )
+            if loaded.shape == param.shape:
+                param.data.copy_(loaded)
+            else:
+                param.data = loaded.to(device=param.data.device).contiguous()
+
+        def flex_scale_dtype(loader):
+            # mcbook16-era exporters ship fitted FP16 block scales directly;
+            # earlier layers may still carry uint8 unsigned E4M3.
+            def load(param, loaded):
+                if loaded.dtype not in (torch.uint8, torch.float16):
+                    raise ValueError(
+                        "ARVQ cold scales must be uint8 E4M3 or fitted FP16"
+                    )
+                if loaded.dtype != param.dtype:
+                    param.data = torch.empty(
+                        param.shape, dtype=loaded.dtype, device=param.data.device
+                    )
+                loader(param, loaded)
+
+            return load
+
         make("hyb_kind", (num_experts,), torch.int8, rep)
         for proj, n, k in (("w13", 2 * ish, h), ("w2", h, ish)):
             if proj == "w13":
@@ -434,15 +533,35 @@ class ArvqExpertsMoEMethod(TPHybridExpertsMoEMethod):
                 f"arvq_{proj}_scales",
                 (self.n_cold, n // 16, k // 128, 16),
                 torch.uint8,
-                shard,
+                flex_scale_dtype(shard) if mb16 else shard,
             )
             book_shape = (
                 (self.n_cold, entries)
-                if self.arvq_format == _EXPERT_FORMAT
+                if self.arvq_format in (_EXPERT_FORMAT, _MB16_FORMAT)
                 else (entries,)
             )
-            make(f"arvq_{proj}_codebooks", book_shape, torch.uint32, rep)
+            make(
+                f"arvq_{proj}_codebooks",
+                book_shape,
+                torch.uint32,
+                flex_books if mb16 else rep,
+            )
             make(f"arvq_{proj}_global", (1,), torch.float32, rep)
+            if mb16:
+                # One residual-book id per packed tile; sharded exactly like
+                # the first three dims of arvq_{proj}_packed.
+                make(
+                    f"arvq_{proj}_selectors",
+                    (self.n_cold, n // 16, k // 64),
+                    torch.uint8,
+                    flagged(shard, layer._arvq_mb16_selectors, proj),
+                )
+                make(
+                    f"arvq_{proj}_book_factors",
+                    (_MB16_BOOKS,),
+                    torch.float32,
+                    flagged(rep, layer._arvq_mb16_factors, proj),
+                )
         na = self.n_nvfp4
         make(
             "nvfp4_w13_packed",
@@ -473,14 +592,19 @@ class ArvqExpertsMoEMethod(TPHybridExpertsMoEMethod):
 
     def process_weights_after_loading(self, layer):
         words, entries = _FORMATS[self.arvq_format]
+        mb16 = self.arvq_format == _MB16_FORMAT
+
+        def proj_is_mb16(proj):
+            return mb16 and proj in layer._arvq_mb16_selectors
+
         for proj in ("w13", "w2"):
             packed = getattr(layer, f"arvq_{proj}_packed")
             cb = getattr(layer, f"arvq_{proj}_codebooks")
-            expected_books = (
-                (self.n_cold, entries)
-                if self.arvq_format == _EXPERT_FORMAT
-                else (entries,)
-            )
+            if self.arvq_format in (_EXPERT_FORMAT, _MB16_FORMAT):
+                books = _MB16_ENTRIES if proj_is_mb16(proj) else entries
+                expected_books = (self.n_cold, books)
+            else:
+                expected_books = (entries,)
             if (
                 packed.ndim != 4
                 or packed.shape[0] != self.n_cold
@@ -493,8 +617,25 @@ class ArvqExpertsMoEMethod(TPHybridExpertsMoEMethod):
                 raise ValueError(
                     "Serialized ARVQ packed/codebook layout disagrees with format"
                 )
+            if proj_is_mb16(proj):
+                if proj not in layer._arvq_mb16_factors:
+                    raise ValueError(
+                        "mcbook16 selectors were loaded without book_factors"
+                    )
+                sel = getattr(layer, f"arvq_{proj}_selectors")
+                if (
+                    tuple(sel.shape) != tuple(packed.shape[:3])
+                    or sel.dtype != torch.uint8
+                    or not sel.is_contiguous()
+                ):
+                    raise ValueError(
+                        "mcbook16 selectors layout disagrees with packed tiles"
+                    )
+                if bool((sel >= _MB16_BOOKS).any().item()):
+                    raise ValueError("mcbook16 selector out of range")
         lib = _kernels()
         _launch_for_codebooks(lib, layer.arvq_w13_codebooks)
+        _launch_for_codebooks(lib, layer.arvq_w2_codebooks)
         device = layer.hyb_kind.device
         kind = layer.hyb_kind.long()
         if not bool(((kind == 0) | (kind == 2)).all().item()):
@@ -532,11 +673,14 @@ class ArvqExpertsMoEMethod(TPHybridExpertsMoEMethod):
             packed.data = guarded
             cb = getattr(layer, f"arvq_{proj}_codebooks")
             cs = getattr(layer, f"arvq_{proj}_scales")
-            if cs.dtype != torch.uint8:
+            if cs.dtype == torch.uint8:
+                if bool((cs >= 127).any().item()):
+                    raise ValueError(
+                        "FP16 scale trial encountered invalid unsigned E4M3"
+                    )
+                cs.data = cs.view(torch.float8_e4m3fn).to(torch.float16)
+            elif not (mb16 and cs.dtype == torch.float16):
                 raise ValueError("FP16 scale trial expects original uint8 ARVQ scales")
-            if bool((cs >= 127).any().item()):
-                raise ValueError("FP16 scale trial encountered invalid unsigned E4M3")
-            cs.data = cs.view(torch.float8_e4m3fn).to(torch.float16)
             print(
                 f"ARVQ_FP16_SCALES projection={proj} shape={tuple(cs.shape)} "
                 f"elements={cs.numel()} dtype={cs.dtype}",
@@ -555,7 +699,16 @@ class ArvqExpertsMoEMethod(TPHybridExpertsMoEMethod):
             hs = getattr(layer, f"nvfp4_{proj}_bscale")
             hs.data = hs.view(torch.int32)
             hg = getattr(layer, f"nvfp4_{proj}_scale2")
-            tensors.extend((packed, cb, cs, hw, hs, hg))
+            # Per-proj groups are 8 wide: the classic 6 kernel tensors plus
+            # mcbook16 selectors/book_factors (zero-element placeholders on
+            # v4 projections, which keep the untouched v4 decode path).
+            if proj_is_mb16(proj):
+                sel = getattr(layer, f"arvq_{proj}_selectors")
+                fac = getattr(layer, f"arvq_{proj}_book_factors")
+            else:
+                sel = torch.empty(0, dtype=torch.uint8, device=device)
+                fac = torch.empty(0, dtype=torch.float32, device=device)
+            tensors.extend((packed, cb, cs, hw, hs, hg, sel, fac))
             alphas.append(float(getattr(layer, f"arvq_{proj}_global").item()))
         layer._arvq_tensors = tensors
         layer._arvq_alphas = alphas

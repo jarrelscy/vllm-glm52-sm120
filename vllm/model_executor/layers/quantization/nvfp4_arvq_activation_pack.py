@@ -41,6 +41,12 @@ def down_prepacked(q, s, cold, hot, tensors, alpha, n):
     stream = ctypes.c_void_p(torch.cuda.current_stream().cuda_stream)
     lib = base._kernels()
     launch = base._launch_for_codebooks(lib, tensors[1])
-    args = [*tensors, q, s, cold, hot, partial, out]
-    base._check(launch(*map(base._ptr, args), alpha, n, k, slots, 2, 4, 1, stream))
+    extras = base._mb16_extras(tensors)
+    if base._is_mb16(tensors[1]) != (extras is not None):
+        raise ValueError("mcbook16 codebooks and selectors must be loaded together")
+    args = [*tensors[:6], q, s, cold, hot, partial, out]
+    trailing = [] if extras is None else [base._ptr(extras[0]), base._ptr(extras[1])]
+    base._check(
+        launch(*map(base._ptr, args), alpha, n, k, slots, 2, 4, 1, stream, *trailing)
+    )
     return out

@@ -112,7 +112,9 @@ extern "C" int arvq_dequant_fp16_8x8(const void* packed, const void* codebooks,
   return (int)cudaGetLastError();
 }
 
-template <bool FP16, int RESIDUAL_BITS>
+// RESIDUAL_SHIFT halves the residual book's contribution that many times
+// (2 -> residual at 1/4 weight); exact in FP16 for e2m1 magnitudes.
+template <bool FP16, int RESIDUAL_BITS, int RESIDUAL_SHIFT = 0>
 __global__ void arvq_dequant_gather_kernel(
     const unsigned* packed, const unsigned* codebooks,
     const unsigned char* scales, float global, void* output, int N, int K,
@@ -163,6 +165,8 @@ __global__ void arvq_dequant_gather_kernel(
         (__nv_fp4x2_storage_t)(first >> (8 * i)), __NV_E2M1));
     __half2 b = static_cast<__half2>(__nv_cvt_fp4x2_to_halfraw2(
         (__nv_fp4x2_storage_t)(second >> (8 * i)), __NV_E2M1));
+    if constexpr (RESIDUAL_SHIFT)
+      b = __hmul2(b, __float2half2_rn(1.f / (1 << RESIDUAL_SHIFT)));
     float2 value = __half22float2(__hadd2(a, b));
     float scaled_x = value.x * block_scale * global;
     float scaled_y = value.y * block_scale * global;
@@ -203,6 +207,24 @@ extern "C" int arvq_dequant_gather_fp16_8(
   int wb = ((int64_t)N * (K / 8) + 255) / 256;
   int rb = ((int64_t)M * (K / 8) + 255) / 256;
   arvq_dequant_gather_kernel<true, 8>
+      <<<wb + rb, 256, 0, (cudaStream_t)stream>>>(
+          (const unsigned*)packed, (const unsigned*)codebooks,
+          (const unsigned char*)scales, global, weight, N, K,
+          (const __nv_bfloat16*)x, (const int64_t*)routes, (__half*)rows, M,
+          top_k, wb);
+  return (int)cudaGetLastError();
+}
+
+// rs4 (rvq256_256x8_expert_fp16block_rs4): residual book at 1/4 weight.
+extern "C" int arvq_dequant_gather_fp16_8_rs4(
+    const void* packed, const void* codebooks, const void* scales, float global,
+    void* weight, int N, int K, void* stream, const void* x, const void* routes,
+    void* rows, int M, int top_k) {
+  if (N <= 0 || K <= 0 || N % 16 || K % 128 || M < 0 || top_k <= 0)
+    return (int)cudaErrorInvalidValue;
+  int wb = ((int64_t)N * (K / 8) + 255) / 256;
+  int rb = ((int64_t)M * (K / 8) + 255) / 256;
+  arvq_dequant_gather_kernel<true, 8, 2>
       <<<wb + rb, 256, 0, (cudaStream_t)stream>>>(
           (const unsigned*)packed, (const unsigned*)codebooks,
           (const unsigned char*)scales, global, weight, N, K,

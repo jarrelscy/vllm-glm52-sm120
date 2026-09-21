@@ -101,8 +101,12 @@ def cold_rows(packed, codebooks, scales, n, k, expert, first=0, stop=None):
     a = cb[pair & 255]
     b = cb[256 + ((pair >> 8) & ((1 << (bits - 8)) - 1))]
     shifts = torch.arange(8, device=device) * 4
+    from vllm.model_executor.layers.quantization.nvfp4_arvq_hybrid import (
+        residual_scale_shift,
+    )
+
     values = fp4((a[..., None] >> shifts) & 15)
-    values += fp4((b[..., None] >> shifts) & 15)
+    values += fp4((b[..., None] >> shifts) & 15) * (0.5 ** residual_scale_shift())
     block = scales.reshape(-1, n // 16, k // 128, 16)
     scale = e4m3(block[expert, row // 16, col // 128, row % 16])
     return (values * scale[..., None]).reshape(stop - first, k)

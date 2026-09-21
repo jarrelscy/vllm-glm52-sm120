@@ -68,9 +68,17 @@ def dequantize_cold(packed, codebooks, scales, global_scale, n, k, dtype=torch.f
         raise ValueError("ARVQ prefill decode requires FP16 or BF16 output")
 
     pointer = lambda tensor: ctypes.c_void_p(tensor.data_ptr())
+    from vllm.model_executor.layers.quantization.nvfp4_arvq_hybrid import (
+        residual_scale_shift,
+    )
+
     name = "arvq_dequant_fp16" if dtype == torch.float16 else "arvq_dequant"
     if entries == 512:
         name += "_8x8"
+        if residual_scale_shift():
+            name += "_rs4"
+    elif residual_scale_shift():
+        raise ValueError("rs4 requires 512-entry per-expert codebooks")
     try:
         decoder = getattr(_LIB, name)
     except AttributeError as missing_symbol:

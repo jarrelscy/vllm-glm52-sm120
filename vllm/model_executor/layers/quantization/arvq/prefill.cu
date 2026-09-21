@@ -15,7 +15,10 @@ __device__ __forceinline__ float fp4(unsigned code) {
   return code & 8 ? -value : value;
 }
 
-template <bool FP16, int RESIDUAL_BITS>
+// RESIDUAL_SHIFT halves the residual book's contribution that many times
+// (2 -> residual at 1/4 weight); the FP16 multiply is exact because e2m1
+// magnitudes scaled by 2^-2 stay on the FP16 grid.
+template <bool FP16, int RESIDUAL_BITS, int RESIDUAL_SHIFT = 0>
 __global__ void arvq_dequant_kernel(const unsigned* packed,
                                     const unsigned* codebooks,
                                     const unsigned char* scales, float global,
@@ -49,6 +52,8 @@ __global__ void arvq_dequant_kernel(const unsigned* packed,
         (__nv_fp4x2_storage_t)(first >> (8 * i)), __NV_E2M1));
     __half2 b = static_cast<__half2>(__nv_cvt_fp4x2_to_halfraw2(
         (__nv_fp4x2_storage_t)(second >> (8 * i)), __NV_E2M1));
+    if constexpr (RESIDUAL_SHIFT)
+      b = __hmul2(b, __float2half2_rn(1.f / (1 << RESIDUAL_SHIFT)));
     float2 value = __half22float2(__hadd2(a, b));
     float scaled_x = value.x * block_scale * global;
     float scaled_y = value.y * block_scale * global;
@@ -106,6 +111,31 @@ extern "C" int arvq_dequant_fp16_8x8(const void* packed, const void* codebooks,
                                      void* output, int N, int K, void* stream) {
   if (N <= 0 || K <= 0 || N % 16 || K % 128) return (int)cudaErrorInvalidValue;
   arvq_dequant_kernel<true, 8>
+      <<<((int64_t)N * (K / 8) + 255) / 256, 256, 0, (cudaStream_t)stream>>>(
+          (const unsigned*)packed, (const unsigned*)codebooks,
+          (const unsigned char*)scales, global, output, N, K);
+  return (int)cudaGetLastError();
+}
+
+// rs4 variants (rvq256_256x8_expert_fp16block_rs4): residual book at 1/4.
+extern "C" int arvq_dequant_8x8_rs4(const void* packed, const void* codebooks,
+                                    const void* scales, float global,
+                                    void* output, int N, int K, void* stream) {
+  if (N <= 0 || K <= 0 || N % 16 || K % 128) return (int)cudaErrorInvalidValue;
+  arvq_dequant_kernel<false, 8, 2>
+      <<<((int64_t)N * (K / 8) + 255) / 256, 256, 0, (cudaStream_t)stream>>>(
+          (const unsigned*)packed, (const unsigned*)codebooks,
+          (const unsigned char*)scales, global, output, N, K);
+  return (int)cudaGetLastError();
+}
+
+extern "C" int arvq_dequant_fp16_8x8_rs4(const void* packed,
+                                         const void* codebooks,
+                                         const void* scales, float global,
+                                         void* output, int N, int K,
+                                         void* stream) {
+  if (N <= 0 || K <= 0 || N % 16 || K % 128) return (int)cudaErrorInvalidValue;
+  arvq_dequant_kernel<true, 8, 2>
       <<<((int64_t)N * (K / 8) + 255) / 256, 256, 0, (cudaStream_t)stream>>>(
           (const unsigned*)packed, (const unsigned*)codebooks,
           (const unsigned char*)scales, global, output, N, K);

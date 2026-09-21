@@ -17,8 +17,15 @@ def decode_gather(x, route_slots, packed, codebooks, scales, global_scale, n, k,
     assert codebooks.numel() in (384, 512)
     if _LIB is None:
         _LIB = ctypes.CDLL(str(Path(__file__).with_name("arvq") / "decode_gather.so"))
+    from vllm.model_executor.layers.quantization.nvfp4_arvq_hybrid import (
+        residual_scale_shift,
+    )
+
     bits = 7 if codebooks.numel() == 384 else 8
-    fn = getattr(_LIB, f"arvq_dequant_gather_fp16_{bits}")
+    suffix = "_rs4" if residual_scale_shift() else ""
+    if suffix and bits != 8:
+        raise ValueError("rs4 requires 512-entry per-expert codebooks")
+    fn = getattr(_LIB, f"arvq_dequant_gather_fp16_{bits}{suffix}")
     fn.argtypes = (
         [ctypes.c_void_p] * 3
         + [ctypes.c_float, ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_void_p]

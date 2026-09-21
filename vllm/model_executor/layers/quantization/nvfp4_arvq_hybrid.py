@@ -58,11 +58,33 @@ def _kernels():
 
 
 _EXPERT_FORMAT = "rvq256_256x8_expert"
+_FP16_FORMAT = "rvq256_256x8_expert_fp16block"
+_RS4_FORMAT = "rvq256_256x8_expert_fp16block_rs4"
 _FORMATS = {
     "rvq256_128x8": (60, 384),
     "rvq256_256x8": (64, 512),
     _EXPERT_FORMAT: (64, 512),
+    _FP16_FORMAT: (64, 512),
+    _RS4_FORMAT: (64, 512),
 }
+
+# One checkpoint format per process; set when a config is constructed.
+_ACTIVE_FORMAT = _EXPERT_FORMAT
+
+
+def _set_active_format(fmt):
+    global _ACTIVE_FORMAT
+    _ACTIVE_FORMAT = fmt
+
+
+def residual_scale_shift():
+    """Powers of two by which the residual book's contribution is lowered.
+
+    rs4 reconstructs each 8-weight group as
+    global * fp16_block_scale * (c0[main] + c1[residual] / 4); every other
+    format keeps the two books at equal weight.
+    """
+    return 2 if _ACTIVE_FORMAT == _RS4_FORMAT else 0
 
 
 def _layout(codebooks):
@@ -92,6 +114,10 @@ def _launch_for_codebooks(lib, codebooks):
     symbol = "hybrid_launch_8x8"
     if codebooks.ndim == 2:
         symbol += "_expert"
+        if residual_scale_shift():
+            symbol += "_rs4"
+    elif residual_scale_shift():
+        raise ValueError("rs4 requires per-expert [E,512] codebooks")
     try:
         launch = getattr(lib, symbol)
     except AttributeError as error:
@@ -268,6 +294,7 @@ class NvFp4ArvqHybridConfig(NvFp4AqlmHybridConfig):
             raise ValueError(f"Unsupported ARVQ format: {arvq_format}")
         super().__init__(*args, **kwargs)
         self.arvq_format = arvq_format
+        _set_active_format(arvq_format)
 
     @classmethod
     def get_name(cls) -> Literal["nvfp4_arvq_hybrid"]:
@@ -290,6 +317,9 @@ class NvFp4ArvqHybridConfig(NvFp4AqlmHybridConfig):
         versions = (1, 2) if fmt == "rvq256_256x8" else (1,)
         if fmt == _EXPERT_FORMAT:
             versions = (3,)
+            expected.update(codebook_scope="expert", codebook_sizes=[256, 256])
+        elif fmt in (_FP16_FORMAT, _RS4_FORMAT):
+            versions = (3, 4)
             expected.update(codebook_scope="expert", codebook_sizes=[256, 256])
         elif marker.get("codebook_scope", "shared") != "shared":
             raise ValueError(f"Unsupported ARVQ checkpoint metadata: {marker}")
@@ -377,6 +407,7 @@ class ArvqExpertsMoEMethod(TPHybridExpertsMoEMethod):
         if arvq_format not in _FORMATS:
             raise ValueError(f"Unsupported ARVQ format: {arvq_format}")
         self.arvq_format = arvq_format
+        _set_active_format(arvq_format)
         self.cold_expert_ids = cold_expert_ids
         super().__init__(*args, **kwargs)
         if self.n_base:
@@ -532,11 +563,14 @@ class ArvqExpertsMoEMethod(TPHybridExpertsMoEMethod):
             packed.data = guarded
             cb = getattr(layer, f"arvq_{proj}_codebooks")
             cs = getattr(layer, f"arvq_{proj}_scales")
-            if cs.dtype != torch.uint8:
-                raise ValueError("FP16 scale trial expects original uint8 ARVQ scales")
-            if bool((cs >= 127).any().item()):
-                raise ValueError("FP16 scale trial encountered invalid unsigned E4M3")
-            cs.data = cs.view(torch.float8_e4m3fn).to(torch.float16)
+            if cs.dtype == torch.uint8:
+                if bool((cs >= 127).any().item()):
+                    raise ValueError(
+                        "FP16 scale trial encountered invalid unsigned E4M3"
+                    )
+                cs.data = cs.view(torch.float8_e4m3fn).to(torch.float16)
+            elif cs.dtype != torch.float16:
+                raise ValueError("ARVQ cold scales must be uint8 E4M3 or fitted FP16")
             print(
                 f"ARVQ_FP16_SCALES projection={proj} shape={tuple(cs.shape)} "
                 f"elements={cs.numel()} dtype={cs.dtype}",

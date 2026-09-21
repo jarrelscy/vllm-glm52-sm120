@@ -53,7 +53,11 @@ extern "C" int hybrid_pack(const void* x, void* q, void* s, int K, int slots,
 }
 // Routes must be disjoint: cold_ids[slot]>=0 XOR hot_ids[slot]>=0.
 // A slot with bothnegative is defined as zero; with bothpositive cold wins.
-template <int RESIDUAL_BITS, bool EXPERT_BOOKS = false>
+// RESIDUAL_SHIFT lowers the residual book's contribution by that many powers
+// of two relative to the main book (2 -> residual at scale/4). It rides the
+// residual MMA's ue4m3 operand, so it is exact and costs no extra
+// instructions; the FP16 block scale is applied afterwards, unchanged.
+template <int RESIDUAL_BITS, bool EXPERT_BOOKS = false, int RESIDUAL_SHIFT = 0>
 __global__ void hybrid_kernel(const unsigned* cw, const unsigned* cb,
                               const unsigned char* cs, const unsigned* hw,
                               const unsigned* hs, const unsigned* x,
@@ -102,8 +106,9 @@ __global__ void hybrid_kernel(const unsigned* cw, const unsigned* cb,
         float s0 = __half2float(fs[si + q]);
         float s1 = __half2float(fs[si + q + 8]);
         float t0 = 0, t1 = 0, t2 = 0, t3 = 0;
+        constexpr unsigned rsa = ((7u - RESIDUAL_SHIFT) << 3) * 0x1010101u;
         mma(t0, t1, t2, t3, a[0], a[1], a[2], a[3], b0, b1, 0x38383838u, sb);
-        mma(t0, t1, t2, t3, r[0], r[1], r[2], r[3], b0, b1, 0x38383838u, sb);
+        mma(t0, t1, t2, t3, r[0], r[1], r[2], r[3], b0, b1, rsa, sb);
         d0 = fmaf(t0, s0, d0);
         d1 = fmaf(t1, s0, d1);
         d2 = fmaf(t2, s1, d2);
@@ -156,7 +161,7 @@ __global__ void hybrid_reduce(const float* p, float* y, const int* cold_ids,
 // cold_ids/hot_ids:i32[slots]; partial:f32[slots,N,split]; out:f32[slots,N].
 // cold_global:f32; N,K,slots,split,P,hot_parts:int; CUDAstream:void*.
 // N%16=0,K%128=0,P=1or4,hot_parts=1or2, split>0.
-template <int RESIDUAL_BITS, bool EXPERT_BOOKS = false>
+template <int RESIDUAL_BITS, bool EXPERT_BOOKS = false, int RESIDUAL_SHIFT = 0>
 int hybrid_launch_impl(const void* cold_w, const void* cold_cb,
                        const void* cold_scales, const void* hot_w,
                        const void* hot_scales, const void* hot_global,
@@ -168,7 +173,7 @@ int hybrid_launch_impl(const void* cold_w, const void* cold_cb,
       (P != 1 && P != 4) || (hot_parts != 1 && hot_parts != 2))
     return (int)cudaErrorInvalidValue;
   cudaStream_t s = (cudaStream_t)stream;
-  hybrid_kernel<RESIDUAL_BITS, EXPERT_BOOKS>
+  hybrid_kernel<RESIDUAL_BITS, EXPERT_BOOKS, RESIDUAL_SHIFT>
       <<<dim3((N + 63) / 64, split, slots), 128, 0, s>>>(
           (const unsigned*)cold_w, (const unsigned*)cold_cb,
           (const unsigned char*)cold_scales, (const unsigned*)hot_w,
@@ -226,4 +231,20 @@ extern "C" int hybrid_launch_8x8_expert(
                                      hot_scales, hot_global, x, xs, cold_ids,
                                      hot_ids, partial, out, cold_global, N, K,
                                      slots, split, P, hot_parts, stream);
+}
+
+// rs4 (rvq256_256x8_expert_fp16block_rs4): identical tensor layout; the
+// residual book contributes at 1/4 weight via a constant ue4m3 0.25 on its
+// MMA (exact, zero extra instructions). Reconstruction per 8-weight group:
+//   w = global * fp16_block_scale * (c0[main] + c1[residual] / 4).
+extern "C" int hybrid_launch_8x8_expert_rs4(
+    const void* cold_w, const void* cold_cb, const void* cold_scales,
+    const void* hot_w, const void* hot_scales, const void* hot_global,
+    const void* x, const void* xs, const void* cold_ids, const void* hot_ids,
+    void* partial, void* out, float cold_global, int N, int K, int slots,
+    int split, int P, int hot_parts, void* stream) {
+  return hybrid_launch_impl<8, true, 2>(cold_w, cold_cb, cold_scales, hot_w,
+                                        hot_scales, hot_global, x, xs, cold_ids,
+                                        hot_ids, partial, out, cold_global, N,
+                                        K, slots, split, P, hot_parts, stream);
 }

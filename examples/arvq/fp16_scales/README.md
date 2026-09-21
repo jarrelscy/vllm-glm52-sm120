@@ -99,3 +99,42 @@ submitted. Checkpoint files were not modified; conversion happens during load.
 
 Numeric measurements are in `fullmodel_results.json` and
 `projection_results.json`.
+
+## rs4: residual book at quarter weight (`rvq256_256x8_expert_fp16block_rs4`)
+
+Extension of the FP16 block-scale format. Tensor layout, dtypes, packing, and
+bit budget are unchanged from `rvq256_256x8_expert_fp16block`; only the
+reconstruction contract differs. Per 8-weight group with main index `a` and
+residual index `b`:
+
+```text
+w_group = global * fp16_block_scale * (c0[a] + c1[b] / 4)
+```
+
+Motivation: with both books on the shared scale, the finest nonzero residual
+correction is 0.5 (the smallest e2m1 magnitude), and fitted v3 residual books
+pile 84% of their mass on {0, 0.5} while never using magnitudes above 1.5.
+Dividing the residual contribution by 4 remaps its used range onto the full
+e2m1 grid, giving 0.125-step corrections with no size, layout, or speed cost.
+
+Serving implementation:
+
+- `hybrid.so`: the residual MMA takes constant ue4m3 scale 0.25 (`0x28282828`)
+  instead of unity; exact in the MMA's FP32 accumulate, zero extra
+  instructions. FP16 block scales are applied afterwards, unchanged.
+- `prefill.so` / `decode_gather.so`: the residual half2 is multiplied by 0.25
+  before the add; exact in FP16 for e2m1 magnitudes.
+- Symbols: `hybrid_launch_8x8_expert_rs4`, `arvq_dequant{,_fp16}_8x8_rs4`,
+  `arvq_dequant_gather_fp16_8_rs4`. Rebuild all three libraries together.
+
+Fitting requirements:
+
+- Emulate reconstruction as `scale * (main + residual / 4)`; residual atoms
+  remain constrained to the e2m1 grid {0, +-0.5, +-1, +-1.5, +-2, +-3, +-4,
+  +-6}, now denoting quarter-scale steps {0, +-0.125, ..., +-1.5}.
+- No scale clamp is required: the /4 rides the MMA constant, not the block
+  scale.
+- Per-layer safetensors metadata: `arvq_format = "rvq256_256x8_expert_fp16block_rs4"`.
+  Assembled checkpoint config marker: `format` as above, `version` 3 or 4,
+  `codebook_scope = "expert"`, `codebook_sizes = [256, 256]`,
+  `activation_planes = 4`, `weight_scale_group = 128`.

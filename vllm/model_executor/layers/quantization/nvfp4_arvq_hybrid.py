@@ -58,6 +58,9 @@ def _kernels():
 
 
 _EXPERT_FORMAT = "rvq256_256x8_expert"
+# v4: the v3 per-expert layout with fitted FP16 block scales serialized
+# directly (no unsigned-E4M3 stage); decode is otherwise identical to v3.
+_V4_FORMAT = "rvq256_256x8_expert_fp16block"
 # v5 mcbook16: rows 0-255 base book; rows 256+m*256..256+(m+1)*256 residual
 # book m for m in 0..15. Per packed tile a uint8 selector picks the residual
 # book, whose atoms contribute scaled by book_factors[m] (f32[16]).
@@ -68,8 +71,11 @@ _FORMATS = {
     "rvq256_128x8": (60, 384),
     "rvq256_256x8": (64, 512),
     _EXPERT_FORMAT: (64, 512),
+    _V4_FORMAT: (64, 512),
     _MB16_FORMAT: (64, 512),
 }
+_EXPERT_SCOPE_FORMATS = (_EXPERT_FORMAT, _V4_FORMAT, _MB16_FORMAT)
+_FP16_SCALE_FORMATS = (_V4_FORMAT, _MB16_FORMAT)
 
 
 def _layout(codebooks):
@@ -331,6 +337,9 @@ class NvFp4ArvqHybridConfig(NvFp4AqlmHybridConfig):
         if fmt == _EXPERT_FORMAT:
             versions = (3,)
             expected.update(codebook_scope="expert", codebook_sizes=[256, 256])
+        elif fmt == _V4_FORMAT:
+            versions = (4,)
+            expected.update(codebook_scope="expert", codebook_sizes=[256, 256])
         elif fmt == _MB16_FORMAT:
             versions = (5,)
             expected.update(codebook_scope="expert")
@@ -467,6 +476,7 @@ class ArvqExpertsMoEMethod(TPHybridExpertsMoEMethod):
             set_weight_attrs(p, {"weight_loader": loader})
 
         mb16 = self.arvq_format == _MB16_FORMAT
+        fp16s = self.arvq_format in _FP16_SCALE_FORMATS
         if mb16:
             # Per-layer format detection: a projection is mcbook16 exactly
             # when the checkpoint provides its arvq_{proj}_selectors tensor;
@@ -533,11 +543,11 @@ class ArvqExpertsMoEMethod(TPHybridExpertsMoEMethod):
                 f"arvq_{proj}_scales",
                 (self.n_cold, n // 16, k // 128, 16),
                 torch.uint8,
-                flex_scale_dtype(shard) if mb16 else shard,
+                flex_scale_dtype(shard) if fp16s else shard,
             )
             book_shape = (
                 (self.n_cold, entries)
-                if self.arvq_format in (_EXPERT_FORMAT, _MB16_FORMAT)
+                if self.arvq_format in _EXPERT_SCOPE_FORMATS
                 else (entries,)
             )
             make(
@@ -593,6 +603,7 @@ class ArvqExpertsMoEMethod(TPHybridExpertsMoEMethod):
     def process_weights_after_loading(self, layer):
         words, entries = _FORMATS[self.arvq_format]
         mb16 = self.arvq_format == _MB16_FORMAT
+        fp16s = self.arvq_format in _FP16_SCALE_FORMATS
 
         def proj_is_mb16(proj):
             return mb16 and proj in layer._arvq_mb16_selectors
@@ -600,7 +611,7 @@ class ArvqExpertsMoEMethod(TPHybridExpertsMoEMethod):
         for proj in ("w13", "w2"):
             packed = getattr(layer, f"arvq_{proj}_packed")
             cb = getattr(layer, f"arvq_{proj}_codebooks")
-            if self.arvq_format in (_EXPERT_FORMAT, _MB16_FORMAT):
+            if self.arvq_format in _EXPERT_SCOPE_FORMATS:
                 books = _MB16_ENTRIES if proj_is_mb16(proj) else entries
                 expected_books = (self.n_cold, books)
             else:
@@ -679,7 +690,7 @@ class ArvqExpertsMoEMethod(TPHybridExpertsMoEMethod):
                         "FP16 scale trial encountered invalid unsigned E4M3"
                     )
                 cs.data = cs.view(torch.float8_e4m3fn).to(torch.float16)
-            elif not (mb16 and cs.dtype == torch.float16):
+            elif not (fp16s and cs.dtype == torch.float16):
                 raise ValueError("FP16 scale trial expects original uint8 ARVQ scales")
             print(
                 f"ARVQ_FP16_SCALES projection={proj} shape={tuple(cs.shape)} "
